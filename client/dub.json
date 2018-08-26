@@ -26,7 +26,7 @@
 		"emsi_containers": "~>0.8.0-alpha.9",
 		"resusage": "~>0.2.8"
 	},
-	"copyFiles-windows-x86_64": ["lib/win/x64/*.dll", "assets/final/assets/"],
-	"copyFiles-linux-x86_64":  ["lib/lin64/*", "assets/final/assets/"],
+	"copyFiles-windows-x86_64": ["lib/win/x64/*.dll", "../assets/final/assets/"],
+	"copyFiles-linux-x86_64":  ["lib/lin64/*", "../assets/final/assets/"],
 	"targetPath": "bin/",
 }
