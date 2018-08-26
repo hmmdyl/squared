@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\test\collision\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\NarrowPhaseCollision\btVoronoiSimplexSolver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btSphereShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btMultiSphereShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btPolyhedralConvexShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btConvexShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btConvexInternalShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btCollisionShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\CollisionShapes\btConvexPolyhedron.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\src\BulletCollision\NarrowPhaseCollision\btVoronoiSimplexSolver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\dylan\Desktop\SquareD\physics cxx\bullet3-2.87\test\collision\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{55E867E0-F299-3DA9-B16B-1E91430E683C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{DF006089-CC3D-390B-8DB3-CBD18348EE77}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
