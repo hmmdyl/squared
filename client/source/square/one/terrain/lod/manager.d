@@ -1,6 +1,6 @@
 module square.one.terrain.lod.manager;
 
-import square.one.terrain.chunk;
+/*import square.one.terrain.chunk;
 import square.one.terrain.lod.chunk;
 import square.one.terrain.voxel;
 import square.one.terrain.resources;
@@ -40,8 +40,8 @@ struct LodTerrainManagerCreateInfo {
 final class LodTerrainManager {
     private HashMap!(ChunkPosition, LodChunk)[] chunks;
 
-    private UnrolledList!LodChangeCommand splitCommands;
-    private UnrolledList!LodChangeCommand mergeCommands;
+    //private UnrolledList!LodChangeCommand splitCommands;
+    //private UnrolledList!LodChangeCommand mergeCommands;
     
     const uint numLodLevels;
     const uint[] lodBoundaries;
@@ -52,7 +52,7 @@ final class LodTerrainManager {
 
     private ObjectPool!LodChunk chunkReservePool;
 
-    this(TerrainManagerCreateInfo createInfo) {
+    this(LodTerrainManagerCreateInfo createInfo) {
         numLodLevels = createInfo.lodLevels;
         lodBoundaries = createInfo.chunkDistPerLodLevel;
         _createNoiseGenerator = createInfo.createNoiseGenerator;
@@ -260,4 +260,4 @@ final class LtmCommandDistributor {
 
 final class LtmVoxelBufferHandler {
 
-}
+}*/

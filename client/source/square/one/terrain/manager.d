@@ -1,6 +1,6 @@
 ﻿module square.one.terrain.manager;
 
-public import square.one.terrain.chunk;
+/*public import square.one.terrain.chunk;
 public import square.one.terrain.voxel;
 public import square.one.terrain.resources;
 
@@ -107,7 +107,7 @@ final class TerrainManager : IRenderHandler {
 
 		/*updater = new Thread(&update);
 		updater.isDaemon = true;
-		updater.start();*/
+		updater.start();*
 	}
 
 	bool isLoadingTime = true;
@@ -225,7 +225,7 @@ final class TerrainManager : IRenderHandler {
 				sw.reset();
 
 				renderChunksMutex.unlock();
-			}*/
+			}*
 
 			if(isLoadingTime) {
 				if(numberOfChunksInMeshingOrNoise == 0)
@@ -605,4 +605,4 @@ final class TerrainManager : IRenderHandler {
 		c.countAir();
 		c.needsMesh = true;
 	}
-}
+}*/

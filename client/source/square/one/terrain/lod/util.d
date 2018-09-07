@@ -2,7 +2,7 @@ module square.one.terrain.lod.util;
 
 import square.one.terrain.chunk : ChunkPosition;
 
-struct LodChangeCommand {
+/*struct LodChangeCommand {
     enum ChangeType : byte {
         merge,
         split
@@ -31,7 +31,7 @@ struct LodChangeCommand {
         this.smaller = smaller;
         changeType = type;
     }
-}
+}*/
 
 struct LodLevel {
 	int blockskip;

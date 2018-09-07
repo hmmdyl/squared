@@ -1,6 +1,6 @@
 module square.one.terrain.lod.chunk;
 
-import square.one.terrain.chunk;
+/*import square.one.terrain.chunk;
 import square.one.terrain.resources;
 
 import std.experimental.allocator.mallocator;
@@ -8,7 +8,7 @@ import core.atomic;
 
 class LodChunk : IVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ILoadableVoxelBuffer, ICompressableVoxelBuffer {
     private Voxel[] voxelData;
-    private ubyte[] compressedData;
+    private ubyte[] _compressedData;
 
     ChunkPosition position;
 
@@ -27,7 +27,7 @@ class LodChunk : IVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ILo
 
         if(voxelData !is null)
             deallocateVoxelData();
-        if(compressedData !is null)
+        if(_compressedData !is null)
             deallocateCompressedData();
 
         voxels = cast(Voxel[])Mallocator.instance.allocate(memSize);
@@ -40,7 +40,7 @@ class LodChunk : IVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ILo
     void deinitialise() {
         if(voxelData !is null)
             deallocateVoxelData();
-        if(compressedData !is null)
+        if(_compressedData !is null)
             deallocateCompressedData();
 
         position = ChunkPosition();
@@ -105,7 +105,7 @@ class LodChunk : IVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ILo
 
     private shared(int) _blockskip;
     @property int blockskip() { return atomicLoad(_blockskip); }
-    @property void blockskip(int n) { atomicStore(_blockskip, n); }*/
+    @property void blockskip(int n) { atomicStore(_blockskip, n); }*
 
     private int _lod, _blockskip;
     @property int lod() { return _lod; }
@@ -161,12 +161,12 @@ class LodChunk : IVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ILo
         voxelData = null;
     }
 
-    @property ref void* compressedData() { return compressedData; }
-    @property void compressedData(void* v) { compressedData = v; }
+    @property ref void* compressedData() { return _compressedData; }
+    @property void compressedData(void* v) { _compressedData = v; }
 
     void deallocateCompressedData() {
         assert(compressedData !is null);
-        Mallocator.instance.deallocate(compressedData);
+        Mallocator.instance.deallocate(_compressedData);
         compressedData = null;
     }
 
@@ -193,4 +193,4 @@ enum float voxelScale = 0.25f;
 enum float dimensionsMetres = chunkDimensions * voxelScale;
 enum float dimensionsInvMetres = 1f / dimensionsMetres;
 
-enum memSize = overrunDimensions3 * Voxel.sizeof;
+enum memSize = overrunDimensions3 * Voxel.sizeof;*/
