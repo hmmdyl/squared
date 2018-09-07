@@ -13,7 +13,7 @@ import square.one.graphics.ui.picture;
 import square.one.graphics.camera;
 import square.one.misc.sky;
 
-import square.one.terrain.manager;
+//import square.one.terrain.manager;
 import square.one.terrain.resources;
 
 import derelict.opengl3.gl3;
@@ -27,7 +27,6 @@ import core.memory;
 import resusage.memory;
 
 import square.one.voxelcon.block.processor;
-import square.one.terrain.edittool;
 import std.string;
 import moxana.graphics.rh;
 
@@ -39,7 +38,7 @@ class DebugGameState : IState {
 	Camera camera;
 
 	Resources resources;
-	TerrainManager terrainManager;
+	//TerrainManager terrainManager;
 
 	IngameTime gameTime;
 	StopWatch time;
@@ -91,11 +90,11 @@ class DebugGameState : IState {
 			resources.add(new Grass);
 		}
 
-		TerrainManagerCreateInfo info = TerrainManagerCreateInfo.createDefault(resources);
+		//TerrainManagerCreateInfo info = TerrainManagerCreateInfo.createDefault(resources);
 
-		terrainManager = new TerrainManager(info, view.position);
-		rc.physicalRenderables.insert(terrainManager);
-		rc.shadowCasters.insert(terrainManager);
+		//terrainManager = new TerrainManager(info, view.position);
+		//rc.physicalRenderables.insert(terrainManager);
+		//rc.shadowCasters.insert(terrainManager);
 		distributor = new RenderDistributor;
 		distributor.rc = rc;
 
@@ -118,7 +117,7 @@ class DebugGameState : IState {
 		sysMemInfo = systemMemInfo;
 		procMemInfo = processMemInfo;
 
-		et = new EditTool;
+		//et = new EditTool;
 
 		dsr = new DebugStatsRenderer;
 		dsr.s = this;
@@ -162,7 +161,7 @@ class DebugGameState : IState {
 	SystemMemInfo sysMemInfo;
 	ProcessMemInfo procMemInfo;
 
-	EditTool et;
+	//EditTool et;
 	bool prevBreakDown, prevPlaceDown;
 
 	vec3l de;
@@ -271,13 +270,13 @@ class DebugGameState : IState {
 		vec3f df;
 		vec3i face;
 		
-		et.update(camera.view.position, camera.view.rotation, terrainManager, shouldBreak, shouldPlace, de, df, face);
+		//et.update(camera.view.position, camera.view.rotation, terrainManager, shouldBreak, shouldPlace, de, df, face);
 		
 		prevBreakDown = engine.window.isMouseButtonDown(MouseButton.right);
 		prevPlaceDown = engine.window.isMouseButtonDown(MouseButton.left);
 
-		terrainManager.cameraPosition = camera.view.position;
-		terrainManager.update();
+		//terrainManager.cameraPosition = camera.view.position;
+		//terrainManager.update();
 
 		procMemInfo.update;
 		sysMemInfo.update;
@@ -304,7 +303,7 @@ class DebugStatsRenderer : IRenderHandler {
 	private char[2048] diagbuff;
 
 	void ui(RenderContext rc) {
-		int l = sprintf(diagbuff.ptr, 
+		/*int l = sprintf(diagbuff.ptr, 
 			"Camera position: %0.2f, %0.2f, %0.2f
 Camera rotation: %0.2f, %0.2f, %0.2f
 
@@ -353,7 +352,7 @@ Pos: %s",
 			s.terrainManager.updateTime, s.terrainManager.numChunks, s.terrainManager.isLoadingTime, toStringz(s.de.toString));
 		
 		engine.renderContext.textRenderer.render(engine.roboto16, cast(immutable)diagbuff, l, vec2f(-1f, 0.95f), vec3f(1f, 0.5f, 0f));
-
+*/
 	}
 }
 

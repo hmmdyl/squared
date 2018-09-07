@@ -1,8 +1,6 @@
 ﻿module square.one.terrain.chunk;
 
 import square.one.terrain.voxel;
-import square.one.terrain.manager;
-import square.one.terrain.rlecompressor;
 import square.one.terrain.resources;
 import square.one.utils.disposable;
 
@@ -17,18 +15,21 @@ import core.atomic;
 import core.memory;
 import std.experimental.allocator.mallocator;
 
-enum int chunkDimensions = 16;
-enum int chunkOverrunDimensions = 18;
-enum int voxelOffset = 1;
+struct ChunkData
+{
+	enum int chunkDimensions = 16;
+	enum int chunkOverrunDimensions = 18;
+	enum int voxelOffset = 1;
 
-enum int chunkDimensionsCubed = chunkDimensions ^^ 3;
-enum int chunkOverrunDimensionsCubed = chunkOverrunDimensions ^^ 3;
+	enum int chunkDimensionsCubed = chunkDimensions ^^ 3;
+	enum int chunkOverrunDimensionsCubed = chunkOverrunDimensions ^^ 3;
 
-enum int voxelsPerMetre = 4;
-enum float voxelScale = 0.25f;
+	enum int voxelsPerMetre = 4;
+	enum float voxelScale = 0.25f;
 
-enum float chunkDimensionsMetres = chunkDimensions * voxelScale;
-enum float invChunkDimensionsMetres = 1f / chunkDimensionsMetres;
+	enum float chunkDimensionsMetres = chunkDimensions * voxelScale;
+	enum float invChunkDimensionsMetres = 1f / chunkDimensionsMetres;
+}
 
 interface IVoxelBuffer 
 {
@@ -72,7 +73,7 @@ interface IRenderableVoxelBuffer : IVoxelBuffer
 	@property ref void*[] renderData();
 }
 
-interface IMeshableVoxelBuffer : IVoxelBuffer 
+interface IMeshableVoxelBuffer : IVoxelBuffer, IRenderableVoxelBuffer 
 {
 	@property int meshingOverrun(); 
 
@@ -92,7 +93,7 @@ interface ICompressableVoxelBuffer : IVoxelBuffer
 	@property void voxels(Voxel[]);
 	void deallocateVoxelData();
 
-	@property ref void* compressedData();
+	@property void* compressedData();
 	@property void compressedData(void*, size_t);
 	void deallocateCompressedData();
 }
@@ -177,23 +178,17 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
     }
 
     pragma(inline, true)
-    @property int dimensionsProper() { return chunkDimensions; }
+    @property int dimensionsProper() { return ChunkData.chunkDimensions; }
     pragma(inline, true)
-    @property int dimensionsTotal() { return chunkDimensions + voxelOffset * 2; }
+    @property int dimensionsTotal() { return ChunkData.chunkDimensions + ChunkData.voxelOffset * 2; }
     pragma(inline, true)
-    @property int overrun() { return voxelOffset; }
+    @property int overrun() { return ChunkData.voxelOffset; }
+	pragma(inline, true)
+	@property float voxelScale() { return ChunkData.voxelScale; }
 
     private shared(bool) _hasData;
     @property bool hasData() { return atomicLoad(_hasData); }
     @property void hasData(bool n) { atomicStore(_hasData, n); }
-
-    /*private shared(int) _lod;
-    @property int lod() { return atomicLoad(_lod); }
-    @property void lod(int n) { atomicStore(_lod, n); }
-
-    private shared(int) _blockskip;
-    @property int blockskip() { return atomicLoad(_blockskip); }
-    @property void blockskip(int n) { atomicStore(_blockskip, n); }*/
 
     private int _lod, _blockskip;
     @property int lod() { return _lod; }
@@ -219,11 +214,13 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
     @property void dataLoadCompleted(bool n) { atomicStore(_dataLoadCompleted, n); }
 
 	private Transform _transform;
-	@property Transform transform() { return _transform; }
-	@property void transform(Transform n) { _transform = n; }
+	@property ref Transform transform() { return _transform; }
+	@property void transform(ref Transform n) { _transform = n; }
 
     private void*[] _renderData;
     @property ref void*[] renderData() { return _renderData; }
+
+	@property int meshingOverrun() { return 0; }
 
     private shared(bool) _needsMesh;
     @property bool needsMesh() { return atomicLoad(_needsMesh); }
@@ -264,7 +261,7 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
 
     pragma(inline, true)
     static int flattenIndex(int x, int y, int z) {
-        return x + voxelOffset * (y + voxelOffset * z);
+        return x + ChunkData.voxelOffset * (y + ChunkData.voxelOffset * z);
     }
 
     private shared bool _pendingRemove;
@@ -545,12 +542,12 @@ struct ChunkPosition
 
 	vec3f toVec3f() 
 	{
-		return vec3f(x * chunkDimensionsMetres, y * chunkDimensionsMetres, z * chunkDimensionsMetres);
+		return vec3f(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
 	vec3d toVec3d() 
 	{
-		return vec3d(x * chunkDimensionsMetres, y * chunkDimensionsMetres, z * chunkDimensionsMetres);
+		return vec3d(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
 	vec3i toVec3i() { return vec3i(x, y, z); }
@@ -558,32 +555,32 @@ struct ChunkPosition
 	static ChunkPosition fromVec3f(vec3f v) 
 	{
 		return ChunkPosition(
-			cast(int)(v.x * invChunkDimensionsMetres), 
-			cast(int)(v.y * invChunkDimensionsMetres), 
-			cast(int)(v.z * invChunkDimensionsMetres));
+			cast(int)(v.x * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.y * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
 	}
 
 	static ChunkPosition fromVec3d(vec3d v)
 	{
 		return ChunkPosition(
-			cast(int)(v.x * invChunkDimensionsMetres), 
-			cast(int)(v.y * invChunkDimensionsMetres), 
-			cast(int)(v.z * invChunkDimensionsMetres));
+			cast(int)(v.x * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.y * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
 	}
 
 	static vec3f blockPosRealCoord(ChunkPosition cp, vec3i block) {
 		vec3f cpReal = cp.toVec3f();
-		cpReal.x += (block.x * voxelScale);
-		cpReal.y += (block.y * voxelScale);
-		cpReal.z += (block.z * voxelScale);
+		cpReal.x += (block.x * ChunkData.voxelScale);
+		cpReal.y += (block.y * ChunkData.voxelScale);
+		cpReal.z += (block.z * ChunkData.voxelScale);
 		return cpReal;
 	}
 
 	static vec3l realCoordToBlockPos(vec3f pos) {
 		vec3l bp;
-		bp.x = cast(long)floor(pos.x * voxelsPerMetre);
-		bp.y = cast(long)floor(pos.y * voxelsPerMetre);
-		bp.z = cast(long)floor(pos.z * voxelsPerMetre);
+		bp.x = cast(long)floor(pos.x * ChunkData.voxelsPerMetre);
+		bp.y = cast(long)floor(pos.y * ChunkData.voxelsPerMetre);
+		bp.z = cast(long)floor(pos.z * ChunkData.voxelsPerMetre);
 		return bp;
 	}
 }

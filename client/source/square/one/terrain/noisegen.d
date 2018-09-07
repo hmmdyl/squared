@@ -119,8 +119,8 @@ class NoiseGeneratorManager
 
 	void generate(NoiseGeneratorOrder c) 
 	{
-		c.chunk.noiseBlocking = true;
-		c.chunk.needsNoise = false;
+		c.chunk.dataLoadBlocking = true;
+		c.chunk.needsData = false;
 
 		generators[next].add(c);
 		next++;
@@ -154,10 +154,10 @@ abstract class NoiseGenerator
 		this.seed = seed;
 	}
 
-	void setChunkComplete(Chunk c) 
+	void setChunkComplete(ILoadableVoxelBuffer c) 
 	{
-		c.noiseCompleted = true;
-		c.noiseBlocking = false;
+		c.dataLoadCompleted = true;
+		c.dataLoadBlocking = false;
 	}
 }
 
@@ -226,7 +226,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 		synchronized(queueSync) 
 		{
-			NoiseGeneratorOrders c = orderQueue.front;
+			NoiseGeneratorOrder c = orderQueue.front;
 			orderQueue.removeFront;
 			return c;
 		}
@@ -245,7 +245,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		OpenSimplexNoise!float osn = new OpenSimplexNoise!(float)(seed);
 
 		enum sbOffset = 2;
-		enum sbDimensions = chunkDimensions + sbOffset * 2;
+		enum sbDimensions = ChunkData.chunkDimensions + sbOffset * 2;
 
 		source = VoxelBuffer(sbDimensions, sbOffset);
 		tempBuffer0 = VoxelBuffer(sbDimensions, sbOffset);
@@ -270,13 +270,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			const double cdMetres = chunk.dimensionsProper * chunk.voxelScale;
 
-			foreach(int x; -sbOffset .. chunkDimensions + sbOffset) 
+			foreach(int x; -sbOffset .. ChunkData.chunkDimensions + sbOffset) 
 			{
-				foreach(int z; -sbOffset .. chunkDimensions + sbOffset) 
+				foreach(int z; -sbOffset .. ChunkData.chunkDimensions + sbOffset) 
 				{
 					//vec3f horizPos = ChunkPosition.blockPosRealCoord(chunk.position, vec3i(x, 0, z));
 
-					vec3d horizPos = order.position + vec3d(x * voxelScale, 0, z * voxelScale);
+					vec3d horizPos = order.position + vec3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
 
 					/*float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
 					height += osn.eval(horizPos.x / 128f, horizPos.z / 128f) * 64f;
@@ -294,9 +294,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 					double mat = osn.eval(horizPos.x / 5.6f + 3275, horizPos.z / 5.6f - 734);
 
-					foreach(int y; -sbOffset .. chunkDimensions + sbOffset) 
+					foreach(int y; -sbOffset .. ChunkData.chunkDimensions + sbOffset) 
 					{
-						const vec3d blockPos = order.position + vec3d(x * voxelScale, y * voxelScale, z * voxelScale);
+						const vec3d blockPos = order.position + vec3d(x * ChunkData.voxelScale, y * ChunkData.voxelScale, z * ChunkData.voxelScale);
 						//vec3f blockPos = ChunkPosition.blockPosRealCoord(chunk.position, vec3i(x, y, z));
 
 						if(blockPos.y <= height) 
@@ -320,30 +320,30 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				processNonAntiTetrahedrons(source, tempBuffer0);
 				processAntiTetrahedrons(tempBuffer0, tempBuffer1);
 
-				foreach(int x; -voxelOffset .. chunkDimensions + voxelOffset) 
+				foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 				{
-					foreach(int y; -voxelOffset .. chunkDimensions + voxelOffset) 
+					foreach(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 					{
-						foreach(int z; -voxelOffset .. chunkDimensions + voxelOffset) 
+						foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 						{
 							Voxel voxel = tempBuffer1.get(x, y, z);
 							chunk.set(x, y, z, voxel);
-							if(voxel.mesh == 0) chunk.airCount++;
+							if(voxel.mesh == 0) chunk.airCount = chunk.airCount + 1;
 						}
 					}
 				}
 			}
 			else 
 			{
-				foreach(int x; -voxelOffset .. chunkDimensions + voxelOffset) 
+				foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 				{
-					foreach(int y; -voxelOffset .. chunkDimensions + voxelOffset) 
+					foreach(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 					{
-						foreach(int z; -voxelOffset .. chunkDimensions + voxelOffset) 
+						foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 						{
 							Voxel voxel = source.get(x, y, z);
 							chunk.set(x, y, z, voxel);
-							if(voxel.mesh == 0) chunk.airCount++;
+							if(voxel.mesh == 0) chunk.airCount = chunk.airCount + 1;
 						}
 					}
 				}
@@ -424,9 +424,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	{
 		tempBuffer0.dupFrom(source);
 		
-		foreach(int x; -voxelOffset .. chunkDimensions + voxelOffset) 
-		foreach(int y; -voxelOffset .. chunkDimensions + voxelOffset)
-		foreach(int z; -voxelOffset .. chunkDimensions + voxelOffset) 
+		foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+		foreach(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset)
+		foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 		{
 			Voxel voxel = source.get(x, y, z);
 			
@@ -499,9 +499,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	
 	void processAntiTetrahedrons(ref VoxelBuffer tempBuffer0, ref VoxelBuffer tempBuffer1) 
 	{
-		foreach(int x; -voxelOffset .. chunkDimensions + voxelOffset)
-		foreach(int y; -voxelOffset .. chunkDimensions + voxelOffset)
-		foreach(int z; -voxelOffset .. chunkDimensions + voxelOffset) 
+		foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset)
+		foreach(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset)
+		foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 		{
 			Voxel voxel = tempBuffer0.get(x, y, z);
 			

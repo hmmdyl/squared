@@ -154,11 +154,11 @@ private final class WorldSaveManager
 		out int index, out int start, out int end)
 	{
 		index = flattenIndex(cpInternal.x, cpInternal.y, cpInternal.z, chunksPerRegionAxis);
-		start = cast(int)(chunkDimensions * Voxel.sizeof * index + ulong.sizeof);
-		end = cast(int)(start + chunkDimensions * Voxel.sizeof);
+		start = cast(int)(ChunkData.chunkDimensions * Voxel.sizeof * index + ulong.sizeof);
+		end = cast(int)(start + ChunkData.chunkDimensions * Voxel.sizeof);
 	} 
 
-	private enum int regionFileSize = chunksPerRegionCubed * chunkDimensionsCubed * Voxel.sizeof + ulong.sizeof;
+	private enum int regionFileSize = chunksPerRegionCubed * ChunkData.chunkDimensionsCubed * Voxel.sizeof + ulong.sizeof;
 
 	private vec3i getRegion(ChunkPosition cp, out ChunkPosition internal)
 	{
@@ -263,17 +263,17 @@ final class BasicTerrainManager
 
     private void executeSetBlockCommand(SetBlockCommand comm, BasicChunk* chunk)
     {
-        int cx = cast(int)floor(comm.x / cast(float)chunkDimensions);
-        int cy = cast(int)floor(comm.y / cast(float)chunkDimensions);
-        int cz = cast(int)floor(comm.z / cast(float)chunkDimensions);
+        int cx = cast(int)floor(comm.x / cast(float)ChunkData.chunkDimensions);
+        int cy = cast(int)floor(comm.y / cast(float)ChunkData.chunkDimensions);
+        int cz = cast(int)floor(comm.z / cast(float)ChunkData.chunkDimensions);
 
-        int lx = cast(int)(comm.x - (cx * chunkDimensions));
-        int ly = cast(int)(comm.y - (cy * chunkDimensions));
-        int lz = cast(int)(comm.z - (cz * chunkDimensions));
+        int lx = cast(int)(comm.x - (cx * ChunkData.chunkDimensions));
+        int ly = cast(int)(comm.y - (cy * ChunkData.chunkDimensions));
+        int lz = cast(int)(comm.z - (cz * ChunkData.chunkDimensions));
 
-        if(lx < 0) lx = lx + (chunkDimensions - 1);
-        if(ly < 0) ly = ly + (chunkDimensions - 1);
-        if(lz < 0) lz = lz + (chunkDimensions - 1);
+        if(lx < 0) lx = lx + (ChunkData.chunkDimensions - 1);
+        if(ly < 0) ly = ly + (ChunkData.chunkDimensions - 1);
+        if(lz < 0) lz = lz + (ChunkData.chunkDimensions - 1);
 
         //BasicChunk* chunk = ChunkPosition(cx, cy, cz) in chunksTerrain;
         
@@ -355,9 +355,9 @@ final class BasicTerrainManager
 
 	private void setBlockOtherChunkOverruns(Voxel voxel, int x, int y, int z, BasicChunk host) 
 	in {
-		assert(x >= 0 && x < chunkDimensions);
-		assert(y >= 0 && y < chunkDimensions);
-		assert(z >= 0 && z < chunkDimensions);
+		assert(x >= 0 && x < ChunkData.chunkDimensions);
+		assert(y >= 0 && y < ChunkData.chunkDimensions);
+		assert(z >= 0 && z < ChunkData.chunkDimensions);
 	}
 	body {
 		if(x == 0) {
@@ -367,7 +367,7 @@ final class BasicTerrainManager
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[1])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -378,13 +378,13 @@ final class BasicTerrainManager
 					return;
 				}
 			}
-			else if(y == chunkDimensions - 1) {
+			else if(y == ChunkData.chunkDimensions - 1) {
 				if(z == 0) {
 					foreach(vec3i off; chunkOffsets[3])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[4])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -401,7 +401,7 @@ final class BasicTerrainManager
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[7]) 
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -413,14 +413,14 @@ final class BasicTerrainManager
 				}
 			}
 		}
-		else if(x == chunkDimensions - 1) {
+		else if(x == ChunkData.chunkDimensions - 1) {
 			if(y == 0) {
 				if(z == 0) {
 					foreach(vec3i off; chunkOffsets[9])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[10])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -431,13 +431,13 @@ final class BasicTerrainManager
 					return;
 				}
 			}
-			else if(y == chunkDimensions - 1) {
+			else if(y == ChunkData.chunkDimensions - 1) {
 				if(z == 0) {
 					foreach(vec3i off; chunkOffsets[12])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[13])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -454,7 +454,7 @@ final class BasicTerrainManager
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
-				else if(z == chunkDimensions - 1) {
+				else if(z == ChunkData.chunkDimensions - 1) {
 					foreach(vec3i off; chunkOffsets[16]) 
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
@@ -473,7 +473,7 @@ final class BasicTerrainManager
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
-			else if(z == chunkDimensions - 1) {
+			else if(z == ChunkData.chunkDimensions - 1) {
 				foreach(vec3i off; chunkOffsets[19])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
@@ -484,13 +484,13 @@ final class BasicTerrainManager
 				return;
 			}
 		}
-		else if(y == chunkDimensions - 1) {
+		else if(y == ChunkData.chunkDimensions - 1) {
 			if(z == 0) {
 				foreach(vec3i off; chunkOffsets[21])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
-			else if(z == chunkDimensions - 1) {
+			else if(z == ChunkData.chunkDimensions - 1) {
 				foreach(vec3i off; chunkOffsets[22])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
@@ -507,7 +507,7 @@ final class BasicTerrainManager
 				setBlockForChunkOffset(off, host, x, y, z, voxel);
 			return;
 		}
-		else if(z == chunkDimensions - 1) {
+		else if(z == ChunkData.chunkDimensions - 1) {
 			foreach(vec3i off; chunkOffsets[25])
 				setBlockForChunkOffset(off, host, x, y, z, voxel);
 			return;
@@ -520,9 +520,9 @@ final class BasicTerrainManager
 
 		assert(c !is null);
 
-		int newX = x + (-off.x * chunkDimensions);
-		int newY = y + (-off.y * chunkDimensions);
-		int newZ = z + (-off.z * chunkDimensions);
+		int newX = x + (-off.x * ChunkData.chunkDimensions);
+		int newY = y + (-off.y * ChunkData.chunkDimensions);
+		int newZ = z + (-off.z * ChunkData.chunkDimensions);
 
 		c.chunk.set(newX, newY, newZ, voxel);
 		//c.countAir();

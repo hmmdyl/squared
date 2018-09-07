@@ -2,16 +2,14 @@
 
 import moxana.hierarchy.world;
 
-import square.one.terrain.manager;
-
 class TerrainWorldDescriptor : IWorldDescriptor {
 	@property string technicalName() { return TerrainWorldDescriptor.stringof; }
 
 	World world;
 
-	private TerrainManager terrainManager;
+	//private TerrainManager terrainManager;
 
-	this(World world, TerrainManagerCreateInfo info) {
+	this(World world) {
 		this.world = world;
 	}
 

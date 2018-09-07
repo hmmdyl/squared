@@ -35,7 +35,7 @@ final class BlockProcessor : IProcessor {
 	private IBlockVoxelMesh[int] blockMeshes;
 	
 	private Object meshSyncObj;
-	private DList!(Chunk)* meshQueue;
+	private DList!(IMeshableVoxelBuffer)* meshQueue;
 	private Condition meshQueueWaiter;
 	private Mutex meshQueueWaiterMutex;
 	
@@ -66,7 +66,7 @@ final class BlockProcessor : IProcessor {
 		threadsActive = true;
 
 		meshSyncObj = new Object();
-		meshQueue = new DList!(Chunk)();
+		meshQueue = new DList!(IMeshableVoxelBuffer)();
 		meshQueueWaiterMutex = new Mutex();
 		meshQueueWaiter = new Condition(meshQueueWaiterMutex);
 		uploadSyncObj = new Object();
@@ -107,7 +107,8 @@ final class BlockProcessor : IProcessor {
 		
 		meshers.length = mesherCount;
 		foreach(int x; 0 .. mesherCount) 
-			meshers[x] = new Mesher(meshSyncObj, meshQueue, meshQueueWaiter, meshQueueWaiterMutex, uploadSyncObj, uploadQueue, host, res, id_, &lowestMeshTime, &highestMeshTime, &averageMeshTime);
+			meshers[x] = new Mesher(meshSyncObj, meshQueue, meshQueueWaiter, meshQueueWaiterMutex, uploadSyncObj, uploadQueue, 
+			host, res, id_, &lowestMeshTime, &highestMeshTime, &averageMeshTime);
 		
 		glCreateVertexArrays(1, &vao);
 		
@@ -123,7 +124,7 @@ final class BlockProcessor : IProcessor {
 		effect.unbind();
 	}
 	
-	void meshChunk(Chunk c) {
+	void meshChunk(IMeshableVoxelBuffer c) {
 		// ***** IDEA 31/12/17 *****
 		// TODO: sort chunk based on distance to camera.
 		
@@ -136,10 +137,10 @@ final class BlockProcessor : IProcessor {
 		}
 	}
 	
-	bool isRdNull(Chunk chunk) { return chunk.renderData[id_] is null; }
-	RenderData* getRdOfChunk(Chunk chunk) { return cast(RenderData*)chunk.renderData[id_]; }
+	bool isRdNull(IMeshableVoxelBuffer chunk) { return chunk.renderData[id_] is null; }
+	RenderData* getRdOfChunk(IMeshableVoxelBuffer chunk) { return cast(RenderData*)chunk.renderData[id_]; }
 	
-	void removeChunk(Chunk chunk) {
+	void removeChunk(IMeshableVoxelBuffer chunk) {
 		// ***** AS OF 31/12/17 *****
 		// BlockProcessor does not contain info on a chunk besides the structs referenced by the chunk itself. 
 		// Therefore, this function only needs to free such data referenced by the chunk.
@@ -193,7 +194,7 @@ final class BlockProcessor : IProcessor {
 			
 			rd.vertexCount = upItem.bmb.vertexCount;
 			
-			rd.chunkMax = chunkDimensions * voxelScale;
+			rd.chunkMax = ChunkData.chunkDimensions * ChunkData.voxelScale;
 			float invCM = 1f / rd.chunkMax;
 			rd.fit10bScale = 1023f * invCM;
 			
@@ -280,7 +281,7 @@ final class BlockProcessor : IProcessor {
 		RenderData* rd = getRdOfChunk(chunk);
 		
 		//vec3f localPos = cast(vec3f)renderContext.localiseCoord(cast(vec3d)chunk.position.toVec3f());
-		vec3f localPos = chunk.position.toVec3f;
+		vec3f localPos = chunk.transform.position;
 		mat4f m = mat4f.translation(localPos);
 		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
 		effect["ModelViewProjection"].set(&mvp, true);
@@ -374,10 +375,10 @@ private struct UploadItem {
 		remove
 	}
 
-	Chunk chunk;
+	IMeshableVoxelBuffer chunk;
 	BlockMeshBuffer bmb;
 	
-	this(Chunk chunk, BlockMeshBuffer bmb) {
+	this(IMeshableVoxelBuffer chunk, BlockMeshBuffer bmb) {
 		this.chunk = chunk;
 		this.bmb = bmb;
 	}
@@ -393,7 +394,7 @@ private struct MeshQueue {
 
 private class Mesher {
 	Object meshSyncObj;
-	DList!(Chunk)* meshQueue;
+	DList!(IMeshableVoxelBuffer)* meshQueue;
 	Condition meshQueueWaiter;
 	Mutex meshQueueWaiterMutex;
 	
@@ -414,7 +415,7 @@ private class Mesher {
 	
 	private Thread thread;
 	
-	this(Object meshSyncObj, DList!(Chunk)* meshQueue, Condition waiter, Mutex meshQueueWaiterMutex, Object uploadSyncObj, 
+	this(Object meshSyncObj, DList!(IMeshableVoxelBuffer)* meshQueue, Condition waiter, Mutex meshQueueWaiterMutex, Object uploadSyncObj, 
 		DList!(UploadItem)* uploadQueue, BlockMeshBufferHost host, Resources resources, ubyte procID, 
 		double* lowestMeshTime, double* highestMeshTime, double* averageMeshTime) {
 		this.meshSyncObj = meshSyncObj;
@@ -448,7 +449,7 @@ private class Mesher {
 			// IDEA: have a wait timeout. When timed out, repurpose thread to run jobs. When job is done
 			// return as a mesher and wait for chunk.
 			
-			Chunk chunk = null;
+			IMeshableVoxelBuffer chunk = null;
 			
 			bool n = true;
 			if(n) throw new Exception("Allahu akbar!");
@@ -507,8 +508,8 @@ private class Mesher {
 				}
 				else {
 					if(bmb.vertexCount + 1 >= vertsFull) {
-						string exp = "Chunk (" ~ chunk.toString() ~ ") is too complex to mesh. Error: too many vertices for buffer.";
-						throw new Exception(exp);
+						//string exp = "Chunk (" ~ chunk.toString() ~ ") is too complex to mesh. Error: too many vertices for buffer.";
+						//throw new Exception(exp);
 					}
 				}
 
@@ -518,9 +519,9 @@ private class Mesher {
 				bmb.add(vert, normal, meta);
 			}
 			
-			for(int x = 0; x < chunkDimensions; x += chunk.blockskip) {
-				for(int y = 0; y < chunkDimensions; y += chunk.blockskip)  {
-					for(int z = 0; z < chunkDimensions; z += chunk.blockskip)  {
+			for(int x = 0; x < ChunkData.chunkDimensions; x += chunk.blockskip) {
+				for(int y = 0; y < ChunkData.chunkDimensions; y += chunk.blockskip)  {
+					for(int z = 0; z < ChunkData.chunkDimensions; z += chunk.blockskip)  {
 						Voxel v = chunk.get(x, y, z);
 						
 						Voxel[6] neighbours;
@@ -548,7 +549,7 @@ private class Mesher {
 						bvMat.generateTextureIDs(vertCount, verts, normals, textureIDs);
 						
 						foreach(int i; 0 .. vertCount) {
-							addVert(verts[i] * voxelScale, normals[i], textureIDs[i] & 2047);
+							addVert(verts[i] * ChunkData.voxelScale, normals[i], textureIDs[i] & 2047);
 						}
 					}
 				}
