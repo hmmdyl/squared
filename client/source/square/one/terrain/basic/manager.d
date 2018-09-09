@@ -12,7 +12,7 @@ import square.one.utils.floor : ifloordiv;
 
 import containers.hashset;
 import std.experimental.allocator.mallocator;
-import std.datetime;
+import std.datetime.stopwatch;
 
 import moxana.utils.event;
 
@@ -91,7 +91,10 @@ private final class WorldSaveManager
 		{
 			auto numBytes = numVoxels * Voxel.sizeof;
 			voxels = cast(Voxel[])Mallocator.instance.allocate(numBytes);
+			life = StopWatch(AutoStart.yes);
 		}
+
+		@property bool isOverTime() { return life.peek().total!"seconds"() > lifeTimeSecondsBase * numTimesAccessed; }
 
 		~this()
 		{
@@ -103,15 +106,16 @@ private final class WorldSaveManager
 	NoiseGeneratorManager noiseGenerator;
 
 	private VoxelBuffer[ChunkPosition] buffers;
+	BasicChunk[ChunkPosition]* activeChunks;
 
 	const string worldSavesDir;
 	const string worldDir;
 	const string worldName;
 
-	this(NoiseGeneratorManager noiseGenerator,
-		string worldSavesDir, string worldDir, string worldName)
+	this(NoiseGeneratorManager noiseGenerator, BasicChunk[ChunkPosition]* activeChunks, string worldSavesDir, string worldDir, string worldName)
 	{
 		this.noiseGenerator = noiseGenerator;
+		this.activeChunks = activeChunks;
 		this.worldSavesDir = worldSavesDir;
 		this.worldDir = worldDir;
 		this.worldName = worldName;
@@ -179,7 +183,7 @@ private final class WorldSaveManager
 		vec3i region = getRegion(chunk.position, internal);
 
 		ChunkPosition[26] neighbours;
-		foreach(int c; 0 .. cast(int)ChunkNeighbours.pxPyPz + 1)
+		foreach(int c; 0 .. cast(int)ChunkNeighbours.last)
 		{
 			ChunkNeighbours n = cast(ChunkNeighbours)c;
 			vec3i o = chunkNeighbourToOffset(n);
@@ -190,36 +194,127 @@ private final class WorldSaveManager
 		foreach(int c, ChunkPosition cp; neighbours)
 			regionsOfNeighbours[c] = getRegion(neighbours[c], internalNeighbours[c]);
 
-		bool[26] neighboursThatMustBeGeneratedFromSource;
-
 		NoiseGeneratorOrder order = NoiseGeneratorOrder(chunk.chunk, chunk.position.toVec3d);
 
 		vec3i[27] uniqueRegions;
 		int numUniqueRegions;
-
-		foreach(vec3i r; regionsOfNeighbours)
+		uniqueRegions[0] = region;
+		foreach(vec3i o; regionsOfNeighbours)
 		{
-			if(numUniqueRegions == 0)
+			bool isFound;
+			foreach(vec3i o2; uniqueRegions)
+				if(o2 == o) 
+					isFound = true;
+
+			if(isFound)
+				continue;
+
+			uniqueRegions[numUniqueRegions++] = o;
+		}
+
+		foreach(vec3i ron; uniqueRegions)
+		{
+			string regionFile;
+			const bool regEx = regionExists(ron, regionFile);	
+			if(!regEx) continue;
+
+			ubyte[regionFileSize] raw = cast(ubyte[])read(regionFile, regionFileSize);
+
+			ulong header;
+			ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
+			headerArr[0..$] = raw[0..ulong.sizeof];
+
+			foreach(int cx; 0 .. chunksPerRegionAxis)
+			foreach(int cy; 0 .. chunksPerRegionAxis)
+			foreach(int cz; 0 .. chunksPerRegionAxis)
 			{
-				uniqueRegions[numUniqueRegions] = r;
-				numUniqueRegions++;
-			}
-			else
-			{
-				for(int i = 0; i < numUniqueRegions; i++)
+				const int c = flattenIndex(cx, cy, cz, chunksPerRegionAxis);
+				const bool chunkExistsInFile = ((header >> c) & 1) == true;
+				if(chunkExistsInFile)
 				{
-					if(uniqueRegions[i] == r)
-						break;
-					else
+					int cIndex, cfStart, cfEnd;
+					getIndices(internalNeighbours[c].toVec3i(), cIndex, cfStart, cfEnd);
+
+					const ChunkPosition cp = ChunkPosition(ron.x * 4 + cx, ron.y * 4 + cy, ron.z * 4 + cz);
+					if((cp in buffers) !is null)
+						continue;
+
+					VoxelBuffer buffer = new VoxelBuffer(ChunkData.chunkDimensionsCubed);
+					
+					for(int v = 0, i = cfStart; v < ChunkData.chunkDimensionsCubed; v++, i += Voxel.sizeof)
 					{
-						uniqueRegions[numUniqueRegions] = r;
-						numUniqueRegions++;
+						Voxel tv;
+						ubyte[] tvArr = (*cast(ubyte[Voxel.sizeof]*)&tv);
+						tvArr[0..$] = raw[i..(i + Voxel.sizeof)];
+
+						buffer.voxels[v] = tv;
 					}
+
+					buffers[cp] = buffer;
 				}
+			}
+		}		
+
+		bool[26] neighboursThatMustBeGeneratedFromNoise;
+		foreach(int i, ChunkPosition p; neighbours)
+			neighboursThatMustBeGeneratedFromNoise[i] = (p in buffers) is null;
+		const bool chunkMustBeGeneratedFromNoise = (chunk.position in buffers) is null;
+
+		if(chunkMustBeGeneratedFromNoise)
+			order.loadChunk = true;
+		else
+		{
+			VoxelBuffer* buffer = chunk.position in buffers;
+			foreach(int x; 0 .. chunk.chunk.dimensionsProper)
+			foreach(int y; 0 .. chunk.chunk.dimensionsProper)
+			foreach(int z; 0 .. chunk.chunk.dimensionsProper)
+			{
+				chunk.chunk.set(x, y, z, buffer.voxels[flattenIndex(x, y, z, chunk.chunk.dimensionsProper)]);
 			}
 		}
 
-		
+		foreach(int i; 0 .. cast(int)ChunkNeighbours.last)
+		{
+			if(neighboursThatMustBeGeneratedFromNoise[i])
+				order.loadNeighbour(cast(ChunkNeighbours)i, true);
+			else
+			{
+				BasicChunk* bcn = neighbours[i] in *activeChunks;
+				VoxelBuffer* buffer;
+				if(bcn is null)
+					buffer = neighbours[i] in buffers;
+
+				assert(bcn !is null || buffer !is null);
+				
+				const vec3i cnOffset = chunkNeighbourToOffset(cast(ChunkNeighbours)i);
+				
+				const vec3i neighbourVoxelCoord = vec3i(
+					cnOffset.x < 0 ? ChunkData.chunkDimensions - 1 : 0,
+					cnOffset.y < 0 ? ChunkData.chunkDimensions - 1 : 0,
+					cnOffset.z < 0 ? ChunkData.chunkDimensions - 1 : 0
+				);
+
+				const bool[3] toIterate = [
+					cnOffset.x == 0,
+					cnOffset.y == 0,
+					cnOffset.z == 0
+				];
+
+				foreach(int vx; neighbourVoxelCoord.x .. (toIterate[0] ? ChunkData.chunkDimensions : neighbourVoxelCoord.x + 1))
+				foreach(int vy; neighbourVoxelCoord.y .. (toIterate[1] ? ChunkData.chunkDimensions : neighbourVoxelCoord.y + 1))
+				foreach(int vz; neighbourVoxelCoord.z .. (toIterate[2] ? ChunkData.chunkDimensions : neighbourVoxelCoord.z + 1))
+				{
+					const int ix = toIterate[0] ? vx : (vx == ChunkData.chunkDimensions - 1 ? vx - ChunkData.chunkDimensions : ChunkData.chunkDimensions - vx);
+					const int iy = toIterate[1] ? vy : (vy == ChunkData.chunkDimensions - 1 ? vy - ChunkData.chunkDimensions : ChunkData.chunkDimensions - vy);
+					const int iz = toIterate[2] ? vz : (vz == ChunkData.chunkDimensions - 1 ? vz - ChunkData.chunkDimensions : ChunkData.chunkDimensions - vz);					
+
+					if(bcn !is null)
+						chunk.chunk.set(ix, iy, iz, bcn.chunk.get(vx, vy, vz));
+					else
+						chunk.chunk.set(ix, iy, iz, buffer.voxels[flattenIndex(vx, vy, vz, chunk.chunk.dimensionsProper)]);
+				}
+			}
+		}
 	}
 }
 

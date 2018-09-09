@@ -32,7 +32,7 @@ struct NoiseGeneratorOrder
 	}
 
 	@property bool loadNeighbour(ChunkNeighbours n) { return ((toLoad >> (cast(int)n + 1)) & 1) == true; }
-	@property void loadNeighbour(bool e, ChunkNeighbours n) {
+	@property void loadNeighbour(ChunkNeighbours n, bool e) {
 		toLoad |= ((cast(int)e) << (cast(int)n + 1));
 	}
 
