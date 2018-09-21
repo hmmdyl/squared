@@ -11,6 +11,7 @@ import square.one.utils.math : flattenIndex;
 import square.one.utils.floor : ifloordiv;
 
 import containers.hashset;
+import containers.unrolledlist;
 import std.experimental.allocator.mallocator;
 import std.datetime.stopwatch;
 
@@ -106,6 +107,7 @@ private final class WorldSaveManager
 	NoiseGeneratorManager noiseGenerator;
 
 	private VoxelBuffer[ChunkPosition] buffers;
+	private HashSet!vec3i outGoingRegions;
 	BasicChunk[ChunkPosition]* activeChunks;
 
 	const string worldSavesDir;
@@ -179,6 +181,9 @@ private final class WorldSaveManager
 
 	void loadChunk(BasicChunk* chunk)
 	{
+		chunk.chunk.needsData = false;
+		chunk.chunk.dataLoadBlocking = true;
+
 		ChunkPosition internal;
 		vec3i region = getRegion(chunk.position, internal);
 
@@ -282,7 +287,10 @@ private final class WorldSaveManager
 				BasicChunk* bcn = neighbours[i] in *activeChunks;
 				VoxelBuffer* buffer;
 				if(bcn is null)
+				{
 					buffer = neighbours[i] in buffers;
+					buffer.numTimesAccessed++;
+				}
 
 				assert(bcn !is null || buffer !is null);
 				
@@ -315,6 +323,190 @@ private final class WorldSaveManager
 				}
 			}
 		}
+
+		if(order.anyRequiresNoise)
+			noiseGenerator.generate(order);
+		else
+		{
+			chunk.chunk.dataLoadCompleted = true;
+			chunk.chunk.dataLoadBlocking = false;
+		}
+	}
+
+	void saveChunk(BasicChunk* chunk)
+	{
+		// TODO: implement caching 
+		ChunkPosition internal;
+		vec3i region = getRegion(chunk.position, internal);
+
+		string filename;
+		bool regionFileExists = regionExists(region, filename);
+
+		ubyte[regionFileSize] raw;
+		raw[] = 0;
+
+		ulong getHeader()
+		{
+			ulong header;
+			ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
+			headerArr[0..$] = raw[0..ulong.sizeof];
+			return header;
+		}
+
+		void writeToHeader(int n, bool state)
+		{
+			ulong header = getHeader();
+			if(state) header |= (1 << n);
+			else header = header & ~(1 << n);
+
+			ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
+			foreach(int x; 0 .. ulong.sizeof)
+				raw[x] = headerArr[x];
+		}
+
+		bool readFromHeader(int n)
+		{ return ((getHeader() >> n) & 1) == true; }
+
+		if(regionFileExists)
+			raw = cast(ubyte[])read(filename);
+
+		int index, start, end;
+		getIndices(internal.toVec3i, index, start, end);
+
+		writeToHeader(index, true);
+
+		int voxelC = 0;
+		foreach(int x; 0 .. ChunkData.chunkDimensions)
+		{
+			foreach(int y; 0 .. ChunkData.chunkDimensions)
+			{
+				foreach(int z; 0 .. ChunkData.chunkDimensions)
+				{
+					Voxel v = chunk.chunk.get(x, y, z);
+					ubyte[] vArr = (*cast(ubyte[Voxel.sizeof]*)&v);
+					foreach(uint vByte; 0 .. Voxel.sizeof)
+					{
+						const int point = start + voxelC * cast(int)Voxel.sizeof + vByte;
+						raw[point] = vArr[vByte];
+					}
+
+					voxelC++;
+				}
+			}
+		}
+
+		write(filename, cast(void[])raw);
+	}
+
+	void saveChunkCached(BasicChunk* chunk)
+	{
+		VoxelBuffer* bufferGetter = chunk.position in buffers;
+		bool isAbsentFromBuffers = bufferGetter is null;
+		VoxelBuffer newBuffer;
+
+		if(isAbsentFromBuffers) newBuffer = new VoxelBuffer(ChunkData.chunkDimensionsCubed);
+		else newBuffer = *bufferGetter;
+		newBuffer.numTimesAccessed++;
+
+		foreach(int x; 0 .. ChunkData.chunkDimensions)
+		{
+			foreach(int y; 0 .. ChunkData.chunkDimensions)
+			{
+				foreach(int z; 0 .. ChunkData.chunkDimensions)
+				{
+					Voxel v = chunk.chunk.get(x, y, z);
+					newBuffer.voxels[flattenIndex(x, y, z, ChunkData.chunkDimensions)] = v;
+				}
+			}
+		}
+
+		ChunkPosition internal;
+		vec3i region = getRegion(chunk.position, internal);
+		if(!outGoingRegions.contains(region))
+			outGoingRegions.insert(region);
+	}
+
+	void writeChunks()
+	{
+		foreach(vec3i region; outGoingRegions)
+		{
+			ChunkPosition[chunksPerRegionCubed] inRegions;
+			int inRegionsCount;
+			foreach(int ix; 0 .. chunksPerRegionAxis)
+			{
+				foreach(int iy; 0 .. chunksPerRegionAxis)
+				{
+					foreach(int iz; 0 .. chunksPerRegionAxis)
+					{
+						ChunkPosition cp;
+						cp.x = region.x * chunksPerRegionAxis + ix;
+						cp.y = region.y * chunksPerRegionAxis + iy;
+						cp.z = region.z * chunksPerRegionAxis + iz;
+						inRegions[inRegionsCount++] = cp;
+					}
+				}
+			}
+
+			ubyte[regionFileSize] finalRaw;
+			ubyte[regionFileSize] loadedRaw;
+			string filename;
+			bool doesRegionExist = regionExists(region, filename);
+			if(doesRegionExist)
+				loadedRaw = cast(ubyte[])read(filename);
+		
+			ulong finalHeader;
+			ulong loadedHeader;
+			if(doesRegionExist)
+				loadedHeader = interpretHeader(loadedRaw);
+
+			foreach(int i; 0 .. chunksPerRegionCubed)
+			{
+				ChunkPosition pos = inRegions[i];
+
+				enum Source 
+				{
+					none,
+					fromFile,
+					fromBuffer
+				}
+
+				Source source = (pos in buffers) ? Source.fromBuffer :
+					(doesRegionExist ? (readFromHeader(loadedHeader, i) ? 
+						Source.fromFile : Source.none) : Source.none);
+
+
+			}
+		}
+
+		outGoingRegions.clear();
+	}
+
+	private ulong interpretHeader(ref ubyte[regionFileSize] raw)
+	{
+		ulong header;
+		ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
+		headerArr[0..$] = raw[0 .. ulong.sizeof];
+		return header;
+	}
+
+	private void writeHeader(ref ubyte[regionFileSize] raw, ulong header)
+	{
+		ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
+		foreach(int x; 0 .. ulong.sizeof)
+			raw[x] = headerArr[x];
+	}
+
+	private ulong writeToHeader(ulong header, int n, bool state)
+	{
+		if(state) header |= (1 << n);
+		else header = header & ~(1 << n);
+
+		return header;
+	}
+
+	private bool readFromHeader(ulong header, int n)
+	{
+		return ((header >> n) & 1) == true;
 	}
 }
 
