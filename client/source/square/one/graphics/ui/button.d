@@ -85,7 +85,7 @@ class ColourButtonRenderer {
 		string fragS = readText(buildPath(getcwd(), "assets/shaders/button_colour.fs.glsl"));
 		shaders[0] = ShaderEntry(vertS, GL_VERTEX_SHADER);
 		shaders[1] = ShaderEntry(fragS, GL_FRAGMENT_SHADER);
-		effect = new Effect(shaders);
+		effect = new Effect(shaders, ColourButtonRenderer.stringof);
 		effect.bind;
 		effect.findUniform("Colour");
 		effect.findUniform("ModelViewProjection");

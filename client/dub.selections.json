@@ -15,6 +15,7 @@
 		"emsi_containers": "0.8.0-alpha.9",
 		"entitysysd": "2.6.2",
 		"gfm": "6.2.13",
+		"moxana": {"path":"../moxana/"},
 		"resusage": "0.2.8",
 		"stdx-allocator": "2.77.2"
 	}

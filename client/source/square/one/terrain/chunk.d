@@ -93,8 +93,8 @@ interface ICompressableVoxelBuffer : IVoxelBuffer
 	@property void voxels(Voxel[]);
 	void deallocateVoxelData();
 
-	@property void* compressedData();
-	@property void compressedData(void*, size_t);
+	@property ref ubyte[] compressedData();
+	@property void compressedData(ubyte[]);
 	void deallocateCompressedData();
 }
 
@@ -250,8 +250,8 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
         voxelData = null;
     }
 
-    @property void* compressedData() { return cast(void*)_compressedData; }
-    @property void compressedData(void* v, size_t n) { _compressedData = cast(ubyte[])v[0 .. n]; }
+    @property ref ubyte[] compressedData() { return _compressedData; }
+    @property void compressedData(ubyte[] v) { _compressedData = v; }
 
     void deallocateCompressedData() {
         assert(_compressedData !is null);
@@ -261,7 +261,7 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
 
     pragma(inline, true)
     static int flattenIndex(int x, int y, int z) {
-        return x + ChunkData.voxelOffset * (y + ChunkData.voxelOffset * z);
+		return x + ChunkData.chunkOverrunDimensions * (y + ChunkData.chunkOverrunDimensions * z);
     }
 
     private shared bool _pendingRemove;
@@ -347,12 +347,12 @@ struct ChunkPosition
 		return other.x == x && other.y == y && other.z == z;
 	}
 
-	vec3f toVec3f() 
+	vec3f toVec3f() const
 	{
 		return vec3f(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
-	vec3d toVec3d() 
+	vec3d toVec3d() const
 	{
 		return vec3d(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}

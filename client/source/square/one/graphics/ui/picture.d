@@ -53,7 +53,7 @@ class PictureRenderer {
 		ShaderEntry[] shaders = new ShaderEntry[](2);
 		shaders[0] = ShaderEntry(readText(buildPath(getcwd(), "assets/shaders/picture_box.vs.glsl")), GL_VERTEX_SHADER);
 		shaders[1] = ShaderEntry(readText(buildPath(getcwd(), "assets/shaders/picture_box.fs.glsl")), GL_FRAGMENT_SHADER);
-		effect = new Effect(shaders);
+		effect = new Effect(shaders, PictureRenderer.stringof);
 		effect.bind();
 		effect.findUniform("Position");
 		effect.findUniform("Size");

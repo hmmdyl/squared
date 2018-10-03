@@ -133,7 +133,7 @@ class AtmosphereRenderer {
 			ShaderEntry(readText(buildPath(getcwd(), "assets/shaders/atmospheric_scattering.vs.glsl")), GL_VERTEX_SHADER),
 			ShaderEntry(readText(buildPath(getcwd(), "assets/shaders/atmospheric_scattering.fs.glsl")), GL_FRAGMENT_SHADER)
 		];
-		effect = new Effect(shaders);
+		effect = new Effect(shaders, AtmosphereRenderer.stringof);
 		effect.bind();
 		effect.findUniform("ModelViewProjection");
 		effect.findUniform("Model");

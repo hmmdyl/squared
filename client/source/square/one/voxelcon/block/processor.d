@@ -115,7 +115,7 @@ final class BlockProcessor : IProcessor {
 		ShaderEntry[] shaders = new ShaderEntry[](2);
 		shaders[0] = ShaderEntry(vertexShader, GL_VERTEX_SHADER);
 		shaders[1] = ShaderEntry(fragmentShader, GL_FRAGMENT_SHADER);
-		effect = new Effect(shaders);
+		effect = new Effect(shaders, BlockProcessor.stringof);
 		effect.bind();
 		effect.findUniform("ModelViewProjection");
 		effect.findUniform("Fit10bScale");
@@ -198,7 +198,7 @@ final class BlockProcessor : IProcessor {
 			float invCM = 1f / rd.chunkMax;
 			rd.fit10bScale = 1023f * invCM;
 			
-			foreach(int i; 0 .. upItem.bmb.vertexCount) {
+			/*foreach(int i; 0 .. upItem.bmb.vertexCount) {
 				vec3f v = upItem.bmb.vertices[i];
 				
 				float vx = clamp(v.x, 0f, rd.chunkMax) * rd.fit10bScale;
@@ -216,7 +216,10 @@ final class BlockProcessor : IProcessor {
 			}
 			
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);*/
+
+			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec3f.sizeof, upItem.bmb.vertices.ptr, GL_STATIC_DRAW);
 			
 			foreach(int i; 0 .. upItem.bmb.vertexCount) {
 				vec3f n = upItem.bmb.normals[i];
@@ -289,7 +292,8 @@ final class BlockProcessor : IProcessor {
 		effect["Model"].set(&m, true);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
-		glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
+		//glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.nbo);
 		glVertexAttribPointer(1, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.metabo);
@@ -451,8 +455,8 @@ private class Mesher {
 			
 			IMeshableVoxelBuffer chunk = null;
 			
-			bool n = true;
-			if(n) throw new Exception("Allahu akbar!");
+			//bool n = true;
+			//if(n) throw new Exception("Allahu akbar!");
 			
 			bool meshQueueEmpty = false;
 			synchronized(meshSyncObj) {
@@ -753,7 +757,8 @@ uniform mat4 Model;
 uniform float Fit10bScale;
 
 void main() {
-    vec3 vert = Vertex.xyz / Fit10bScale;
+    //vec3 vert = Vertex.xyz / Fit10bScale;
+    vec3 vert = Vertex.xyz;
     gl_Position = ModelViewProjection * vec4(vert, 1);
     fNormal = (Normal.xyz / 1023) * 2 - 1;
     fNormal = normalize(fNormal);

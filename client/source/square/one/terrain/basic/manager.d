@@ -2,63 +2,66 @@ module square.one.terrain.basic.manager;
 
 import moxana.graphics.rendercontext;
 import moxana.graphics.rh;
+import moxana.graphics.frustum;
+import moxana.utils.event;
 
 import square.one.terrain.basic.chunk;
 import square.one.terrain.noisegen;
 import square.one.terrain.resources;
+import square.one.terrain.basic.rle;
 
 import square.one.utils.math : flattenIndex;
 import square.one.utils.floor : ifloordiv;
 
 import containers.hashset;
 import containers.unrolledlist;
+import containers.dynamicarray;
 import std.experimental.allocator.mallocator;
-import std.datetime.stopwatch;
-
-import moxana.utils.event;
 
 import gfm.math;
 
 import std.math;
 import std.conv : to;
 import std.file;
-
-alias createNgFunc = NoiseGenerator delegate();
+import std.datetime.stopwatch;
+import std.parallelism;
 
 struct BasicTmSettings 
 {
-    int addRange;
-    int removeRange;
-    createNgFunc createNg;
+    vec3i addRange;
+	vec3i addRangeExtended;
+    vec3i removeRange;
+    NoiseGeneratorManager.createNGDel createNg;
     Resources resources;
 
-	const string worldDir;
-}
+	string worldSavesDir;	/// directory that stores worlds
+	string worldDir; /// sanitised world name
+	string worldName;	/// name of the world
 
-struct AddChunkCommand
-{
-
-}
-
-struct RemoveChunkCommand 
-{
-
+	static BasicTmSettings createDefault(Resources r, string worldSavesDir, string worldDir, string worldName)
+	{
+		BasicTmSettings tm;
+		tm.addRange = vec3i(5);
+		tm.addRangeExtended = vec3i(20);
+		tm.removeRange = vec3i(4, 6, 4);
+		tm.createNg = () { return new DefaultNoiseGenerator(); };
+		tm.resources = r;
+		tm.worldSavesDir = worldSavesDir;
+		tm.worldDir = worldDir;
+		tm.worldName = worldName;
+		return tm;
+	}
 }
 
 /// set a block on the terrain
 struct SetBlockCommand 
 {
-    /// block position
-    long x;
-    /// ditto
-    long y;
-    /// ditto
-    long z;
-    /// the new voxel
-    Voxel voxel;
+	long x; /// block position    
+	long y; /// ditto    
+	long z; /// ditto    
+	Voxel voxel; /// the new voxel
 
-    // force the engine to load the chunk if not already
-    bool forceLoad;
+	bool forceLoad; /// force the engine to load the chunk if not already
 
     this(long x, long y, long z, Voxel voxel, bool forceLoad = false)
     {
@@ -123,20 +126,23 @@ private final class WorldSaveManager
 		this.worldName = worldName;
 	}
 
-	private bool regionExists(vec3i r, out string fin)
+	private string composeRegionName(vec3i r)
 	{
-		import std.path : buildPath;
-
 		string regionName;
-		scope(exit) delete regionName;
 		regionName ~= to!string(r.x);
 		regionName ~= '_';
 		regionName ~= to!string(r.y);
 		regionName ~= '_';
 		regionName ~= to!string(r.z);		
 		regionName ~= ".sqr";
-		fin = buildPath(worldSavesDir, worldDir, "regions", regionName);
+		return regionName;
+	}
 
+	private bool regionExists(vec3i r, out string fin)
+	{
+		string regionName = composeRegionName(r);
+		import std.path : buildPath;
+		fin = buildPath(worldSavesDir, worldDir, "regions", regionName);
 		return exists(fin);
 	}
 
@@ -420,6 +426,9 @@ private final class WorldSaveManager
 			}
 		}
 
+		if(isAbsentFromBuffers)
+			buffers[chunk.position] = newBuffer;
+
 		ChunkPosition internal;
 		vec3i region = getRegion(chunk.position, internal);
 		if(!outGoingRegions.contains(region))
@@ -431,6 +440,7 @@ private final class WorldSaveManager
 		foreach(vec3i region; outGoingRegions)
 		{
 			ChunkPosition[chunksPerRegionCubed] inRegions;
+			vec3i[chunksPerRegionCubed] internalCoords;
 			int inRegionsCount;
 			foreach(int ix; 0 .. chunksPerRegionAxis)
 			{
@@ -438,11 +448,13 @@ private final class WorldSaveManager
 				{
 					foreach(int iz; 0 .. chunksPerRegionAxis)
 					{
+						internalCoords[inRegionsCount] = vec3i(ix, iy, iz);
 						ChunkPosition cp;
 						cp.x = region.x * chunksPerRegionAxis + ix;
 						cp.y = region.y * chunksPerRegionAxis + iy;
 						cp.z = region.z * chunksPerRegionAxis + iz;
-						inRegions[inRegionsCount++] = cp;
+						inRegions[inRegionsCount] = cp;
+						inRegionsCount++;
 					}
 				}
 			}
@@ -474,8 +486,43 @@ private final class WorldSaveManager
 					(doesRegionExist ? (readFromHeader(loadedHeader, i) ? 
 						Source.fromFile : Source.none) : Source.none);
 
+				writeToHeader(finalHeader, i, source != Source.none);
 
+				int index, start, end;
+				getIndices(internalCoords[i], index, start, end);
+
+				if(source == Source.none)
+					finalRaw[start .. end] = 0;
+				else if(source == Source.fromBuffer)
+				{
+					VoxelBuffer* buffer = inRegions[i] in buffers;
+					assert(buffer !is null);
+
+					int voxelCounter = 0;
+					foreach(int x; 0 .. ChunkData.chunkDimensions)
+					{
+						foreach(int y; 0 .. ChunkData.chunkDimensions)
+						{
+							foreach(int z; 0 .. ChunkData.chunkDimensions)
+							{
+								Voxel v = buffer.voxels[flattenIndex(x, y, z, ChunkData.chunkDimensions)];
+								ubyte[] vArr = (*cast(ubyte[Voxel.sizeof]*)&v);
+								int low = start + voxelCounter * cast(int)Voxel.sizeof;
+								finalRaw[low .. low + Voxel.sizeof] = vArr[0 .. $];
+
+								voxelCounter++;
+							}
+						}
+					}
+				}
+				else
+				{
+					finalRaw[start .. end] = loadedRaw[start .. end];
+				}
 			}
+		
+
+			write(filename, cast(void[])finalRaw);
 		}
 
 		outGoingRegions.clear();
@@ -492,16 +539,13 @@ private final class WorldSaveManager
 	private void writeHeader(ref ubyte[regionFileSize] raw, ulong header)
 	{
 		ubyte[] headerArr = (*cast(ubyte[ulong.sizeof]*)&header);
-		foreach(int x; 0 .. ulong.sizeof)
-			raw[x] = headerArr[x];
+		raw[0 .. ulong.sizeof] = headerArr[0 .. $];
 	}
 
-	private ulong writeToHeader(ulong header, int n, bool state)
+	private void writeToHeader(ref ulong header, int n, bool state)
 	{
 		if(state) header |= (1 << n);
 		else header = header & ~(1 << n);
-
-		return header;
 	}
 
 	private bool readFromHeader(ulong header, int n)
@@ -510,45 +554,338 @@ private final class WorldSaveManager
 	}
 }
 
-final class BasicTerrainManager 
+final class BasicTerrainRenderer : IRenderHandler
 {
-    private BasicChunk[ChunkPosition] chunksTerrain;
+	BasicTerrainManager basicTerrainManager;
+	
+	this(BasicTerrainManager basicTerrainManager)
+	{
+		this.basicTerrainManager = basicTerrainManager;
+	}
 
-    const BasicTmSettings settings;
+	private int renderedInFrame_;
+	private int shadowsInFrame_;
+	@property int renderedInFrame() const { return renderedInFrame_; }
+	@property int shadowsInFrame() const { return shadowsInFrame_; }
+
+	void renderPostPhysical(RenderContext rc, ref LocalRenderContext lrc) { renderPhysical(rc, lrc); }
+	void ui(RenderContext rc) {}
+	
+	void shadowDepthMapPass(RenderContext rc, ref LocalRenderContext lrc)
+	{
+		renderPhysical(rc, lrc);
+	}
+	
+	void renderPhysical(RenderContext rc, ref LocalRenderContext lrc)
+	{
+		renderedInFrame_ = 0;
+
+		mat4f vp = lrc.perspective.matrix * lrc.view;
+		SqFrustum!float f = SqFrustum!float(vp.transposed());
+
+		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
+		{
+			IProcessor processor = basicTerrainManager.resources.getProcessor(procID);
+			processor.prepareRender(rc);
+
+			foreach(ref BasicChunk chunk; basicTerrainManager.chunksTerrain)
+			{
+				//if(f.containsSphere(chunk.position.toVec3f() + vec3f(2), 5.66))
+				{
+					processor.render(chunk.chunk, lrc);
+					renderedInFrame_++;
+				}
+			}
+
+			processor.endRender();
+		}
+	}
+}
+
+final class BasicTerrainManager
+{
+	enum ChunkState
+	{
+		notLoaded,
+		hibernated,
+		active
+	}
+
+    private BasicChunk[ChunkPosition] chunksTerrain;
+	private ChunkState[ChunkPosition] chunkHoles;
+
+	private enum commandQueueSize = 256;
+	private DynamicArray!SetBlockCommand setBlockCommands;
+
+    private BasicTmSettings settings_;
+	@property BasicTmSettings settings() { return settings_; }
+	Resources resources;
 
     vec3f cameraPosition;
 
+	private WorldSaveManager worldSaveManager;
+	NoiseGeneratorManager noiseGeneratorManager;
+
+	private StopWatch addExtensionResortSw;
+	private bool isExtensionCacheSorted;
+	private ChunkPosition[] extensionChunkPositionCache;
+
+	private TaskPool localTaskPool;
+
+	int chunksAdded;
+	int chunksHibernated;
+	int chunksRemoved;
+
+	@property int chunksActive() const { return cast(int)chunksTerrain.length; }
+	@property int chunksActiveOrHibernated() const { return cast(int)chunkHoles.length; }
+
     this(BasicTmSettings s)
     {
-        this.settings = s;
+        settings_ = s;
+		resources = s.resources;
+		resources.finaliseResources;
+
+		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, s.createNg, 0);
+
+		extensionChunkPositionCache = new ChunkPosition[(s.addRangeExtended.x * 2 + 1) * (s.addRangeExtended.y * 2 + 1) * (s.addRangeExtended.z * 2 + 1)];
+
+		localTaskPool = new TaskPool(1);
+
+		setBlockCommands.reserve(256);
     }
+
+	void addSetBlockCommand(SetBlockCommand comm) { setBlockCommands.insert(comm); }
 
     void update()
     {
+		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
+		//addChunks(cp);
 
-    }
+		addChunksLocal(cp);
+		addChunksExtension(cp);
 
-    private void manageChunkState(Chunk chunk, BasicChunk* bc)
-	in {
-		assert(chunk is bc.chunk);
-	}
-    body {
-		if(chunk.needsData)
+		foreach(ref BasicChunk chunk; chunksTerrain)
 		{
-			
+			manageChunkState(chunk);
+			//removeChunkHandler(chunk, cp);
 		}
     }
+
+	private void addChunksLocal(const ChunkPosition cp)
+	{
+		vec3i lower = vec3i(
+			cp.x - settings_.addRange.x,
+			cp.y - settings_.addRange.y,
+			cp.z - settings_.addRange.z
+		);
+		vec3i upper = vec3i(
+			cp.x + settings_.addRange.x,
+			cp.y + settings_.addRange.y,
+			cp.z + settings_.addRange.z
+		);
+
+		for(int x = lower.x; x < upper.x; x++)
+		{
+			for(int y = lower.y; y < upper.y; y++)
+			{
+				for(int z = lower.z; z < upper.z; z++)
+				{
+					auto newCp = ChunkPosition(x, y, z);
+
+					ChunkState* getter = newCp in chunkHoles;
+					//ChunkState g = 
+					bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+
+					//BasicChunk* getter = newCp in chunksTerrain;
+					if(doAdd)
+					{
+						auto c = new Chunk(settings_.resources);
+						c.initialise();
+						c.needsData = true;
+						c.lod = 0;
+						c.blockskip = 1;
+						auto chunk = BasicChunk(c, newCp);
+						chunksTerrain[newCp] = chunk;
+						chunkHoles[newCp] = ChunkState.active;
+
+						chunksAdded++;
+					}
+					else
+					{
+
+						//pendingRemove = false;
+					}
+				}
+			}
+		}
+	}
+
+	private void addChunksExtension(const ChunkPosition cam)
+	{
+		bool doSort;
+
+		if(!addExtensionResortSw.running)
+		{
+			addExtensionResortSw.start();
+			doSort = true;
+		}
+
+		if(addExtensionResortSw.peek().total!"msecs"() >= 300)
+		{
+			addExtensionResortSw.reset();
+			addExtensionResortSw.start();
+			doSort = true;
+		}
+
+		if(doSort)
+		{
+			isExtensionCacheSorted = false;
+
+			vec3i lower = vec3i(
+				cam.x - settings_.addRangeExtended.x,
+				cam.y - settings_.addRangeExtended.y,
+				cam.z - settings_.addRangeExtended.z
+			);
+			vec3i upper = vec3i(
+				cam.x + settings_.addRangeExtended.x,
+				cam.y + settings_.addRangeExtended.y,
+				cam.z + settings_.addRangeExtended.z
+			);
+
+			int c;
+			for(int x = lower.x; x < upper.x; x++)
+				for(int y = lower.y; y < upper.y; y++)
+					for(int z = lower.z; z < upper.z; z++)
+						extensionChunkPositionCache[c++] = ChunkPosition(x, y, z);
+
+			auto cdCmp(ChunkPosition x, ChunkPosition y)
+			{
+				float caml = cam.toVec3f.length;
+				float x1 = x.toVec3f.length - caml;
+				float y1 = y.toVec3f.length - caml;
+				return x1 < y1;
+			}
+
+			void myTask(ChunkPosition[] cache)
+			{
+				import std.algorithm.sorting;
+				sort!cdCmp(cache);
+				isExtensionCacheSorted = true;
+			}
+
+			auto sortTask = task(&myTask, extensionChunkPositionCache);
+			localTaskPool.put(sortTask);
+		}
+
+		if(!isExtensionCacheSorted)
+			return;
+
+		int doAddNum;
+
+		foreach(ChunkPosition cp; extensionChunkPositionCache)
+		{
+			ChunkState* getter = cp in chunkHoles;
+			bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+
+			if(doAdd)
+			{
+				if(doAddNum > 4) return;
+
+				auto c = new Chunk(settings_.resources);
+				c.initialise();
+				c.needsData = true;
+				c.lod = 0;
+				c.blockskip = 1;
+				auto chunk = BasicChunk(c, cp);
+				chunksTerrain[cp] = chunk;
+				chunkHoles[cp] = ChunkState.active;
+
+				chunksAdded++;
+
+				doAddNum++;
+			}
+		}
+	}
+
+	private void removeChunkHandler(ref BasicChunk chunk, const ChunkPosition camera)
+	{
+		if(!isChunkInBounds(camera, chunk.position))
+		{
+			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted ||
+				chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+				chunk.chunk.pendingRemove = true;
+			else
+			{
+				foreach(int proc; 0 .. resources.processorCount)
+					resources.getProcessor(proc).removeChunk(chunk.chunk);
+
+				chunksTerrain.remove(chunk.position);
+				chunk.chunk.deinitialise();
+			}
+		}
+	}
+
+    private void manageChunkState(ref BasicChunk chunk)
+	{
+		Chunk c = chunk.chunk;
+		if(c.needsData && !c.isAnyMeshBlocking) 
+		{
+			auto ngo = NoiseGeneratorOrder(c, chunk.position.toVec3d);
+			ngo.loadChunk = true;
+			ngo.setLoadAll();
+			noiseGeneratorManager.generate(ngo);
+		}
+		if(c.dataLoadCompleted)
+		{
+			c.needsMesh = true;
+			c.dataLoadCompleted = false;
+		}
+
+		if(c.needsMesh && !c.needsData && !c.dataLoadBlocking && !c.dataLoadCompleted)
+		{
+			if(c.airCount == ChunkData.chunkOverrunDimensionsCubed || c.airCount == 0) 
+			{
+				chunksTerrain.remove(chunk.position);
+				chunk.chunk.deinitialise();
+				chunkHoles[chunk.position] = ChunkState.hibernated;
+				chunksHibernated++;
+				return;
+			}
+			else
+			{
+				foreach(int proc; 0 .. resources.processorCount)
+					resources.getProcessor(proc).meshChunk(c);
+			}
+			c.needsMesh = false;
+		}
+
+		while(!setBlockCommands.empty)
+		{
+			SetBlockCommand command = setBlockCommands.front;
+			setBlockCommands.remove(0);
+
+
+		}
+	}
+
+	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
+	{
+		return position.x >= camera.x - settings_.removeRange.x && position.x < camera.x + settings_.removeRange.x &&
+			position.y >= camera.y - settings_.removeRange.y && position.y < camera.y + settings_.removeRange.y &&
+			position.z >= camera.z - settings_.removeRange.z && position.z < camera.z + settings_.removeRange.z;
+	}
 
     enum SetBlockFailureReason
     {
         success = 0,
         outOfBounds,
         chunkNotLoaded,
+		chunkIsHibernated
     }
 
     Event!(SetBlockCommand, SetBlockFailureReason) onSetBlockFailure;
 
-    private void executeSetBlockCommand(SetBlockCommand comm, BasicChunk* chunk)
+    private void executeSetBlockCommand(SetBlockCommand comm)
     {
         int cx = cast(int)floor(comm.x / cast(float)ChunkData.chunkDimensions);
         int cy = cast(int)floor(comm.y / cast(float)ChunkData.chunkDimensions);
@@ -564,21 +901,36 @@ final class BasicTerrainManager
 
         //BasicChunk* chunk = ChunkPosition(cx, cy, cz) in chunksTerrain;
         
-        if(chunk is null)
-        {
-            if(comm.forceLoad)
-            {
-                // todo
-                return;
-            }
-            else
-            {
-                onSetBlockFailure.emit(comm, SetBlockFailureReason.chunkNotLoaded);
-                return;
-            }
-        }
+		auto chunkPosition = ChunkPosition(cx, cy, cz);
+		ChunkState* state = chunkPosition in chunkHoles;
 
-        setBlockOtherChunkOverruns(comm.voxel, lx, ly, lz, *chunk);
+		BasicChunk chunk;
+
+		if(state is null || *state == ChunkState.hibernated || *state == ChunkState.notLoaded)
+		{
+			if(comm.forceLoad)
+			{
+				if(*state == ChunkState.hibernated)
+				{
+
+				}
+
+				return;
+			}
+			else
+			{
+				onSetBlockFailure.emit(comm, state is null ? SetBlockFailureReason.chunkNotLoaded : (*state == ChunkState.hibernated ? SetBlockFailureReason.chunkIsHibernated : SetBlockFailureReason.chunkNotLoaded));
+				return;
+			}
+		}
+		else if(*state == ChunkState.active)
+		{
+			auto tc = chunkPosition in chunksTerrain;
+			assert(tc !is null);
+			chunk = *tc;
+		}
+
+        setBlockOtherChunkOverruns(comm.voxel, lx, ly, lz, chunk);
 
         chunk.chunk.set(lx, ly, lz, comm.voxel);
         if(!comm.forceLoad) chunk.chunk.needsMesh = true;
@@ -815,37 +1167,4 @@ final class BasicTerrainManager
 		//c.countAir();
 		c.chunk.needsMesh = true;
 	}
-}
-
-final class BasicTerrainRenderer : IRenderHandler
-{
-    BasicTerrainManager basicTerrainManager;
-
-    this(BasicTerrainManager basicTerrainManager)
-    {
-        this.basicTerrainManager = basicTerrainManager;
-    }
-
-    void renderPostPhysical(RenderContext rc, ref LocalRenderContext lrc) {}
-    void ui(RenderContext rc) {}
-
-    void shadowDepthMapPass(RenderContext rc, ref LocalRenderContext lrc)
-    {
-
-    }
-
-    void renderPhysical(RenderContext rc, ref LocalRenderContext lrc)
-    {
-
-    }
-}
-
-BasicTmSettings createTmSettingsDefault(Resources r)
-{
-    BasicTmSettings s;
-    s.addRange = 4;
-    s.removeRange = 6;
-    s.createNg = () { return new DefaultNoiseGenerator; };
-    s.resources = r;
-    return s;
 }

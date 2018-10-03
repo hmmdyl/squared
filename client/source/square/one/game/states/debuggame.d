@@ -13,7 +13,7 @@ import square.one.graphics.ui.picture;
 import square.one.graphics.camera;
 import square.one.misc.sky;
 
-//import square.one.terrain.manager;
+import square.one.terrain.basic.manager;
 import square.one.terrain.resources;
 
 import derelict.opengl3.gl3;
@@ -38,7 +38,8 @@ class DebugGameState : IState {
 	Camera camera;
 
 	Resources resources;
-	//TerrainManager terrainManager;
+	BasicTerrainManager tm;
+	BasicTerrainRenderer tr;
 
 	IngameTime gameTime;
 	StopWatch time;
@@ -65,7 +66,7 @@ class DebugGameState : IState {
 		sky = new Sky(view);
 		sky.playerPosition = view.position;
 		rc.directionalLights.insert(sky.sunLight);
-		rc.postPhysicalRenderables.insert(sky);
+		//rc.postPhysicalRenderables.insert(sky);
 
 		resources = new Resources;
 
@@ -90,19 +91,20 @@ class DebugGameState : IState {
 			resources.add(new Grass);
 		}
 
-		//TerrainManagerCreateInfo info = TerrainManagerCreateInfo.createDefault(resources);
+		BasicTmSettings tms = BasicTmSettings.createDefault(resources, null, null, null);
+		tm = new BasicTerrainManager(tms);
+		tr = new BasicTerrainRenderer(tm);
 
-		//terrainManager = new TerrainManager(info, view.position);
-		//rc.physicalRenderables.insert(terrainManager);
-		//rc.shadowCasters.insert(terrainManager);
-		distributor = new RenderDistributor;
-		distributor.rc = rc;
+		rc.physicalRenderables.insert(tr);
+
+		//distributor = new RenderDistributor;
+		//distributor.rc = rc;
 
 		{
 			pl = new PointLight;
 			pl.ambientIntensity = 0f;
 			pl.diffuseIntensity = 10f;
-			pl.position = vec3f(0f, 0.5f, 0);
+			pl.position = vec3f(0f, 4f, 0);
 			pl.colour = vec3f(0.1f, 0.5f, 1f);
 			pl.constAtt = 0.5f;
 			pl.linAtt = 0.95f;
@@ -127,7 +129,7 @@ class DebugGameState : IState {
 		import core.memory;
 		GC.collect;
 
-		//sky.update(IngameTime(7, 0));
+		sky.update(IngameTime(7, 0));
 	}
 
 	void open() {
@@ -275,8 +277,9 @@ class DebugGameState : IState {
 		prevBreakDown = engine.window.isMouseButtonDown(MouseButton.right);
 		prevPlaceDown = engine.window.isMouseButtonDown(MouseButton.left);
 
-		//terrainManager.cameraPosition = camera.view.position;
-		//terrainManager.update();
+
+		tm.cameraPosition = camera.view.position;
+		tm.update;
 
 		procMemInfo.update;
 		sysMemInfo.update;
@@ -303,7 +306,7 @@ class DebugStatsRenderer : IRenderHandler {
 	private char[2048] diagbuff;
 
 	void ui(RenderContext rc) {
-		/*int l = sprintf(diagbuff.ptr, 
+		int l = sprintf(diagbuff.ptr, 
 			"Camera position: %0.2f, %0.2f, %0.2f
 Camera rotation: %0.2f, %0.2f, %0.2f
 
@@ -333,13 +336,10 @@ Highest: %0.2f (ms)
 Av. (r): %0.2f (ms)
 T. busy: %i
 
-[TM]
-Update: %0.2f (ms)
-Chunks: %i
-Loading: %i
-
-[ET]
-Pos: %s",
+[BTM]
+Added: %i
+Hibernated: %i
+Rendered: %i",
 			s.camera.view.position.x, s.camera.view.position.y, s.camera.view.position.z,
 			s.camera.view.rotation.x, s.camera.view.rotation.y, s.camera.view.rotation.z,
 			engine.previousDeltaTime, engine.previousDeltaTime * 1000,
@@ -347,12 +347,11 @@ Pos: %s",
 			GC.stats.usedSize / 1_048_576f, GC.stats.freeSize / 1_048_576f,
 			s.procMemInfo.usedRAM / 1_048_576f, s.procMemInfo.usedVirtMem / 1_048_576f, s.sysMemInfo.freeRAM / 1_048_576f,
 			s.bp.lowestMeshTime, s.bp.highestMeshTime, s.bp.averageMeshTime, s.bp.numMeshThreadsBusy,
-			s.terrainManager.ng.lowestTime, s.terrainManager.ng.highestTime, s.terrainManager.ng.averageTime,
-			s.terrainManager.ng.numBusy,
-			s.terrainManager.updateTime, s.terrainManager.numChunks, s.terrainManager.isLoadingTime, toStringz(s.de.toString));
+			s.tm.noiseGeneratorManager.lowestTime, s.tm.noiseGeneratorManager.highestTime, s.tm.noiseGeneratorManager.averageTime,
+			s.tm.noiseGeneratorManager.numBusy,
+			s.tm.chunksAdded, s.tm.chunksHibernated, s.tr.renderedInFrame);
 		
 		engine.renderContext.textRenderer.render(engine.roboto16, cast(immutable)diagbuff, l, vec2f(-1f, 0.95f), vec3f(1f, 0.5f, 0f));
-*/
 	}
 }
 

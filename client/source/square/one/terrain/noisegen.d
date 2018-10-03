@@ -42,8 +42,10 @@ struct NoiseGeneratorOrder
 	{
 		this.chunk = chunk;
 		this.position = position;
-		this.toLoad = false;
+		this.toLoad = 0;
 	}
+
+	void setLoadAll() { toLoad = 0x7FF_FFFF; }
 }
 
 class NoiseGeneratorManager 
@@ -52,7 +54,7 @@ class NoiseGeneratorManager
 
 	Resources resources;
 
-	private alias createNGDel = NoiseGenerator delegate();
+	alias createNGDel = NoiseGenerator delegate();
 	private createNGDel createNG;
 
 	const long seed;
@@ -284,13 +286,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 2f;
 					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
 
-					//float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
-					//height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 16f;
-					//height += osn.eval(horizPos.x / 32f, horizPos.z / 32f) * 2f;
-					//height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 1f;
-					//height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
+					float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
+					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 16f;
+					height += osn.eval(horizPos.x / 32f, horizPos.z / 32f) * 2f;
+					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 1f;
+					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
 
-					double height = 0;
+					//double height = 0;
 
 					double mat = osn.eval(horizPos.x / 5.6f + 3275, horizPos.z / 5.6f - 734);
 
