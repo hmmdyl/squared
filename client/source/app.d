@@ -1,39 +1,27 @@
 import std.stdio;
 import std.conv;
-import colorize;
+
+import moxana.utils.logger;
 
 import square.one.engine;
 
 void main(string[] args) {
-	cwriteln();
-	cwriteln("----------------------- SQUARE ONE -----------------------");
-	cwriteln();
-	cwriteln("(C) 2017, SpireDev");
-	cwriteln("This game is under development by Dylan Graham (djg_0).");
-	cwriteln("x64 is the only architecture supported.");
-	cwriteln();
-	cwriteln("----------------------------------------------------------");
-	cwriteln();
-	cwrite("Build time: ".color(fg.light_red));
-	cwriteln(__TIMESTAMP__.color(fg.light_red));
-	cwriteln();
-
-	cwrite("Square One".color(fg.light_blue));
-	cwriteln(" in Dlang!".color(fg.init));
+	writeLog("Square One -- (C) Dylan Graham, 2018");
+	writeLog("Build time: " ~ __TIMESTAMP__);
 
 	version(LDC) {
-		cwriteln("Compiler: LDC2".color(fg.init));
+		writeLog("Compiler: LDC2");
 	}
 	version(DigitalMars) {
-		cwriteln("Compiler: DMD2".color(fg.init));
+		writeLog("Compiler: DMD2");
 	}
 
 	version(X86) {
-		cwriteln("Architecture: x86".color(fg.light_red));
+		writeLog("Arch: x86");
 		throw new Error("Square One must run on amd64 (x64)!");
 	}
 	version(X86_64) {
-		cwriteln("Architecture: amd64".color(fg.init));
+		writeLog("Arch: amd64");
 	}
 
 	version(BigEndian) {
@@ -41,18 +29,17 @@ void main(string[] args) {
 	}
 
 	import core.cpuid;
-	cwriteln(("Processor string: " ~ processor).color(fg.init));
-	cwriteln(("Processor vendor: " ~ vendor).color(fg.init));
-	cwriteln(("# cores per CPU: " ~ coresPerCPU.to!string).color(fg.init));
-	cwriteln(("# threads per CPU: " ~ threadsPerCPU.to!string).color(fg.init));
-
-	scope(exit) cwriteln();
+	writeLog("Processor string: " ~ processor);
+	writeLog("Processor vendor: " ~ vendor);
+	writeLog("# cores per CPU: " ~ coresPerCPU.to!string);
+	writeLog("# threads per CPU: " ~ threadsPerCPU.to!string);
 
 	loadDeps();
 
-	SquareOneEngine engine = new SquareOneEngine;
+	auto engine = new SquareOneEngine();
 	engine.execute();
-	delete engine;
+
+	writeLog("Usual termination.");
 }
 
 void loadDeps() {
@@ -60,9 +47,9 @@ void loadDeps() {
 
 	{
 		import derelict.glfw3.glfw3;
-		cwriteln("Loading GLFW3");
+		writeLog("Loading GLFW3");
 		DerelictGLFW3.load();
-		cwriteln("Loaded GLFW3".color(fg.light_green));
+		writeLog("Loaded.");
 	}
 
 	{
@@ -82,9 +69,9 @@ void loadDeps() {
 		}
 		DerelictFT.missingSymbolCallback = &missingFTSymbol;
 
-		cwriteln("Loading FreeType (2.6 something)");
+		writeLog("Loading FreeType (2.6.*)");
 		DerelictFT.load();
-		cwriteln("Loaded FreeType".color(fg.light_green));
+		writeLog("Loaded.");
 	}
 
 	{
@@ -102,26 +89,26 @@ void loadDeps() {
 		}
 		DerelictASSIMP3.missingSymbolCallback = &missingAssimpSymbol;
 
-		cwriteln("Loading Assimp3");
+		writeLog("Loading Assimp3");
 		DerelictASSIMP3.load();
-		cwriteln("Loaded Assimp".color(fg.light_green));
+		writeLog("Loaded.");
 	}
 
 	{
 		import derelict.openal.al;
 
-		cwriteln("Loading OpenAL");
+		writeLog("Loading OpenAL");
 		DerelictAL.load();
-		cwriteln("Loaded OpenAL".color(fg.light_green));
+		writeLog("Loaded.");
 
 	}
 
 	{
 		import derelict.enet.enet;
 		
-		cwriteln("Loading ENet");
+		writeLog("Loading ENet");
 		DerelictENet.load();
-		cwriteln("Loaded ENet".color(fg.light_green));
+		writeLog("Loaded.");
 	}
 
 	{
@@ -150,24 +137,8 @@ void loadDeps() {
 			DerelictFI.missingSymbolCallback = &missingFreeImageSymbol;
 		}
 
-		cwriteln("Loading FreeImage");
+		writeLog("Loading FreeImage");
 		DerelictFI.load();
-		cwriteln("Loaded FreeImage".color(fg.light_green));
-	}
-
-	{
-		import derelict.ode.ode;
-		cwriteln("Loading Open Dynamics Engine");
-
-		ShouldThrow missingODESymbol(string symbol) {
-			switch(symbol) {
-				case "dGeomTriMeshDataGet": return ShouldThrow.No;
-				default: return ShouldThrow.Yes;
-			}
-		}
-
-		DerelictODE.missingSymbolCallback = &missingODESymbol;
-		//DerelictODE.load;
-		cwriteln("Loaded Open Dynamics Engine".color(fg.light_green));
+		writeLog("Loaded.");
 	}
 }

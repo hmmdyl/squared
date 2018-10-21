@@ -67,7 +67,7 @@ class Sky : IRenderHandler {
 		this.time = time;
 
 		light.direction = time.timeToSun;
-		light.shadowOrigin = light.direction * 40f;// + playerPosition;
+		light.shadowOrigin = light.direction * 60f;// + playerPosition;
 		atmosphere.sunDirection = time.timeToSun;
 
 		bool set = false;
