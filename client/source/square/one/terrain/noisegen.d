@@ -256,8 +256,6 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		import std.datetime.stopwatch;
 		StopWatch sw = StopWatch(AutoStart.no);
 
-		scope(exit) throw new Error("Why did I die?");
-
 		while(!terminate) 
 		{
 			NoiseGeneratorOrder order = getNextFromQueue;
@@ -293,6 +291,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
 
 					//double height = 0;
+					//height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
 
 					double mat = osn.eval(horizPos.x / 5.6f + 3275, horizPos.z / 5.6f - 734);
 

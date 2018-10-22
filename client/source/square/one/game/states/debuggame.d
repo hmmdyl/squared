@@ -66,7 +66,7 @@ class DebugGameState : IState {
 		sky = new Sky(view);
 		sky.playerPosition = view.position;
 		rc.directionalLights.insert(sky.sunLight);
-		//rc.postPhysicalRenderables.insert(sky);
+		rc.postPhysicalRenderables.insert(sky);
 
 		resources = new Resources;
 
@@ -113,7 +113,7 @@ class DebugGameState : IState {
 			//rc.pointLights.insert(pl);
 		}
 
-		gameTime = IngameTime(11, 0);
+		gameTime = IngameTime(6, 0);
 		time = StopWatch(AutoStart.yes);
 
 		sysMemInfo = systemMemInfo;

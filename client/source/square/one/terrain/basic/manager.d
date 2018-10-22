@@ -581,7 +581,7 @@ final class BasicTerrainRenderer : IRenderHandler
 		renderedInFrame_ = 0;
 
 		mat4f vp = lrc.perspective.matrix * lrc.view;
-		SqFrustum!float f = SqFrustum!float(vp.transposed());
+		//SqFrustum!float f = SqFrustum!float(vp.transposed());
 
 		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
 		{
