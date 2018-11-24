@@ -51,6 +51,7 @@ final class BlockProcessor : IProcessor {
 	
 	private uint vao;
 	private Effect effect;
+	private Effect shadowEffect;
 	
 	private ObjectPool!(RenderData*) renderDataPool;
 	
@@ -122,6 +123,13 @@ final class BlockProcessor : IProcessor {
 		effect.findUniform("Diffuse");
 		effect.findUniform("Model");
 		effect.unbind();
+
+		shaders[0] = ShaderEntry(vertexShadowShader, GL_VERTEX_SHADER);
+		shaders[1] = ShaderEntry(fragmentShadowShader, GL_FRAGMENT_SHADER);
+		shadowEffect = new Effect(shaders, BlockProcessor.stringof ~ " SHADOW");
+		shadowEffect.bind();
+		shadowEffect.findUniform("ModelViewProjection");
+		shadowEffect.unbind();
 	}
 	
 	void meshChunk(IMeshableVoxelBuffer c) {
@@ -249,7 +257,7 @@ final class BlockProcessor : IProcessor {
 			
 			host.give(upItem.bmb);
 		}
-		
+
 		uploadItemSw.stop();
 		uploadItemSw.reset();
 	}
@@ -277,6 +285,14 @@ final class BlockProcessor : IProcessor {
 		//glEnable(GL_DEPTH_TEST);
 		//glDepthFunc(GL_LESS);
 	}
+
+	void prepareRenderShadow(RenderContext rc)
+	{
+		glBindVertexArray(vao);
+		shadowEffect.bind();
+		glEnableVertexAttribArray(0);
+		this.renderContext = rc;
+	}
 	
 	void render(Chunk chunk, ref LocalRenderContext lrc) {
 		if(isRdNull(chunk)) return;
@@ -302,7 +318,25 @@ final class BlockProcessor : IProcessor {
 		
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
 	}
-	
+
+	void renderShadow(Chunk chunk, ref LocalRenderContext lrc)
+	{
+		if(isRdNull(chunk)) return;
+
+		RenderData* rd = getRdOfChunk(chunk);
+
+		vec3f localPos = chunk.transform.position;
+		mat4f m = mat4f.translation(localPos);
+		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
+		shadowEffect["ModelViewProjection"].set(&mvp, true);
+
+		glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
+	}
+
 	void endRender() {
 		//glDisable(GL_DEPTH_TEST);
 		glDisableVertexAttribArray(2);
@@ -313,7 +347,14 @@ final class BlockProcessor : IProcessor {
 		
 		glBindVertexArray(0);
 	}
-	
+
+	void endRenderShadow()
+	{
+		glDisableVertexAttribArray(0);
+		shadowEffect.unbind();
+		glBindVertexArray(0);
+	}
+
 	void updateFromManager() {}
 	
 	@property IBlockVoxelTexture getTexture(ushort id) { return textures[id]; }
@@ -800,5 +841,29 @@ void main() {
     DiffuseOut = texel.rgb;
     //DiffuseOut = vec3(1);
     NormalOut = fNormal;
+}
+";
+
+private immutable string vertexShadowShader = "
+#version 400 core
+
+layout(location = 0) in vec3 Vertex;
+
+uniform mat4 ModelViewProjection;
+
+void main() 
+{
+    gl_Position = ModelViewProjection * vec4(Vertex, 1);
+}
+";
+
+private immutable string fragmentShadowShader = "
+#version 400 core
+
+layout(location = 0) out vec3 Fragment;
+
+void main()
+{
+    Fragment = vec3(1);
 }
 ";

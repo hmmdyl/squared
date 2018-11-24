@@ -177,11 +177,11 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
         voxelData[flattenIndex(x, y, z)] = voxel;
     }
 
-    pragma(inline, true)
+    //pragma(inline, true)
     @property int dimensionsProper() { return ChunkData.chunkDimensions; }
-    pragma(inline, true)
+    //pragma(inline, true)
     @property int dimensionsTotal() { return ChunkData.chunkDimensions + ChunkData.voxelOffset * 2; }
-    pragma(inline, true)
+    //pragma(inline, true)
     @property int overrun() { return ChunkData.voxelOffset; }
 	pragma(inline, true)
 	@property float voxelScale() { return ChunkData.voxelScale; }

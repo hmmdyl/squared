@@ -573,7 +573,21 @@ final class BasicTerrainRenderer : IRenderHandler
 	
 	void shadowDepthMapPass(RenderContext rc, ref LocalRenderContext lrc)
 	{
-		renderPhysical(rc, lrc);
+		shadowsInFrame_ = 0;
+
+		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
+		{
+			IProcessor processor = basicTerrainManager.resources.getProcessor(procID);
+			processor.prepareRenderShadow(rc);
+			
+			foreach(ref BasicChunk chunk; basicTerrainManager.chunksTerrain)
+			{
+				processor.renderShadow(chunk.chunk, lrc);
+				renderedInFrame_++;
+			}
+			
+			processor.endRenderShadow();
+		}
 	}
 	
 	void renderPhysical(RenderContext rc, ref LocalRenderContext lrc)
@@ -581,7 +595,7 @@ final class BasicTerrainRenderer : IRenderHandler
 		renderedInFrame_ = 0;
 
 		mat4f vp = lrc.perspective.matrix * lrc.view;
-		//SqFrustum!float f = SqFrustum!float(vp.transposed());
+		SqFrustum!float f = SqFrustum!float(vp.transposed());
 
 		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
 		{

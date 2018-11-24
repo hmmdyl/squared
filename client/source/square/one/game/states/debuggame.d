@@ -110,10 +110,10 @@ class DebugGameState : IState {
 			pl.linAtt = 0.95f;
 			pl.expAtt = 0.3f;
 			//rc.pointLightWithShadow.insert(pl);
-			//rc.pointLights.insert(pl);
+			rc.pointLights.insert(pl);
 		}
 
-		gameTime = IngameTime(6, 0);
+		gameTime = IngameTime(8, 0);
 		time = StopWatch(AutoStart.yes);
 
 		sysMemInfo = systemMemInfo;
@@ -129,7 +129,7 @@ class DebugGameState : IState {
 		import core.memory;
 		GC.collect;
 
-		sky.update(IngameTime(11, 0));
+		sky.update(IngameTime(8, 0));
 	}
 
 	void open() {

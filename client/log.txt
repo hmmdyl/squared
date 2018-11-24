@@ -1,3 +1,23 @@
-Info 2018-Sep-22 20:54:02.8838525 Creating window.
-Info 2018-Sep-22 20:54:03.5106164 Created window
-Info 2018-Sep-22 20:54:03.5111165:moxana.graphics.rendercontext.RenderContext.load:89 Loading resources for RenderContext
+Info 2018-Oct-29 19:57:25.298981 Square One -- (C) Dylan Graham, 2018
+Info 2018-Oct-29 19:57:25.2999814 Build time: Mon Oct 29 19:56:43 2018
+Info 2018-Oct-29 19:57:25.2999814 Compiler: DMD2
+Info 2018-Oct-29 19:57:25.2999814 Arch: amd64
+Info 2018-Oct-29 19:57:25.3009824 Processor string: AMD FX(tm)-8320 Eight-Core Processor           
+Info 2018-Oct-29 19:57:25.3009824 Processor vendor: AuthenticAMD
+Info 2018-Oct-29 19:57:25.3009824 # cores per CPU: 8
+Info 2018-Oct-29 19:57:25.3009824 # threads per CPU: 1
+Info 2018-Oct-29 19:57:25.3009824 Loading GLFW3
+Info 2018-Oct-29 19:57:25.3029817 Loaded.
+Info 2018-Oct-29 19:57:25.3029817 Loading FreeType (2.6.*)
+Info 2018-Oct-29 19:57:25.3059815 Loaded.
+Info 2018-Oct-29 19:57:25.3059815 Loading Assimp3
+Info 2018-Oct-29 19:57:25.3119824 Loaded.
+Info 2018-Oct-29 19:57:25.3129819 Loading OpenAL
+Info 2018-Oct-29 19:57:25.3229824 Loaded.
+Info 2018-Oct-29 19:57:25.3229824 Loading ENet
+Info 2018-Oct-29 19:57:25.3269828 Loaded.
+Info 2018-Oct-29 19:57:25.327983 Loading FreeImage
+Info 2018-Oct-29 19:57:25.3329832 Loaded.
+Info 2018-Oct-29 19:57:25.4000039 Creating window.
+Info 2018-Oct-29 19:57:26.783979 Created window
+Info 2018-Oct-29 19:57:26.7849758:moxana.graphics.rendercontext.RenderContext.load:89 Loading resources for RenderContext

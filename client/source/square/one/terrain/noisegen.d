@@ -278,17 +278,23 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 					vec3d horizPos = order.position + vec3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
 
-					/*float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
+					float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
 					height += osn.eval(horizPos.x / 128f, horizPos.z / 128f) * 64f;
 					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 32f;
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 2f;
-					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
+					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
 
-					float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
+					/*float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
 					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 16f;
 					height += osn.eval(horizPos.x / 32f, horizPos.z / 32f) * 2f;
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 1f;
-					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
+					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
+
+					/*float height = 0f;
+					float oan = osn.eval(horizPos.x / 16f - 10f, horizPos.z / 16f) * 512f;
+					oan -= 384f;
+					if(oan > 0)
+						height = oan;*/
 
 					//double height = 0;
 					//height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;

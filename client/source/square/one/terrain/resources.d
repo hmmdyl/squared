@@ -37,6 +37,10 @@ interface IProcessor : IVoxelContent {
 
 	void updateFromManager();
 
+	void prepareRenderShadow(RenderContext context);
+	void renderShadow(Chunk chunk, ref LocalRenderContext lrc);
+	void endRenderShadow();
+
 	void prepareRender(RenderContext camera);
 	void render(Chunk chunk, ref LocalRenderContext lrc);
 	void endRender();
