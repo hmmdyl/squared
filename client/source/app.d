@@ -31,8 +31,13 @@ void main(string[] args) {
 	import core.cpuid;
 	writeLog("Processor string: " ~ processor);
 	writeLog("Processor vendor: " ~ vendor);
-	writeLog("# cores per CPU: " ~ coresPerCPU.to!string);
-	writeLog("# threads per CPU: " ~ threadsPerCPU.to!string);
+	writeLog("Cores per CPU: " ~ coresPerCPU.to!string);
+	writeLog("Threads per CPU: " ~ threadsPerCPU.to!string);
+	foreach(i; 0 .. numCacheLevels)
+	{
+		CacheInfo dc = dataCaches[i];
+		writeLog("Cache " ~ to!string(i) ~ " size: " ~ to!string(dc.size) ~ "kb line: " ~ to!string(dc.lineSize) ~ "bytes");
+	}
 
 	loadDeps();
 
