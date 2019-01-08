@@ -1,0 +1,16 @@
+{
+	"name":"MonokaiCust",
+	"version":"1.0",
+	"originator":"Xamarin Inc. (http://xamarin.com)",
+	"baseScheme":"Monokai",
+	"colors":[
+	],
+	"text":[
+		{"name": "Plain Text", "fore":"#F7F7EF", "back":"#141717" },
+		{"name": "Selected Text", "back":"#505C5C" },
+		{"name": "Selected Text(Inactive)", "back":"#282E2E" },
+		{"name": "Line Numbers", "fore":"#BCBCBC", "back":"#141717" },
+		{"name": "Comment Tag", "fore":"#74705D", "weight":"Bold" },
+		{"name": "Excluded Code", "fore":"#74705D" }
+	]
+}

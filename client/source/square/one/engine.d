@@ -80,7 +80,7 @@ final class SquareOneEngine : Engine {
 	}
 
 	override protected RenderContext createRenderContext() { return new RenderContext(window, true); }
-	override protected RenderDistributor createRenderDistributor() { return new RenderDistributor(renderContext); }
+	override protected Distributor createRenderDistributor() { return new Distributor(renderContext); }
 
 	@property Settings settings() { return settings_; }
 	@property KeyBinds ioBindings() { return ioBindings_; }

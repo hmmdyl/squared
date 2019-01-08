@@ -429,14 +429,6 @@ private struct UploadItem {
 	}
 }
 
-private struct MeshQueue {
-	
-
-	//Chunk get() {
-
-	//}
-}
-
 private class Mesher {
 	Object meshSyncObj;
 	DList!(IMeshableVoxelBuffer)* meshQueue;
@@ -483,6 +475,17 @@ private class Mesher {
 	}
 	
 	private void workerFunc() {
+		try workerFuncProper;
+		catch(Throwable e) {
+			import std.conv : to;
+			import moxana.utils.logger;
+
+			char[] error = "Exception thrown in thread \"" ~ thread.name ~ "\". Contents: " ~ e.message ~ ". Line: " ~ to!string(e.line) ~ "\nStacktrace: " ~ e.info.toString;
+			writeLog(LogType.error, cast(string)error);
+		}
+	}
+
+	private void workerFuncProper() {
 		vec3f[64] verts, normals;
 		ushort[64] textureIDs;
 		
@@ -587,6 +590,7 @@ private class Mesher {
 						isSidesSolid[VoxelSide.pz] = resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
 						
 						IBlockVoxelMesh bvm = cast(IBlockVoxelMesh)resources.getMesh(v.mesh);
+						if(bvm is null) continue;
 						int vertCount;
 						bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, vec3i(x, y, z), verts, normals, vertCount);
 						

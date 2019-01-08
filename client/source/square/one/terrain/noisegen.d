@@ -175,7 +175,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			tetrahedron,
 			antiTetrahedron,
 			horizontalSlope,
-			antiObliquePyramid;
+			antiObliquePyramid,
+			grassMedium;
 
 		static Meshes getMeshes(Resources resources) 
 		{
@@ -186,6 +187,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			meshes.tetrahedron = resources.getMesh("block_mesh_tetrahedron").id;
 			meshes.antiTetrahedron = resources.getMesh("block_mesh_antitetrahedron").id;
 			meshes.horizontalSlope = resources.getMesh("block_mesh_horizontal_slope").id;
+			meshes.grassMedium = resources.getMesh("vegetation_mesh_grass_medium").id;
 			return meshes;
 		}
 	}
@@ -265,6 +267,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			sw.start;
 
 			chunk.airCount = 0;
+			chunk.solidCount = 0;
 
 			int premCount = 0;
 
@@ -278,11 +281,11 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 					vec3d horizPos = order.position + vec3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
 
-					float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
+					/*float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
 					height += osn.eval(horizPos.x / 128f, horizPos.z / 128f) * 64f;
 					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 32f;
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 2f;
-					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
+					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
 
 					/*float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
 					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 16f;
@@ -296,8 +299,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(oan > 0)
 						height = oan;*/
 
-					//double height = 0;
-					//height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
+					double height = 0;
+					height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
 
 					double mat = osn.eval(horizPos.x / 5.6f + 3275, horizPos.z / 5.6f - 734);
 
@@ -313,6 +316,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 							else
 								source.set(x, y, z, Voxel(2, 1, 0, 0));
 						}
+						//if(blockPos.y == height) 
+						//	source.set(x, y, z, Voxel(1, 1, 0, 0));
 						else 
 						{
 							source.set(x, y, z, Voxel(0, 0, 0, 0));
@@ -335,7 +340,6 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						{
 							Voxel voxel = tempBuffer1.get(x, y, z);
 							chunk.set(x, y, z, voxel);
-							if(voxel.mesh == 0) chunk.airCount = chunk.airCount + 1;
 						}
 					}
 				}
@@ -350,8 +354,38 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						{
 							Voxel voxel = source.get(x, y, z);
 							chunk.set(x, y, z, voxel);
-							if(voxel.mesh == 0) chunk.airCount = chunk.airCount + 1;
 						}
+					}
+				}
+			}
+
+			foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+			{
+				foreach_reverse(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+				{
+					foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+					{
+						if(y > -ChunkData.voxelOffset) {
+							Voxel voxel = chunk.get(x, y, z);
+							Voxel below = chunk.get(x, y - 1, z);
+							if(voxel.mesh == 0 && below.mesh != 0) {
+								voxel.mesh = 6;
+								chunk.set(x, y, z, voxel);
+							}
+						}
+					}
+				}
+			}
+
+			foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+			{
+				foreach(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+				{
+					foreach(int z; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+					{
+						Voxel voxel = chunk.get(x, y, z);
+						if(voxel.mesh == meshes.invisible) chunk.airCount = chunk.airCount + 1;
+						if(voxel.mesh == meshes.cube) chunk.solidCount = chunk.solidCount + 1;
 					}
 				}
 			}
@@ -422,7 +456,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			voxels[flattenIndex(x + offset, y + offset, z + offset)] = voxel;
 		}
 	}
-	
+
 	private VoxelBuffer source;
 	private VoxelBuffer tempBuffer0;
 	private VoxelBuffer tempBuffer1;

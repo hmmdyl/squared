@@ -9,7 +9,6 @@ import moxana.graphics.distribute;
 import moxana.graphics.rendercontext;
 import moxana.state;
 import moxana.io.kbm;
-import moxana.graphics.light;
 import moxana.graphics.view;
 import moxana.graphics.rh;
 
@@ -50,7 +49,7 @@ static class MainMenuResources {
 
 final class MainMenu : IState {
 	RenderContext rc;
-	RenderDistributor rd;
+	Distributor rd;
 
 	MainMenuRenderer renderer;
 

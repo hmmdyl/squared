@@ -46,6 +46,8 @@ interface IVoxelBuffer
 	@property int blockskip();
 	@property void blockskip(int);
 
+	@property int solidCount();
+	@property void solidCount(int);
 	@property int airCount();
 	@property void airCount(int);
 
@@ -200,6 +202,10 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
     private int _airCount;
     @property int airCount() { return _airCount; }
     @property void airCount(int ac) { _airCount = ac; }
+
+	private int _solidCount;
+	@property int solidCount() { return _solidCount; }
+	@property void solidCount(int ac) { _solidCount = ac; }
 
     private shared(bool) _needsData;
     @property bool needsData() { return atomicLoad(_needsData); }

@@ -3,9 +3,9 @@
 import moxana.graphics.effect;
 import moxana.graphics.rendercontext;
 import moxana.graphics.rh;
-import moxana.graphics.light;
 import moxana.graphics.view;
 import moxana.graphics.rgbconv;
+import moxana.graphics.lighting;
 
 import square.one.graphics.modelloader;
 import square.one.ingametime.ingametime;
@@ -56,7 +56,7 @@ class Sky : IRenderHandler {
 	this(View view) {
 		this.view = view;
 
-		light = new DirectionalLight;
+		//light = new DirectionalLight;
 		light.ambientIntensity = 0.05f;
 		light.diffuseIntensity = 1f;
 
@@ -67,7 +67,7 @@ class Sky : IRenderHandler {
 		this.time = time;
 
 		light.direction = time.timeToSun;
-		light.shadowOrigin = light.direction * 50f;// + playerPosition;
+		//light.shadowOrigin = light.direction * 50f;// + playerPosition;
 		atmosphere.sunDirection = time.timeToSun;
 
 		bool set = false;
@@ -160,7 +160,7 @@ class AtmosphereRenderer {
 
 	void render(RenderContext rc, vec3f cameraPos) {
 		mat4f translation = mat4f.translation(cameraPos) * mat4f.scaling(vec3f(scale, scale, scale));		
-		mat4f mvp = rc.perspective.matrix * rc.view.matrix * translation;
+		mat4f mvp = rc.primaryProj.matrix * rc.view.matrix * translation;
 		
 		effect.bind();
 		

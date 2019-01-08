@@ -25,7 +25,9 @@ void loadModelVerts(string file, out vec3f[] vertices) {
 }
 
 void loadModelVertsNorms(string file, out vec3f[] vertices, out vec3f[] normals) {
-	const(aiScene*) scene = aiImportFile(toStringz(file), aiProcess_Triangulate);
+	return;
+
+	/*const(aiScene*) scene = aiImportFile(toStringz(file), aiProcess_Triangulate);
 	if(scene == null)
 		throw new Exception("Could not load model from file \"" ~ file ~ "\".");
 
@@ -42,7 +44,7 @@ void loadModelVertsNorms(string file, out vec3f[] vertices, out vec3f[] normals)
 				normals ~= vec3f(normal.x, normal.y, normal.z);
 			}
 		}
-	}
+	}*/
 }
 
 void loadModelVertsNormsUVs(string file, out vec3f[] vertices, out vec3f[] normals, out vec2f[] uvs) {

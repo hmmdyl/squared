@@ -95,7 +95,7 @@ void loadDeps() {
 		DerelictASSIMP3.missingSymbolCallback = &missingAssimpSymbol;
 
 		writeLog("Loading Assimp3");
-		DerelictASSIMP3.load();
+		//DerelictASSIMP3.load();
 		writeLog("Loaded.");
 	}
 
@@ -138,6 +138,13 @@ void loadDeps() {
 				else
 					return ShouldThrow.Yes;*/
 				return ShouldThrow.No;
+			}
+			DerelictFI.missingSymbolCallback = &missingFreeImageSymbol;
+		}
+		version(Win64) {
+			ShouldThrow missingFreeImageSymbol(string symbol) {
+				if(symbol == "FreeImage_RotateClassic") return ShouldThrow.No;
+				return ShouldThrow.Yes;
 			}
 			DerelictFI.missingSymbolCallback = &missingFreeImageSymbol;
 		}

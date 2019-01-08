@@ -3,7 +3,7 @@
 import moxana.state;
 import moxana.graphics.view;
 import moxana.graphics.distribute;
-import moxana.graphics.light;
+import moxana.graphics.lighting;
 import moxana.io.kbm;
 
 import square.one.engine;
@@ -27,14 +27,13 @@ import core.memory;
 import resusage.memory;
 
 import square.one.voxelcon.block.processor;
+import square.one.voxelcon.vegetation.processor;
+
 import std.string;
 import moxana.graphics.rh;
 
 class DebugGameState : IState {
-	RenderDistributor distributor;
 	RenderContext rc;
-	//PauseSubState pause;
-
 	Camera camera;
 
 	Resources resources;
@@ -47,8 +46,10 @@ class DebugGameState : IState {
 	Sky sky;
 
 	private BlockProcessor bp;
+	private VegetationProcessor vp;
 
-	PointLight pl;
+	PointLight* pl;
+	DirectionalLight* dl;
 
 	DebugStatsRenderer dsr;
 	Crosshair crosshair;
@@ -65,7 +66,7 @@ class DebugGameState : IState {
 
 		sky = new Sky(view);
 		sky.playerPosition = view.position;
-		rc.directionalLights.insert(sky.sunLight);
+		//distributor.light.dire.insert(sky.sunLight);
 		rc.postPhysicalRenderables.insert(sky);
 
 		resources = new Resources;
@@ -74,6 +75,7 @@ class DebugGameState : IState {
 			import square.one.voxelcon.block.materials;
 			import square.one.voxelcon.block.meshes;
 			import square.one.voxelcon.block.textures;
+			import square.one.voxelcon.vegetation.meshes;
 
 			IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](2);
 			bvts[0] = new DirtTexture;
@@ -89,6 +91,10 @@ class DebugGameState : IState {
 			resources.add(new Air);
 			resources.add(new Dirt);
 			resources.add(new Grass);
+
+			vp = new VegetationProcessor;
+			resources.add(vp);
+			resources.add(new GrassMedium);
 		}
 
 		BasicTmSettings tms = BasicTmSettings.createDefault(resources, null, null, null);
@@ -97,21 +103,21 @@ class DebugGameState : IState {
 
 		rc.physicalRenderables.insert(tr);
 
-		//distributor = new RenderDistributor;
-		//distributor.rc = rc;
 
-		{
-			pl = new PointLight;
-			pl.ambientIntensity = 0f;
-			pl.diffuseIntensity = 10f;
-			pl.position = vec3f(0f, 4f, 0);
-			pl.colour = vec3f(0.1f, 0.5f, 1f);
-			pl.constAtt = 0.5f;
-			pl.linAtt = 0.95f;
-			pl.expAtt = 0.3f;
-			//rc.pointLightWithShadow.insert(pl);
-			rc.pointLights.insert(pl);
-		}
+		pl = engine.renderDistributor.light.createPointLight;
+		pl.ambientIntensity = 0f;
+		pl.diffuseIntensity = 10f;
+		pl.position = vec3f(0f, 4f, 0);
+		pl.colour = vec3f(0.1f, 0.5f, 1f);
+		pl.constAtt = 0.5f;
+		pl.linAtt = 0.95f;
+		pl.expAtt = 0.3f;
+
+		dl = engine.renderDistributor.light.createDirectionalLight;
+		dl.direction = vec3f(0.0, 1, 0);
+		dl.colour = vec3f(1, 1, 1);
+		dl.ambientIntensity = 0;
+		dl.diffuseIntensity = 1;
 
 		gameTime = IngameTime(8, 0);
 		time = StopWatch(AutoStart.yes);
