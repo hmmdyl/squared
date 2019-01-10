@@ -193,6 +193,22 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	}
 	private Meshes meshes;
 
+	private struct Materials {
+		ushort air,
+			dirt,
+			grass,
+			flower;
+		static Materials getMaterials(Resources resources) {
+			Materials materials;
+			materials.air = resources.getMaterial("block_material_air").id;
+			materials.dirt = resources.getMaterial("block_material_dirt").id;
+			materials.grass = resources.getMaterial("block_material_grass").id;
+			materials.flower = resources.getMaterial("vegetation_flower_medium_test").id;
+			return materials;
+		}
+	}
+	private Materials materials;
+
 	private Mutex mutex;
 	private Condition condition;
 	private Object queueSync = new Object;
@@ -241,6 +257,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		super.setFields(resources,manager,seed);
 		super.seed = seed;
 		meshes = Meshes.getMeshes(resources);
+		materials = Materials.getMaterials(resources);
 		thread.start();
 	}
 
@@ -312,9 +329,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						if(blockPos.y <= height) 
 						{
 							if(mat < 0)
-								source.set(x, y, z, Voxel(1, 1, 0, 0));
+								source.set(x, y, z, Voxel(materials.dirt, meshes.cube, 0, 0));
 							else
-								source.set(x, y, z, Voxel(2, 1, 0, 0));
+								source.set(x, y, z, Voxel(materials.grass, meshes.cube, 0, 0));
 						}
 						//if(blockPos.y == height) 
 						//	source.set(x, y, z, Voxel(1, 1, 0, 0));
@@ -368,8 +385,35 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						if(y > -ChunkData.voxelOffset) {
 							Voxel voxel = chunk.get(x, y, z);
 							Voxel below = chunk.get(x, y - 1, z);
+
 							if(voxel.mesh == 0 && below.mesh != 0) {
-								voxel.mesh = 6;
+								vec3d horizPos = order.position + vec3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
+
+								float oan = osn.eval(horizPos.x / 1f, horizPos.z / 1f);
+								//if(oan < 0.5) continue;
+
+								voxel.mesh = meshes.grassMedium;
+								voxel.material = materials.flower;
+
+								import square.one.voxelcon.vegetation.processor;
+
+								FlowerRotation fr;
+								if(oan >= 0.5f && oan < 0.55f) fr = FlowerRotation.nz;
+								else if(oan >= 0.55f && oan < 0.6f) fr = FlowerRotation.nzpx;
+								else if(oan >= 0.6f && oan < 0.65f) fr = FlowerRotation.px;
+								else if(oan >= 0.65f && oan < 0.7f) fr = FlowerRotation.pxpz;
+								else if(oan >= 0.7f && oan < 0.75f) fr = FlowerRotation.pz;
+								else if(oan >= 0.75f && oan < 0.8f) fr = FlowerRotation.nxpz;
+								else if(oan >= 0.8f && oan < 0.85f) fr = FlowerRotation.px;
+								else fr = FlowerRotation.nxnz;
+
+								float mat0 = osn.eval(horizPos.x / 2.5f + 3275, horizPos.z / 2.5f - 734) * 0.5 + 0.5;
+								float mat1 = osn.eval(horizPos.x / 2.5f + 134, horizPos.z / 2.5f - 652) * 0.5 + 0.5;
+								float mat2 = osn.eval(horizPos.x / 2.5f + 854, horizPos.z / 2.5f - 1345) * 0.5 + 0.5;
+
+								insertColour(vec3f(mat0, mat1, mat2), &voxel);
+								setFlowerRotation(fr, &voxel);
+
 								chunk.set(x, y, z, voxel);
 							}
 						}
@@ -573,31 +617,31 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(nx.mesh != 0 && nz.mesh != 0 && px.mesh != 0 && pz.mesh != 0) 
 				{
 					if(pxpz.mesh == 0 && !(px.mesh == meshes.cube || pz.mesh == meshes.cube))
-						tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 0));
+						tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 0));
 					else if(nxpz.mesh == 0 && !(nx.mesh == meshes.cube || pz.mesh == meshes.cube))
-						tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 1));
+						tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 1));
 					else if(nxnz.mesh == 0 && !(nx.mesh == meshes.cube || nz.mesh == meshes.cube))
-						tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 2));
+						tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 2));
 					else if(pxnz.mesh == 0 && !(px.mesh == meshes.cube || nz.mesh == meshes.cube))
-						tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 3));
+						tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 3));
 					else setDef = true;
 				}
 				else if(voxel.mesh == meshes.cube && nx.mesh == meshes.cube && px.mesh != meshes.cube && nz.mesh == 0 && pz.mesh == meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 3));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 3));
 				else if(voxel.mesh == meshes.cube && nx.mesh == meshes.cube && px.mesh == 0 && nz.mesh != meshes.cube && pz.mesh == meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 3));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 3));
 				else if(voxel.mesh == meshes.cube && nx.mesh == meshes.cube && px.mesh == 0 && nz.mesh == meshes.cube && pz.mesh != meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 0));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 0));
 				else if(voxel.mesh == meshes.cube && nx.mesh == meshes.cube && px.mesh != meshes.cube && nz.mesh == meshes.cube && pz.mesh == 0 && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 0));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 0));
 				else if(voxel.mesh == meshes.cube && nx.mesh == 0 && px.mesh == meshes.cube && nz.mesh != meshes.cube && pz.mesh == meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 2));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 2));
 				else if(voxel.mesh == meshes.cube && nx.mesh != meshes.cube && px.mesh == meshes.cube && nz.mesh == 0 && pz.mesh == meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 2));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 2));
 				else if(voxel.mesh == meshes.cube && nx.mesh == 0 && px.mesh == meshes.cube && nz.mesh == meshes.cube && pz.mesh != meshes.cube && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 1));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 1));
 				else if(voxel.mesh == meshes.cube && nx.mesh != meshes.cube && px.mesh == meshes.cube && nz.mesh == meshes.cube && pz.mesh == 0 && py.mesh != meshes.cube)
-					tempBuffer1.set(x, y, z, Voxel(voxel.material, 4, voxel.materialData, 1));
+					tempBuffer1.set(x, y, z, Voxel(voxel.material, meshes.antiTetrahedron, voxel.materialData, 1));
 				else setDef = true;
 			}
 			

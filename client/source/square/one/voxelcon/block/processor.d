@@ -343,6 +343,8 @@ final class BlockProcessor : IProcessor {
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(0);
 		
+		textureArray.unbind;
+		Texture2DArray.disable;
 		effect.unbind();
 		
 		glBindVertexArray(0);
@@ -572,6 +574,9 @@ private class Mesher {
 					for(int z = 0; z < ChunkData.chunkDimensions; z += chunk.blockskip)  {
 						Voxel v = chunk.get(x, y, z);
 						
+						IBlockVoxelMesh bvm = cast(IBlockVoxelMesh)resources.getMesh(v.mesh);
+						if(bvm is null) continue;
+
 						Voxel[6] neighbours;
 						SideSolidTable[6] isSidesSolid;
 						
@@ -588,13 +593,12 @@ private class Mesher {
 						isSidesSolid[VoxelSide.py] = resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
 						isSidesSolid[VoxelSide.nz] = resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
 						isSidesSolid[VoxelSide.pz] = resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
-						
-						IBlockVoxelMesh bvm = cast(IBlockVoxelMesh)resources.getMesh(v.mesh);
-						if(bvm is null) continue;
+								
 						int vertCount;
 						bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, vec3i(x, y, z), verts, normals, vertCount);
 						
 						IBlockVoxelMaterial bvMat = cast(IBlockVoxelMaterial)resources.getMaterial(v.material);
+						if(bvMat is null) writeln(":FUYC");
 						bvMat.generateTextureIDs(vertCount, verts, normals, textureIDs);
 						
 						foreach(int i; 0 .. vertCount) {

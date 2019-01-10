@@ -1,23 +1,33 @@
-Info 2018-Oct-29 19:57:25.298981 Square One -- (C) Dylan Graham, 2018
-Info 2018-Oct-29 19:57:25.2999814 Build time: Mon Oct 29 19:56:43 2018
-Info 2018-Oct-29 19:57:25.2999814 Compiler: DMD2
-Info 2018-Oct-29 19:57:25.2999814 Arch: amd64
-Info 2018-Oct-29 19:57:25.3009824 Processor string: AMD FX(tm)-8320 Eight-Core Processor           
-Info 2018-Oct-29 19:57:25.3009824 Processor vendor: AuthenticAMD
-Info 2018-Oct-29 19:57:25.3009824 # cores per CPU: 8
-Info 2018-Oct-29 19:57:25.3009824 # threads per CPU: 1
-Info 2018-Oct-29 19:57:25.3009824 Loading GLFW3
-Info 2018-Oct-29 19:57:25.3029817 Loaded.
-Info 2018-Oct-29 19:57:25.3029817 Loading FreeType (2.6.*)
-Info 2018-Oct-29 19:57:25.3059815 Loaded.
-Info 2018-Oct-29 19:57:25.3059815 Loading Assimp3
-Info 2018-Oct-29 19:57:25.3119824 Loaded.
-Info 2018-Oct-29 19:57:25.3129819 Loading OpenAL
-Info 2018-Oct-29 19:57:25.3229824 Loaded.
-Info 2018-Oct-29 19:57:25.3229824 Loading ENet
-Info 2018-Oct-29 19:57:25.3269828 Loaded.
-Info 2018-Oct-29 19:57:25.327983 Loading FreeImage
-Info 2018-Oct-29 19:57:25.3329832 Loaded.
-Info 2018-Oct-29 19:57:25.4000039 Creating window.
-Info 2018-Oct-29 19:57:26.783979 Created window
-Info 2018-Oct-29 19:57:26.7849758:moxana.graphics.rendercontext.RenderContext.load:89 Loading resources for RenderContext
+Info 2019-Jan-10 21:21:13.3825023 Square One -- (C) Dylan Graham, 2018
+Info 2019-Jan-10 21:21:13.3825023 Build time: Thu Jan 10 21:21:03 2019
+Info 2019-Jan-10 21:21:13.3825023 Compiler: LDC2
+Info 2019-Jan-10 21:21:13.3835029 Arch: amd64
+Info 2019-Jan-10 21:21:13.3835029 Processor string: AMD Ryzen 7 2700 Eight-Core Processor          
+Info 2019-Jan-10 21:21:13.3835029 Processor vendor: AuthenticAMD
+Info 2019-Jan-10 21:21:13.3835029 Cores per CPU: 16
+Info 2019-Jan-10 21:21:13.3835029 Threads per CPU: 1
+Info 2019-Jan-10 21:21:13.3835029 Cache 0 size: 32kb line: 64bytes
+Info 2019-Jan-10 21:21:13.3845038 Cache 1 size: 512kb line: 64bytes
+Info 2019-Jan-10 21:21:13.3845038 Cache 2 size: 1024kb line: 64bytes
+Info 2019-Jan-10 21:21:13.3845038 Loading GLFW3
+Info 2019-Jan-10 21:21:13.3855076 Loaded.
+Info 2019-Jan-10 21:21:13.3865062 Loading FreeType (2.6.*)
+Info 2019-Jan-10 21:21:13.3875069 Loaded.
+Info 2019-Jan-10 21:21:13.3875069 Loading Assimp3
+Info 2019-Jan-10 21:21:13.3875069 Loaded.
+Info 2019-Jan-10 21:21:13.3885078 Loading OpenAL
+Info 2019-Jan-10 21:21:13.417534 Loaded.
+Info 2019-Jan-10 21:21:13.4185355 Loading ENet
+Info 2019-Jan-10 21:21:13.4195363 Loaded.
+Info 2019-Jan-10 21:21:13.4195363 Loading FreeImage
+Info 2019-Jan-10 21:21:13.4345499 Loaded.
+Info 2019-Jan-10 21:21:13.6117104 Creating window.
+Info 2019-Jan-10 21:21:14.4754952 Created window
+Info 2019-Jan-10 21:21:14.4764963:moxana.graphics.rendercontext.RenderContext.load:71 Loading resources for RenderContext
+Info 2019-Jan-10 21:21:14.4865053 Compiling shader TextRenderer
+Info 2019-Jan-10 21:21:14.4885066 Compiled TextRenderer
+Info 2019-Jan-10 21:21:14.4885066 Compiling shader PassThroughPostProcess
+Info 2019-Jan-10 21:21:14.4895075 Compiled PassThroughPostProcess
+Warning 2019-Jan-10 21:21:14.4895075 Could not get uniform DepthTexture for shader PassThroughPostProcess
+Warning 2019-Jan-10 21:21:14.4895075 Could not get uniform WorldPosTexture for shader PassThroughPostProcess
+Warning 2019-Jan-10 21:21:14.4905089 Could not get uniform NormalTexture for shader PassThroughPostProcess

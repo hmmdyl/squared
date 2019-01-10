@@ -1,6 +1,7 @@
 module square.one.voxelcon.vegetation.processor;
 
 import moxana.graphics.effect;
+import square.one.graphics.texture2darray;
 
 import square.one.terrain.resources;
 import square.one.terrain.chunk;
@@ -16,6 +17,7 @@ import std.datetime.stopwatch;
 import core.memory;
 import std.file : getcwd, readText;
 import std.path : buildPath;
+import std.conv;
 
 import gfm.math;
 import derelict.opengl3.gl3;
@@ -43,7 +45,12 @@ final class VegetationProcessor : IProcessor {
 	private uint vao;
 	private Effect effect;
 
-	this() {
+	IVegetationVoxelTexture[] vegetationTextures;
+	private Texture2DArray textureArray;
+
+	this(IVegetationVoxelTexture[] textures) {
+		this.vegetationTextures = textures;
+
 		mbHost = new MeshBufferHost;
 		uploadSyncObj = new Object;
 		renderDataPool = ObjectPool!(RenderData*)(() { return new RenderData; }, 64);
@@ -64,10 +71,26 @@ final class VegetationProcessor : IProcessor {
 
 		vegetationMeshes.rehash;
 
+		string[] textureFiles = new string[](vegetationTextures.length);
+		foreach(size_t x, IVegetationVoxelTexture texture; vegetationTextures) {
+			texture.id = cast(ubyte)x;
+			textureFiles[x] = texture.file;
+		}
+		textureArray = new Texture2DArray(textureFiles, DifferentSize.shouldResize, GL_NEAREST, GL_NEAREST, true);
+
+		foreach(int x; 0 .. resources.materialCount) {
+			IVegetationVoxelMaterial vvm = cast(IVegetationVoxelMaterial)resources.getMaterial(x);
+			if(vvm is null) continue;
+			vvm.loadTextures(this);
+			vegetationMaterials[cast(ushort)x] = vvm;
+		}
+
+		vegetationMaterials.rehash;
+
 		foreach(x; 0 .. mesherCount)
 			meshers ~= new Mesher(uploadSyncObj, &uploadQueue, resources, this, mbHost);
 
-		glGenVertexArrays(1, &vao);
+		glCreateVertexArrays(1, &vao);
 
 		ShaderEntry[] shaders = new ShaderEntry[](2);
 		shaders[0] = ShaderEntry(readText(buildPath(getcwd, "assets/shaders/vegetation_voxel.vs.glsl")), GL_VERTEX_SHADER);
@@ -76,6 +99,7 @@ final class VegetationProcessor : IProcessor {
 		effect.bind;
 		effect.findUniform("ModelViewProjection");
 		effect.findUniform("Model");
+		effect.findUniform("Textures");
 		effect.unbind;
 
 		destroy(shaders);
@@ -142,6 +166,13 @@ final class VegetationProcessor : IProcessor {
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec3f.sizeof, up.buffer.vertices.ptr, GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ARRAY_BUFFER, rd.cbo);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * ubyte.sizeof * 4, up.buffer.colours.ptr, GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ARRAY_BUFFER, rd.tbo);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec2f.sizeof, up.buffer.texCoords.ptr, GL_STATIC_DRAW);
+
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 			up.chunk.meshBlocking(false, id_);
@@ -171,9 +202,16 @@ final class VegetationProcessor : IProcessor {
 
 		glBindVertexArray(vao);
 
-		glEnableVertexAttribArray(0);
-
 		effect.bind;
+
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+
+		Texture2DArray.enable;
+		glActiveTexture(GL_TEXTURE0);
+		textureArray.bind;
+		effect["Textures"].set(0);
 	}
 
 	void render(Chunk chunk, ref LocalRenderContext lrc) {
@@ -189,6 +227,11 @@ final class VegetationProcessor : IProcessor {
 
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
 		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, rd.cbo);
+		glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, rd.tbo);
+		glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
+
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
@@ -196,11 +239,23 @@ final class VegetationProcessor : IProcessor {
 
 	void endRender() {
 		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
+		textureArray.unbind;
+		Texture2DArray.disable;
 		effect.unbind;
 		glBindVertexArray(0);
 	}
 
 	package IVegetationVoxelMesh[ushort] vegetationMeshes;
+	package IVegetationVoxelMaterial[ushort] vegetationMaterials;
+	ubyte getTextureID(string technical) {
+		foreach(IVegetationVoxelTexture t; vegetationTextures) {
+			if(t.technical == technical)
+				return t.id;
+		}
+		return 255;
+	}
 }
 
 enum MeshType {
@@ -208,28 +263,99 @@ enum MeshType {
 	grassShort,
 	grassMedium,
 	grassTall,
-	flower
+	flowerShort,
+	flowerMedium,
+	flowerTall
 }
+
+enum int grassShortHeight = 1;
+enum int grassMediumHeight = 2;
+enum int grassTallHeight = 4;
+
+enum int flowerHeadOffsetMedium = 1;
 
 interface IVegetationVoxelMesh : IVoxelMesh {
 	@property MeshType meshType();
 	void generateOtherMesh();
 }
 
+interface IVegetationVoxelTexture : IVoxelContent {
+	@property ubyte id();
+	@property void id(ubyte);
+
+	@property string file();
+}
+
+vec3f extractColour(Voxel v) {
+	uint col = v.materialData & 0x3_FFFF;
+	uint r = col & 0x3F;
+	uint g = (col >> 6) & 0x3F;
+	uint b = (col >> 12) & 0x3F;
+	return vec3f(r / 63f, g / 63f, b / 63f);
+}
+
+void insertColour(vec3f col, Voxel* v) {
+	v.materialData = v.materialData & ~0x3_FFFF;
+	uint r = clamp(cast(uint)(col.x * 63), 0, 63);
+	uint g = clamp(cast(uint)(col.y * 63), 0, 63);
+	uint b = clamp(cast(uint)(col.z * 63), 0, 63);
+	uint f = (b << 12) | (g << 6) | r;
+	v.materialData = v.materialData | f;
+}
+
+enum FlowerRotation : ubyte {
+	nz = 0,
+	nzpx = 1,
+	px = 2,
+	pxpz = 3,
+	pz = 4,
+	nxpz = 5,
+	nx = 6,
+	nxnz = 7
+}
+
+FlowerRotation getFlowerRotation(Voxel v) {
+	ubyte twobits = (v.materialData >> 18) & 0x3;
+	ubyte onebit = (v.meshData >> 19) & 0x1;
+	int total = (onebit << 2) | twobits;
+	return cast(FlowerRotation)total;
+}
+
+void setFlowerRotation(FlowerRotation fr, Voxel* v) {
+	ubyte twobits = cast(ubyte)fr & 0x3;
+	ubyte onebit = ((cast(ubyte)fr) >> 2) & 0x1;
+	v.materialData = v.materialData & ~(0x3 << 18);
+	v.materialData = v.materialData | (twobits << 18);
+	v.meshData = v.meshData & ~(0x1 << 19);
+	v.meshData = v.meshData | (onebit << 19);
+}
+
 interface IVegetationVoxelMaterial : IVoxelMaterial {
-	void loadTextures();
+	void loadTextures(VegetationProcessor vp);
+
+	@property ubyte grassTexture();
+	@property ubyte flowerStorkTexture();
+	@property ubyte flowerHeadTexture();
+
+	void applyTexturesOther();
 }
 
 struct RenderData {
 	uint vbo;
+	uint cbo;
+	uint tbo;
 	ushort vertexCount;
 
 	void create() {
 		glGenBuffers(1, &vbo);
+		glGenBuffers(1, &cbo);
+		glGenBuffers(1, &tbo);
 	}
 
 	void cleanup() {
 		glDeleteBuffers(1, &vbo);
+		glDeleteBuffers(1, &cbo);
+		glDeleteBuffers(1, &tbo);
 	}
 }
 
@@ -341,6 +467,7 @@ private class Mesher {
 				mb = mbHost.request;
 			while(mb is null);
 
+			StopWatch sw = StopWatch(AutoStart.yes);
 			operateOnChunk(chunk, mb);
 
 			if(mb.vertexCount == 0) {
@@ -348,6 +475,9 @@ private class Mesher {
 				chunk.meshBlocking(false, vp.id);
 			}
 			else {
+				sw.stop;
+				writeln("Completed vegetation mesh in ", sw.peek.total!"nsecs" / 1_000_000f, "ms. ", mb.vertexCount, " vertices.");
+
 				synchronized(uploadSyncObj) {
 					uploadQueue.insert(UploadItem(chunk, mb));
 				}
@@ -363,18 +493,67 @@ private class Mesher {
 			for(int y = 0; y < ChunkData.chunkDimensions; y += vb.blockskip) {
 				for(int z = 0; z < ChunkData.chunkDimensions; z += vb.blockskip) {
 					Voxel v = vb.get(x, y, z);
-					Voxel ny = vb.get(x, y - 1, z);
-					bool shiftDown = resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
 
 					IVegetationVoxelMesh* mesh = v.mesh in vp.vegetationMeshes;
 					if(mesh is null) continue;
 
+					Voxel ny = vb.get(x, y - 1, z);
+					bool shiftDown = resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
+
+					vec3f colour = extractColour(v);
+
+					ubyte[4] colourBytes = [
+						cast(ubyte)(colour.x * 255),
+						cast(ubyte)(colour.y * 255),
+						cast(ubyte)(colour.z * 255),
+						0
+					];
+
+					IVegetationVoxelMaterial* material = v.material in vp.vegetationMaterials;
+					if(material is null) throw new Exception("Error! Material not compatible with vegetation mesh or material of the voxel could not be found! Voxel material: " ~ to!string(v.material));
+
 					if(mesh.meshType == MeshType.grassMedium) {
-						foreach(immutable vec3f vertex; grassMedium) {
-							vec3f vertex1 = vertex * vb.blockskip + vec3i(x, y, z);
+						colourBytes[3] = material.grassTexture;
+						foreach(size_t vid, immutable vec3f vertex; grassPlane) {
+							vec3f vertex1 = (vertex * vec3f(1, grassMediumHeight, 1)) * vb.blockskip + vec3i(x, y, z);
 							if(shiftDown) vertex1.y -= vb.blockskip;
 							vertex1 *= vb.voxelScale;
-							mb.add(vertex1);
+							vec2f texCoord = grassPlaneTexCoords[vid];
+							mb.add(vertex1, colourBytes, texCoord);
+						}
+					}
+					if(mesh.meshType == MeshType.flowerMedium) {
+						FlowerRotation fr = getFlowerRotation(v);
+						uint materialData = v.materialData;
+						uint meshData = v.meshData;
+
+						mat4f rotation = void;
+						final switch(fr) {
+							case FlowerRotation.nz: rotation = mat4f.rotateY(radians(180f)); break;
+							case FlowerRotation.nzpx: rotation = mat4f.rotateY(radians(135f)); break;
+							case FlowerRotation.px: rotation = mat4f.rotateY(radians(90f)); break;
+							case FlowerRotation.pxpz: rotation = mat4f.rotateY(radians(45f)); break;
+							case FlowerRotation.pz: rotation = mat4f.identity; break;
+							case FlowerRotation.nxpz: rotation = mat4f.rotateY(radians(315f)); break;
+							case FlowerRotation.nx: rotation = mat4f.rotateY(radians(270f)); break;
+							case FlowerRotation.nxnz: rotation = mat4f.rotateY(radians(225f)); break;
+						}
+
+						colourBytes[3] = material.flowerHeadTexture;
+						foreach(size_t vid, immutable vec3f vertex; flowerHead) {
+							vec3f vertex1 = (rotation * vec4f(vertex, 1)).xyz;
+							vertex1 = (vertex1 + vec3f(0, flowerHeadOffsetMedium, 0)) * vb.blockskip + vec3i(x, y, z);
+							vertex1 *= vb.voxelScale;
+							vec2f texCoord = flowerHeadTexCoords[vid];
+							mb.add(vertex1, colourBytes, texCoord);
+						}
+						colourBytes[3] = material.flowerStorkTexture;
+						foreach(size_t vid, immutable vec3f vertex; flowerStorkMedium) {
+							vec3f vertex1 = (rotation * vec4f(vertex, 1)).xyz;
+							vertex1 = (vertex1 * vec3f(1, 1, 1)) * vb.blockskip + vec3i(x, y, z);
+							vertex1 *= vb.voxelScale;
+							vec2f texCoord = flowerStorkMediumTexCoords[vid];
+							mb.add(vertex1, colourBytes, texCoord);
 						}
 					}
 				}
@@ -382,28 +561,111 @@ private class Mesher {
 		}
 	}
 
-	private immutable vec3f[] grassMedium = [
+	private immutable vec3f[] flowerHead = [ // facing +Z
+		vec3f(0, 0, 1),
+		vec3f(1, 0, 1),
+		vec3f(1, 1, 0),
+		vec3f(1, 1, 0),
+		vec3f(0, 1, 0),
+		vec3f(0, 0, 1)
+	];
+
+	private immutable vec2f[] flowerHeadTexCoords = [
+		vec2f(0, 0),
+		vec2f(1, 0),
+		vec2f(1, 1),
+		vec2f(1, 1),
+		vec2f(0, 1),
+		vec2f(0, 0)
+	];
+
+	private immutable vec3f[] flowerStorkMedium = [
+		vec3f(0, 0, 0),
+		vec3f(1, 0, 1),
+		vec3f(1, 1, 1),
+		vec3f(1, 1, 1),
+		vec3f(0, 1, 0),
+		vec3f(0, 0, 0),
+
+		vec3f(1, 0, 0),
+		vec3f(0, 0, 1),
+		vec3f(0, 1, 1),
+		vec3f(0, 1, 1),
+		vec3f(1, 1, 0),
+		vec3f(1, 0, 0),
+
+		vec3f(0, 1, 0),
+		vec3f(1, 1, 1),
+		vec3f(0, 2, 0),
+		vec3f(1, 1, 0),
+		vec3f(0, 1, 1),
+		vec3f(1, 2, 0)
+	];
+	
+	private immutable vec2f[] flowerStorkMediumTexCoords = [
+		vec2f(0, 0),
+		vec2f(1, 0),
+		vec2f(1, 0.5),
+		vec2f(1, 0.5),
+		vec2f(0, 0.5),
+		vec2f(0, 0),
+
+		vec2f(0, 0),
+		vec2f(1, 0),
+		vec2f(1, 0.5),
+		vec2f(1, 0.5),
+		vec2f(0, 0.5),
+		vec2f(0, 0),
+
+		vec2f(0, 0.5),
+		vec2f(1, 0.5),
+		vec2f(0, 1),
+		vec2f(0, 0.5),
+		vec2f(1, 0.5),
+		vec2f(0, 1)
+	];
+
+	private immutable vec3f[] grassPlane = [
 		vec3f(0, 0, 0.5),
-		vec3f(0.8, 0, 0.5),
-		vec3f(0.8, 1, 0.5),
-		vec3f(0.8, 1, 0.5),
+		vec3f(1, 0, 0.5),
+		vec3f(1, 1, 0.5),
+		vec3f(1, 1, 0.5),
 		vec3f(0, 1, 0.5),
 		vec3f(0, 0, 0.5)
+	];
+
+	private immutable vec2f[] grassPlaneTexCoords = [
+		vec2f(0.25, 0),
+		vec2f(0.75, 0),
+		vec2f(0.75, 1),
+		vec2f(0.75, 1),
+		vec2f(0.25, 1),
+		vec2f(0.25, 0),
 	];
 }
 
 private class MeshBuffer {
 	vec3f[] vertices;
+	ubyte[] colours;
+	vec2f[] texCoords;
 	int vertexCount;
 
 	this() {
 		vertices.length = 12000;
+		colours.length = vertices.length * 4;
+		texCoords.length = vertices.length;
 	}
 
 	void reset() { vertexCount = 0; }
 
-	void add(vec3f v) {
+	void add(vec3f v, ubyte[4] colour, vec2f texCoord) {
 		vertices[vertexCount] = v;
+		//colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour;
+		colours[vertexCount * 4] = colour[0];
+		colours[vertexCount * 4 + 1] = colour[1];
+		colours[vertexCount * 4 + 2] = colour[2];
+		colours[vertexCount * 4 + 3] = colour[3];
+		texCoords[vertexCount] = texCoord;
 		vertexCount++;
 	}
 }

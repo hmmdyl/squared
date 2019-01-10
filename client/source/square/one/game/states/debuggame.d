@@ -76,25 +76,33 @@ class DebugGameState : IState {
 			import square.one.voxelcon.block.meshes;
 			import square.one.voxelcon.block.textures;
 			import square.one.voxelcon.vegetation.meshes;
+			import square.one.voxelcon.vegetation.materials;
+
+			resources.add(new Invisible);
+			resources.add(new Air);
+
+			IVegetationVoxelTexture[] vvts;
+			vvts ~= new FlowerMediumTestHeadTexture;
+			vvts ~= new FlowerMediumTestStorkTexture;
+			vp = new VegetationProcessor(vvts);
+			resources.add(vp);
+			resources.add(new GrassMedium);
+			resources.add(new FlowerMediumTest);
 
 			IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](2);
 			bvts[0] = new DirtTexture;
 			bvts[1] = new GrassTexture;
 			bp = new BlockProcessor(bvts);
 			resources.add(bp);
-			resources.add(new Invisible);
+			
 			resources.add(new Cube);
 			resources.add(new Slope);
 			resources.add(new Tetrahedron);
 			resources.add(new AntiTetrahedron);
 			resources.add(new HorizontalSlope);
-			resources.add(new Air);
+			
 			resources.add(new Dirt);
 			resources.add(new Grass);
-
-			vp = new VegetationProcessor;
-			resources.add(vp);
-			resources.add(new GrassMedium);
 		}
 
 		BasicTmSettings tms = BasicTmSettings.createDefault(resources, null, null, null);
@@ -265,8 +273,8 @@ class DebugGameState : IState {
 		sky.playerPosition = camera.view.position;
 
 		if(engine.window.isKeyDown(GLFW_KEY_X))
-			rc.polygonMode = GL_LINE;
-		else rc.polygonMode = GL_FILL;
+			rc.wireframe = true;
+		else rc.wireframe = false;
 		
 		camera.view.generateMatrix();
 

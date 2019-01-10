@@ -66,19 +66,19 @@ class Texture2DArray {
 	}
 
 	static void enable() {
-		glEnable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D_ARRAY);
 	}
 
 	static void disable() {
-		glDisable(GL_TEXTURE_3D);
+		glDisable(GL_TEXTURE_2D_ARRAY);
 	}
 
 	void bind() {
-		glBindTexture(GL_TEXTURE_3D, id);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, id);
 	}
 
 	void unbind() {
-		glBindTexture(GL_TEXTURE_3D, 0);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 	}
 
 	@property uint id() { return id_; }
