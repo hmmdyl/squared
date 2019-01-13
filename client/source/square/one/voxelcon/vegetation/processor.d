@@ -26,10 +26,7 @@ final class VegetationProcessor : IProcessor {
 	mixin(VoxelContentQuick!("vegetation_processor", "Vegetation (processor)", squareOneMod, dylanGrahamName));
 
 	private ubyte id_;
-	@property ubyte id() { return id_; }
-	@property void id(ubyte nid) { id_ = nid; }
-
-	private ObjectPool!(RenderData*) renderDataPool;
+	@property ubyte id() { return id_; rDataPool;
 	
 	private MeshBufferHost mbHost;
 	private DList!UploadItem uploadQueue;
