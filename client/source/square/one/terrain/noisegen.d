@@ -310,14 +310,14 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 1f;
 					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
 
-					/*float height = 0f;
-					float oan = osn.eval(horizPos.x / 16f - 10f, horizPos.z / 16f) * 512f;
-					oan -= 384f;
-					if(oan > 0)
-						height = oan;*/
+					float height = -4f;
+					float oan = osn.eval(horizPos.x / 1.6f - 10f, horizPos.z / 1.6f) * 32f;
+					oan -= 20f;
+					if(oan > -4f)
+						height = oan;
 
-					double height = 0;
-					height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
+					//double height = 0;
+					//height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
 
 					double mat = osn.eval(horizPos.x / 5.6f + 3275, horizPos.z / 5.6f - 734);
 
@@ -376,7 +376,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				}
 			}
 
-			foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
+			/*foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 			{
 				foreach_reverse(int y; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 				{
@@ -419,7 +419,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						}
 					}
 				}
-			}
+			}*/
 
 			foreach(int x; -ChunkData.voxelOffset .. ChunkData.chunkDimensions + ChunkData.voxelOffset) 
 			{

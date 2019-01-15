@@ -37,6 +37,13 @@ class Picture {
 
 		texture_ = new Texture2D(file, min, mag, true);
 	}
+
+	void setPicture(Texture2D texture_) {
+		if(texture_ !is null) {
+			destroy(texture);
+		}
+		this.texture_ = texture;
+	}
 }
 
 class PictureRenderer {

@@ -64,10 +64,8 @@ class DebugGameState : IState {
 		view.position = vec3f(0f, 4f, 0f);
 		camera = new Camera(view);
 
-		sky = new Sky(view);
-		sky.playerPosition = view.position;
 		//distributor.light.dire.insert(sky.sunLight);
-		rc.postPhysicalRenderables.insert(sky);
+		//rc.postPhysicalRenderables.insert(sky);
 
 		resources = new Resources;
 
@@ -110,24 +108,28 @@ class DebugGameState : IState {
 		tr = new BasicTerrainRenderer(tm);
 
 		rc.physicalRenderables.insert(tr);
-
+		rc.shadowCasters.insert(tr);
 
 		pl = engine.renderDistributor.light.createPointLight;
 		pl.ambientIntensity = 0f;
-		pl.diffuseIntensity = 10f;
+		pl.diffuseIntensity = 0f;
 		pl.position = vec3f(0f, 4f, 0);
-		pl.colour = vec3f(0.1f, 0.5f, 1f);
+		pl.colour = vec3f(1f, 1f, 1f);
 		pl.constAtt = 0.5f;
 		pl.linAtt = 0.95f;
 		pl.expAtt = 0.3f;
 
 		dl = engine.renderDistributor.light.createDirectionalLight;
-		dl.direction = vec3f(0.0, 1, 0);
-		dl.colour = vec3f(1, 1, 1);
-		dl.ambientIntensity = 0;
-		dl.diffuseIntensity = 1;
+		//dl.direction = vec3f(-1f, 0f, 0);
+		//dl.colour = vec3f(1, 1, 1);
+		//dl.ambientIntensity = 0;
+		//dl.diffuseIntensity = 1;
+		dl.shadow = ShadowCastType.ifAvailable;
 
-		gameTime = IngameTime(8, 0);
+		sky = new Sky(view, dl);
+		sky.playerPosition = view.position;
+
+		gameTime = IngameTime(5, 40);
 		time = StopWatch(AutoStart.yes);
 
 		sysMemInfo = systemMemInfo;
@@ -143,7 +145,7 @@ class DebugGameState : IState {
 		import core.memory;
 		GC.collect;
 
-		sky.update(IngameTime(8, 0));
+		sky.update(IngameTime(5, 0));
 	}
 
 	void open() {
@@ -229,7 +231,7 @@ class DebugGameState : IState {
 			camera.moveOnAxes(a * cast(float)previousFrameTime);
 		}
 
-		//pl.position = camera.view.position;
+		///pl.position = camera.view.position;
 		
 		import derelict.glfw3.glfw3;
 		import derelict.opengl3.gl3;
@@ -371,6 +373,7 @@ Rendered: %i",
 
 final class Crosshair : IRenderHandler {
 	private Picture picture;
+	private Picture cascadePicture;
 
 	this() {
 		import std.path;
@@ -378,6 +381,7 @@ final class Crosshair : IRenderHandler {
 
 		picture = new Picture();
 		picture.setPicture(buildPath(getcwd(), "assets/textures/crosshair_4.png"), GL_NEAREST, GL_NEAREST);
+		cascadePicture = new Picture();
 	}
 
 	void shadowDepthMapPass(RenderContext rc, ref LocalRenderContext lrc) {}
@@ -385,6 +389,8 @@ final class Crosshair : IRenderHandler {
 	void renderPostPhysical(RenderContext rc, ref LocalRenderContext lrc) {}
 
 	void ui(RenderContext rc) {
+		import moxana.graphics.texture2d;
+
 		vec2i windowSize = rc.window.size;
 		windowSize /= 2;
 		vec2i crossHairStart = vec2i(windowSize.x - 16, windowSize.y - 16);
@@ -392,5 +398,9 @@ final class Crosshair : IRenderHandler {
 		picture.position = cast(vec2f)crossHairStart;
 		picture.size = vec2f(33f, 33f);
 		engine.pictureRenderer.render(picture);
+
+		//cascadePicture.position = vec2f(0f, 0f);
+		//cascadePicture.size = vec2f(256f, 256f);
+		//cascadePicture.setPicture(new Texture2D(engine.renderDistributor.light.));
 	}
 }

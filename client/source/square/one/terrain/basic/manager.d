@@ -578,15 +578,15 @@ final class BasicTerrainRenderer : IRenderHandler
 		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
 		{
 			IProcessor processor = basicTerrainManager.resources.getProcessor(procID);
-			processor.prepareRenderShadow(rc);
+			processor.prepareRender(rc);
 			
 			foreach(ref BasicChunk chunk; basicTerrainManager.chunksTerrain)
 			{
-				processor.renderShadow(chunk.chunk, lrc);
+				processor.render(chunk.chunk, lrc);
 				renderedInFrame_++;
 			}
 			
-			processor.endRenderShadow();
+			processor.endRender();
 		}
 	}
 	

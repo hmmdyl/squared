@@ -47,20 +47,20 @@ class Sky : IRenderHandler {
 
 	vec3f playerPosition;
 
-	private DirectionalLight light;
-	@property DirectionalLight sunLight() { return light; }
+	DirectionalLight* light;
+	//@property DirectionalLight sunLight() { return light; }
 
 	private AtmosphereRenderer atmosphere;
 	@property AtmosphereRenderer atmosphereRenderer() { return atmosphere; }
 
-	this(View view) {
+	this(View view, DirectionalLight* dl) {
 		this.view = view;
 
-		//light = new DirectionalLight;
-		light.ambientIntensity = 0.05f;
+		light = dl;
+		light.ambientIntensity = 0.0f;
 		light.diffuseIntensity = 1f;
 
-		atmosphere = new AtmosphereRenderer();
+		//atmosphere = new AtmosphereRenderer();
 	}
 
 	void update(IngameTime time) {
@@ -68,7 +68,7 @@ class Sky : IRenderHandler {
 
 		light.direction = time.timeToSun;
 		//light.shadowOrigin = light.direction * 50f;// + playerPosition;
-		atmosphere.sunDirection = time.timeToSun;
+		//atmosphere.sunDirection = time.timeToSun;
 
 		bool set = false;
 		foreach(int i, Tuple!(IngameTime, IngameTime, vec3f) colour; coloursPerTime) {

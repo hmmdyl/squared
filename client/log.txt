@@ -1,33 +1,33 @@
-Info 2019-Jan-10 21:21:13.3825023 Square One -- (C) Dylan Graham, 2018
-Info 2019-Jan-10 21:21:13.3825023 Build time: Thu Jan 10 21:21:03 2019
-Info 2019-Jan-10 21:21:13.3825023 Compiler: LDC2
-Info 2019-Jan-10 21:21:13.3835029 Arch: amd64
-Info 2019-Jan-10 21:21:13.3835029 Processor string: AMD Ryzen 7 2700 Eight-Core Processor          
-Info 2019-Jan-10 21:21:13.3835029 Processor vendor: AuthenticAMD
-Info 2019-Jan-10 21:21:13.3835029 Cores per CPU: 16
-Info 2019-Jan-10 21:21:13.3835029 Threads per CPU: 1
-Info 2019-Jan-10 21:21:13.3835029 Cache 0 size: 32kb line: 64bytes
-Info 2019-Jan-10 21:21:13.3845038 Cache 1 size: 512kb line: 64bytes
-Info 2019-Jan-10 21:21:13.3845038 Cache 2 size: 1024kb line: 64bytes
-Info 2019-Jan-10 21:21:13.3845038 Loading GLFW3
-Info 2019-Jan-10 21:21:13.3855076 Loaded.
-Info 2019-Jan-10 21:21:13.3865062 Loading FreeType (2.6.*)
-Info 2019-Jan-10 21:21:13.3875069 Loaded.
-Info 2019-Jan-10 21:21:13.3875069 Loading Assimp3
-Info 2019-Jan-10 21:21:13.3875069 Loaded.
-Info 2019-Jan-10 21:21:13.3885078 Loading OpenAL
-Info 2019-Jan-10 21:21:13.417534 Loaded.
-Info 2019-Jan-10 21:21:13.4185355 Loading ENet
-Info 2019-Jan-10 21:21:13.4195363 Loaded.
-Info 2019-Jan-10 21:21:13.4195363 Loading FreeImage
-Info 2019-Jan-10 21:21:13.4345499 Loaded.
-Info 2019-Jan-10 21:21:13.6117104 Creating window.
-Info 2019-Jan-10 21:21:14.4754952 Created window
-Info 2019-Jan-10 21:21:14.4764963:moxana.graphics.rendercontext.RenderContext.load:71 Loading resources for RenderContext
-Info 2019-Jan-10 21:21:14.4865053 Compiling shader TextRenderer
-Info 2019-Jan-10 21:21:14.4885066 Compiled TextRenderer
-Info 2019-Jan-10 21:21:14.4885066 Compiling shader PassThroughPostProcess
-Info 2019-Jan-10 21:21:14.4895075 Compiled PassThroughPostProcess
-Warning 2019-Jan-10 21:21:14.4895075 Could not get uniform DepthTexture for shader PassThroughPostProcess
-Warning 2019-Jan-10 21:21:14.4895075 Could not get uniform WorldPosTexture for shader PassThroughPostProcess
-Warning 2019-Jan-10 21:21:14.4905089 Could not get uniform NormalTexture for shader PassThroughPostProcess
+Info 2019-Jan-13 23:10:10.0136463 Square One -- (C) Dylan Graham, 2018
+Info 2019-Jan-13 23:10:10.0146474 Build time: Sun Jan 13 23:10:03 2019
+Info 2019-Jan-13 23:10:10.0146474 Compiler: DMD2
+Info 2019-Jan-13 23:10:10.0156476 Arch: amd64
+Info 2019-Jan-13 23:10:10.0156476 Processor string: AMD Ryzen 7 2700 Eight-Core Processor          
+Info 2019-Jan-13 23:10:10.0156476 Processor vendor: AuthenticAMD
+Info 2019-Jan-13 23:10:10.0156476 Cores per CPU: 16
+Info 2019-Jan-13 23:10:10.0156476 Threads per CPU: 1
+Info 2019-Jan-13 23:10:10.0166492 Cache 0 size: 32kb line: 64bytes
+Info 2019-Jan-13 23:10:10.0166492 Cache 1 size: 512kb line: 64bytes
+Info 2019-Jan-13 23:10:10.0166492 Cache 2 size: 1024kb line: 64bytes
+Info 2019-Jan-13 23:10:10.0166492 Loading GLFW3
+Info 2019-Jan-13 23:10:10.0186507 Loaded.
+Info 2019-Jan-13 23:10:10.0196513 Loading FreeType (2.6.*)
+Info 2019-Jan-13 23:10:10.0226556 Loaded.
+Info 2019-Jan-13 23:10:10.0236549 Loading Assimp3
+Info 2019-Jan-13 23:10:10.0246568 Loaded.
+Info 2019-Jan-13 23:10:10.0246568 Loading OpenAL
+Info 2019-Jan-13 23:10:10.0606885 Loaded.
+Info 2019-Jan-13 23:10:10.0616895 Loading ENet
+Info 2019-Jan-13 23:10:10.0666949 Loaded.
+Info 2019-Jan-13 23:10:10.0676965 Loading FreeImage
+Info 2019-Jan-13 23:10:10.0907174 Loaded.
+Info 2019-Jan-13 23:10:10.2924106 Creating window.
+Info 2019-Jan-13 23:10:11.2662407 Created window
+Info 2019-Jan-13 23:10:11.2662407:moxana.graphics.rendercontext.RenderContext.load:71 Loading resources for RenderContext
+Info 2019-Jan-13 23:10:11.2792532 Compiling shader TextRenderer
+Info 2019-Jan-13 23:10:11.2812566 Compiled TextRenderer
+Info 2019-Jan-13 23:10:11.2812566 Compiling shader PassThroughPostProcess
+Info 2019-Jan-13 23:10:11.2822548 Compiled PassThroughPostProcess
+Warning 2019-Jan-13 23:10:11.2822548 Could not get uniform DepthTexture for shader PassThroughPostProcess
+Warning 2019-Jan-13 23:10:11.2832565 Could not get uniform WorldPosTexture for shader PassThroughPostProcess
+Warning 2019-Jan-13 23:10:11.2842576 Could not get uniform NormalTexture for shader PassThroughPostProcess
