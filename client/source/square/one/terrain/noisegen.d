@@ -261,6 +261,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		thread.start();
 	}
 
+	private void generatorWrap() {
+		try generator;
+		catch(Throwable e) {
+			import std.conv : to;
+			import moxana.utils.logger;
+
+			char[] error = "Exception thrown in thread \"" ~ thread.name ~ "\". Contents: " ~ e.message ~ ". Line: " ~ to!string(e.line) ~ "\nStacktrace: " ~ e.info.toString;
+			writeLog(LogType.error, cast(string)error);
+		}
+	}
+
 	private void generator() 
 	{
 		OpenSimplexNoise!float osn = new OpenSimplexNoise!(float)(seed);

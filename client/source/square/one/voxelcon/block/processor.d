@@ -122,6 +122,7 @@ final class BlockProcessor : IProcessor {
 		effect.findUniform("Fit10bScale");
 		effect.findUniform("Diffuse");
 		effect.findUniform("Model");
+		effect.findUniform("ModelView");
 		effect.unbind();
 
 		shaders[0] = ShaderEntry(vertexShadowShader, GL_VERTEX_SHADER);
@@ -303,9 +304,11 @@ final class BlockProcessor : IProcessor {
 		vec3f localPos = chunk.transform.position;
 		mat4f m = mat4f.translation(localPos);
 		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
+		mat4f mv = lrc.view * m;
 		effect["ModelViewProjection"].set(&mvp, true);
 		effect["Fit10bScale"].set(rd.fit10bScale);
 		effect["Model"].set(&m, true);
+		effect["ModelView"].set(&mv, true);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
 		//glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
@@ -802,6 +805,7 @@ out vec3 fWorldPos;
 
 uniform mat4 ModelViewProjection;
 uniform mat4 Model;
+uniform mat4 ModelView;
 
 uniform float Fit10bScale;
 
@@ -818,7 +822,7 @@ void main() {
 
     fTexID = Meta.x | (Meta.y << 8);
 
-    fWorldPos = (Model * vec4(vert, 1)).xyz;
+    fWorldPos = (ModelView * vec4(vert, 1)).xyz;
 }
 ";
 
@@ -847,7 +851,7 @@ void main() {
 
     WorldPositionOut = fWorldPos;
     DiffuseOut = texel.rgb;
-    //DiffuseOut = vec3(1);
+    DiffuseOut = vec3(1);
     NormalOut = fNormal;
 }
 ";

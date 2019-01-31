@@ -129,7 +129,7 @@ class DebugGameState : IState {
 		sky = new Sky(view, dl);
 		sky.playerPosition = view.position;
 
-		gameTime = IngameTime(16, 40);
+		gameTime = IngameTime(8, 40);
 		time = StopWatch(AutoStart.yes);
 
 		sysMemInfo = systemMemInfo;
