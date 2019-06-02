@@ -2,7 +2,7 @@
 
 import moxana.graphics.view;
 
-import gfm.math;
+import dlib.math;
 import std.math;
 
 public class Camera {
@@ -12,9 +12,9 @@ public class Camera {
 		this.view = view;
 	}
 
-	public void moveOnAxes(vec3f vec) {
+	public void moveOnAxes(Vector3f vec) {
 		// strafe
-		float yr = radians!float(view.rotation.y);
+		float yr = degtorad(view.rotation.y);
 		view.position.x += cos(yr) * vec.x;
 		view.position.z += sin(yr) * vec.x;
 
@@ -25,7 +25,7 @@ public class Camera {
 		view.position.y += vec.y;
 	}
 
-	public void rotate(vec3f vec) {
+	public void rotate(Vector3f vec) {
 		view.rotation.x += vec.x;
 		view.rotation.y += vec.y;
 		view.rotation.z += vec.z;

@@ -14,7 +14,7 @@ import std.path;
 import std.meta;
 
 import derelict.opengl3.gl3;
-import gfm.math;
+import dlib.math;
 
 enum ButtonState {
 	inactive,
@@ -25,17 +25,17 @@ enum ButtonState {
 class ColourButton {
 	static ColourButtonRenderer renderer;
 	
-	vec4f inactiveColour;
-	vec4f hoverColour;
-	vec4f clickColour;
+	Vector4f inactiveColour;
+	Vector4f hoverColour;
+	Vector4f clickColour;
 	
-	vec2f position;
-	vec2f size;
+	Vector2f position;
+	Vector2f size;
 	
 	string text;
 	Font font;
-	vec2f textPos;
-	vec3f textColour;
+	Vector2f textPos;
+	Vector3f textColour;
 	
 	ButtonState previous, current;
 	
@@ -46,7 +46,7 @@ class ColourButton {
 			renderer = new ColourButtonRenderer();
 	}
 
-	void update(vec2f mouseCoord, bool isClickDown) {
+	void update(Vector2f mouseCoord, bool isClickDown) {
 		float maxX = position.x + size.x;
 		float maxY = position.y + size.y;
 
@@ -96,16 +96,16 @@ class ColourButtonRenderer {
 		glGenVertexArrays(1, &vao);
 		glGenBuffers(1, &vbo);
 		
-		vec2f[] verts = [
-			vec2f(0, 0),
-			vec2f(1, 0),
-			vec2f(1, 1),
-			vec2f(1, 1),
-			vec2f(0, 1),
-			vec2f(0, 0)
+		Vector2f[] verts = [
+			Vector2f(0, 0),
+			Vector2f(1, 0),
+			Vector2f(1, 1),
+			Vector2f(1, 1),
+			Vector2f(0, 1),
+			Vector2f(0, 0)
 		];
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vec2f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, Vector2f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	
@@ -141,7 +141,7 @@ class ColourButtonRenderer {
 		glBindVertexArray(vao);
 		glEnableVertexAttribArray(0);
 		
-		mat4f proj = rc.orthogonal;
+		Matrix4f proj = rc.orthogonal;
 		effect["ModelViewProjection"].set(&proj, true);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);

@@ -2,6 +2,7 @@
 
 import square.one.voxelcon.block.processor;
 import square.one.voxelcon.block.textures;
+import dlib.math;
 
 final class Grass : IBlockVoxelMaterial {
 	static immutable string technicalStatic = "block_material_grass";
@@ -19,7 +20,7 @@ final class Grass : IBlockVoxelMaterial {
 		grassTextureID = bp.getTexture(GrassTexture.technicalStatic).id;
 	}
 	
-	void generateTextureIDs(int vlength, ref vec3f[64] vertices, ref vec3f[64] normals, ref ushort[64] ids) {
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) {
 		for(int x = 0; x < vlength; x += 3) {
 			if(normals[x].y >= 0f) {
 				ids[x] = grassTextureID;

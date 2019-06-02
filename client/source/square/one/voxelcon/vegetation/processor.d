@@ -19,7 +19,7 @@ import std.file : getcwd, readText;
 import std.path : buildPath;
 import std.conv;
 
-import gfm.math;
+import dlib.math;
 import derelict.opengl3.gl3;
 
 final class VegetationProcessor : IProcessor {
@@ -164,13 +164,13 @@ final class VegetationProcessor : IProcessor {
 			rd.vertexCount = cast(ushort)up.buffer.vertexCount;
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec3f.sizeof, up.buffer.vertices.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, up.buffer.vertices.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.cbo);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * ubyte.sizeof * 4, up.buffer.colours.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.tbo);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec2f.sizeof, up.buffer.texCoords.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, up.buffer.texCoords.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -218,9 +218,9 @@ final class VegetationProcessor : IProcessor {
 
 		RenderData* rd = getRd(chunk);
 
-		vec3f localPos = chunk.transform.position;
-		mat4f m = mat4f.translation(localPos);
-		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
+		Vector3f localPos = chunk.transform.position;
+		Matrix4f m = translationMatrix(localPos);
+		Matrix4f mvp = lrc.perspective.matrix * lrc.view * m;
 		effect["ModelViewProjection"].set(&mvp, true);
 		effect["Model"].set(&m, true);
 
@@ -285,15 +285,15 @@ interface IVegetationVoxelTexture : IVoxelContent {
 	@property string file();
 }
 
-vec3f extractColour(Voxel v) {
+Vector3f extractColour(Voxel v) {
 	uint col = v.materialData & 0x3_FFFF;
 	uint r = col & 0x3F;
 	uint g = (col >> 6) & 0x3F;
 	uint b = (col >> 12) & 0x3F;
-	return vec3f(r / 63f, g / 63f, b / 63f);
+	return Vector3f(r / 63f, g / 63f, b / 63f);
 }
 
-void insertColour(vec3f col, Voxel* v) {
+void insertColour(Vector3f col, Voxel* v) {
 	v.materialData = v.materialData & ~0x3_FFFF;
 	uint r = clamp(cast(uint)(col.x * 63), 0, 63);
 	uint g = clamp(cast(uint)(col.y * 63), 0, 63);
@@ -560,93 +560,93 @@ private class Mesher {
 		}
 	}
 
-	private immutable vec3f[] flowerHead = [ // facing +Z
-		vec3f(0, 0, 1),
-		vec3f(1, 0, 1),
-		vec3f(1, 1, 0),
-		vec3f(1, 1, 0),
-		vec3f(0, 1, 0),
-		vec3f(0, 0, 1)
+	private immutable Vector3f[] flowerHead = [ // facing +Z
+		Vector3f(0, 0, 1),
+		Vector3f(1, 0, 1),
+		Vector3f(1, 1, 0),
+		Vector3f(1, 1, 0),
+		Vector3f(0, 1, 0),
+		Vector3f(0, 0, 1)
 	];
 
-	private immutable vec2f[] flowerHeadTexCoords = [
-		vec2f(0, 0),
-		vec2f(1, 0),
-		vec2f(1, 1),
-		vec2f(1, 1),
-		vec2f(0, 1),
-		vec2f(0, 0)
+	private immutable Vector2f[] flowerHeadTexCoords = [
+		Vector2f(0, 0),
+		Vector2f(1, 0),
+		Vector2f(1, 1),
+		Vector2f(1, 1),
+		Vector2f(0, 1),
+		Vector2f(0, 0)
 	];
 
-	private immutable vec3f[] flowerStorkMedium = [
-		vec3f(0, 0, 0),
-		vec3f(1, 0, 1),
-		vec3f(1, 1, 1),
-		vec3f(1, 1, 1),
-		vec3f(0, 1, 0),
-		vec3f(0, 0, 0),
+	private immutable Vector3f[] flowerStorkMedium = [
+		Vector3f(0, 0, 0),
+		Vector3f(1, 0, 1),
+		Vector3f(1, 1, 1),
+		Vector3f(1, 1, 1),
+		Vector3f(0, 1, 0),
+		Vector3f(0, 0, 0),
 
-		vec3f(1, 0, 0),
-		vec3f(0, 0, 1),
-		vec3f(0, 1, 1),
-		vec3f(0, 1, 1),
-		vec3f(1, 1, 0),
-		vec3f(1, 0, 0),
+		Vector3f(1, 0, 0),
+		Vector3f(0, 0, 1),
+		Vector3f(0, 1, 1),
+		Vector3f(0, 1, 1),
+		Vector3f(1, 1, 0),
+		Vector3f(1, 0, 0),
 
-		vec3f(0, 1, 0),
-		vec3f(1, 1, 1),
-		vec3f(0, 2, 0),
-		vec3f(1, 1, 0),
-		vec3f(0, 1, 1),
-		vec3f(1, 2, 0)
+		Vector3f(0, 1, 0),
+		Vector3f(1, 1, 1),
+		Vector3f(0, 2, 0),
+		Vector3f(1, 1, 0),
+		Vector3f(0, 1, 1),
+		Vector3f(1, 2, 0)
 	];
 	
-	private immutable vec2f[] flowerStorkMediumTexCoords = [
-		vec2f(0, 0),
-		vec2f(1, 0),
-		vec2f(1, 0.5),
-		vec2f(1, 0.5),
-		vec2f(0, 0.5),
-		vec2f(0, 0),
+	private immutable Vector2f[] flowerStorkMediumTexCoords = [
+		Vector2f(0, 0),
+		Vector2f(1, 0),
+		Vector2f(1, 0.5),
+		Vector2f(1, 0.5),
+		Vector2f(0, 0.5),
+		Vector2f(0, 0),
 
-		vec2f(0, 0),
-		vec2f(1, 0),
-		vec2f(1, 0.5),
-		vec2f(1, 0.5),
-		vec2f(0, 0.5),
-		vec2f(0, 0),
+		Vector2f(0, 0),
+		Vector2f(1, 0),
+		Vector2f(1, 0.5),
+		Vector2f(1, 0.5),
+		Vector2f(0, 0.5),
+		Vector2f(0, 0),
 
-		vec2f(0, 0.5),
-		vec2f(1, 0.5),
-		vec2f(0, 1),
-		vec2f(0, 0.5),
-		vec2f(1, 0.5),
-		vec2f(0, 1)
+		Vector2f(0, 0.5),
+		Vector2f(1, 0.5),
+		Vector2f(0, 1),
+		Vector2f(0, 0.5),
+		Vector2f(1, 0.5),
+		Vector2f(0, 1)
 	];
 
-	private immutable vec3f[] grassPlane = [
-		vec3f(0, 0, 0.5),
-		vec3f(1, 0, 0.5),
-		vec3f(1, 1, 0.5),
-		vec3f(1, 1, 0.5),
-		vec3f(0, 1, 0.5),
-		vec3f(0, 0, 0.5)
+	private immutable Vector3f[] grassPlane = [
+		Vector3f(0, 0, 0.5),
+		Vector3f(1, 0, 0.5),
+		Vector3f(1, 1, 0.5),
+		Vector3f(1, 1, 0.5),
+		Vector3f(0, 1, 0.5),
+		Vector3f(0, 0, 0.5)
 	];
 
-	private immutable vec2f[] grassPlaneTexCoords = [
-		vec2f(0.25, 0),
-		vec2f(0.75, 0),
-		vec2f(0.75, 1),
-		vec2f(0.75, 1),
-		vec2f(0.25, 1),
-		vec2f(0.25, 0),
+	private immutable Vector2f[] grassPlaneTexCoords = [
+		Vector2f(0.25, 0),
+		Vector2f(0.75, 0),
+		Vector2f(0.75, 1),
+		Vector2f(0.75, 1),
+		Vector2f(0.25, 1),
+		Vector2f(0.25, 0),
 	];
 }
 
 private class MeshBuffer {
-	vec3f[] vertices;
+	Vector3f[] vertices;
 	ubyte[] colours;
-	vec2f[] texCoords;
+	Vector2f[] texCoords;
 	int vertexCount;
 
 	this() {
@@ -657,7 +657,7 @@ private class MeshBuffer {
 
 	void reset() { vertexCount = 0; }
 
-	void add(vec3f v, ubyte[4] colour, vec2f texCoord) {
+	void add(Vector3f v, ubyte[4] colour, Vector2f texCoord) {
 		vertices[vertexCount] = v;
 		//colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour;
 		colours[vertexCount * 4] = colour[0];

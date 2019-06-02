@@ -1,16 +1,17 @@
 ﻿module square.one.voxelcon.block.meshes.cube;
 
 import square.one.voxelcon.block.processor;
+import dlib.math;
 
-immutable vec3f[8] cubeVertices = [
-	vec3f(0, 0, 0), // ind0
-	vec3f(1, 0, 0), // ind1
-	vec3f(0, 0, 1), // ind2
-	vec3f(1, 0, 1), // ind3
-	vec3f(0, 1, 0), // ind4
-	vec3f(1, 1, 0), // ind5
-	vec3f(0, 1, 1), // ind6
-	vec3f(1, 1, 1)  // ind7
+immutable Vector3f[8] cubeVertices = [
+	Vector3f(0, 0, 0), // ind0
+	Vector3f(1, 0, 0), // ind1
+	Vector3f(0, 0, 1), // ind2
+	Vector3f(1, 0, 1), // ind3
+	Vector3f(0, 1, 0), // ind4
+	Vector3f(1, 1, 0), // ind5
+	Vector3f(0, 1, 1), // ind6
+	Vector3f(1, 1, 1)  // ind7
 ];
 
 immutable ushort[3][2][6] cubeIndices = [
@@ -22,13 +23,13 @@ immutable ushort[3][2][6] cubeIndices = [
 	[[2, 3, 7], [7, 6, 2]]  // +Z
 ];
 
-immutable vec3f[6] cubeNormals = [
-	vec3f(-1, 0, 0),
-	vec3f(1, 0, 0),
-	vec3f(0, -1, 0),
-	vec3f(0, 1, 0),
-	vec3f(0, 0, -1),
-	vec3f(0, 0, 1)
+immutable Vector3f[6] cubeNormals = [
+	Vector3f(-1, 0, 0),
+	Vector3f(1, 0, 0),
+	Vector3f(0, -1, 0),
+	Vector3f(0, 1, 0),
+	Vector3f(0, 0, -1),
+	Vector3f(0, 0, 1)
 ];
 
 final class Cube : IBlockVoxelMesh {
@@ -46,13 +47,14 @@ final class Cube : IBlockVoxelMesh {
 
 	SideSolidTable isSideSolid(Voxel voxel, VoxelSide side) { return SideSolidTable.solid; }
 
-	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, vec3i coord, ref vec3f[64] verts, ref vec3f[64] normals, out int vertCount) {
+	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount) {
 		int v = 0, n = 0;
 
 		void addTriag(ushort[3] indices, int dir) {
-			verts[v++] = cubeVertices[indices[0]] * voxelSkip + coord;
-			verts[v++] = cubeVertices[indices[1]] * voxelSkip + coord;
-			verts[v++] = cubeVertices[indices[2]] * voxelSkip + coord;
+			Vector3f vfcoord = Vector3f(coord);
+			verts[v++] = cubeVertices[indices[0]] * voxelSkip + vfcoord;
+			verts[v++] = cubeVertices[indices[1]] * voxelSkip + vfcoord;
+			verts[v++] = cubeVertices[indices[2]] * voxelSkip + vfcoord;
 			
 			normals[n++] = cubeNormals[dir];
 			normals[n++] = cubeNormals[dir];

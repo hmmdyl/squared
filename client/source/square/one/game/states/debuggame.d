@@ -17,7 +17,8 @@ import square.one.terrain.basic.manager;
 import square.one.terrain.resources;
 
 import derelict.opengl3.gl3;
-import gfm.math;
+import dlib.math;
+import moxana.utils.math;
 
 import square.one.ingametime.ingametime;
 
@@ -61,7 +62,7 @@ class DebugGameState : IState {
 
 		View view = new View;
 		engine.renderContext.view = view;
-		view.position = vec3f(0f, 4f, 0f);
+		view.position = Vector3f(0f, 4f, 0f);
 		camera = new Camera(view);
 
 		//distributor.light.dire.insert(sky.sunLight);
@@ -113,8 +114,8 @@ class DebugGameState : IState {
 		pl = engine.renderDistributor.light.createPointLight;
 		pl.ambientIntensity = 0f;
 		pl.diffuseIntensity = 0f;
-		pl.position = vec3f(0f, 4f, 0);
-		pl.colour = vec3f(1f, 1f, 1f);
+		pl.position = Vector3f(0f, 4f, 0);
+		pl.colour = Vector3f(1f, 1f, 1f);
 		pl.constAtt = 0.5f;
 		pl.linAtt = 0.95f;
 		pl.expAtt = 0.3f;
@@ -182,21 +183,21 @@ class DebugGameState : IState {
 	//EditTool et;
 	bool prevBreakDown, prevPlaceDown;
 
-	vec3l de;
+	Vector3l de;
 
 	void update(double previousFrameTime) {
 		import derelict.glfw3.glfw3;
 
 		if(engine.window.isFocused) {
 			double nx, ny;
-			vec2d n = engine.window.cursorPos;
+			Vector2d n = engine.window.cursorPos;
 			nx = n.x;
 			ny = n.y;
 			
 			double cx = nx - prevX;
 			double cy = ny - prevY;
 
-			vec2d winSize = vec2d(engine.window.size);
+			Vector2d winSize = Vector2d(engine.window.size);
 			winSize.x /= 2;
 			winSize.y /= 2;
 
@@ -204,14 +205,14 @@ class DebugGameState : IState {
 			prevX = engine.window.cursorPos.x;
 			prevY = engine.window.cursorPos.y;
 			
-			vec3f r; //vec3f(cast(float)cy * 0.75f, cast(float)cx * 0.75f, 0);
+			Vector3f r; //vec3f(cast(float)cy * 0.75f, cast(float)cx * 0.75f, 0);
 			r.x = cast(float)cy * cast(float)previousFrameTime * 100;
 			r.y = cast(float)cx * cast(float)previousFrameTime * 100;
 			r.z = 0;
 			
 			camera.rotate(r);
 
-			vec3f a = vec3f(0f, 0f, 0f);
+			Vector3f a = Vector3f(0f, 0f, 0f);
 
 			if(engine.window.isKeyDown(GLFW_KEY_W)) 
 				a.z += 10f;
@@ -284,9 +285,7 @@ class DebugGameState : IState {
 
 		bool shouldBreak = engine.window.isMouseButtonDown(MouseButton.right) && !prevBreakDown;
 		bool shouldPlace = engine.window.isMouseButtonDown(MouseButton.left) && !prevPlaceDown;
-		//vec3l de;
-		vec3f df;
-		vec3i face;
+
 		
 		//et.update(camera.view.position, camera.view.rotation, terrainManager, shouldBreak, shouldPlace, de, df, face);
 		
@@ -367,7 +366,7 @@ Rendered: %i",
 			s.tm.noiseGeneratorManager.numBusy,
 			s.tm.chunksAdded, s.tm.chunksHibernated, s.tr.renderedInFrame);
 		
-		engine.renderContext.textRenderer.render(engine.roboto16, cast(immutable)diagbuff, l, vec2f(-1f, 0.95f), vec3f(1f, 0.5f, 0f));
+		engine.renderContext.textRenderer.render(engine.roboto16, cast(immutable)diagbuff, l, Vector2f(-1f, 0.95f), Vector3f(1f, 0.5f, 0f));
 	}
 }
 
@@ -391,12 +390,12 @@ final class Crosshair : IRenderHandler {
 	void ui(RenderContext rc) {
 		import moxana.graphics.texture2d;
 
-		vec2i windowSize = rc.window.size;
+		Vector2i windowSize = rc.window.size;
 		windowSize /= 2;
-		vec2i crossHairStart = vec2i(windowSize.x - 16, windowSize.y - 16);
+		Vector2i crossHairStart = Vector2i(windowSize.x - 16, windowSize.y - 16);
 
-		picture.position = cast(vec2f)crossHairStart;
-		picture.size = vec2f(33f, 33f);
+		picture.position = cast(Vector2f)crossHairStart;
+		picture.size = Vector2f(33f, 33f);
 		engine.pictureRenderer.render(picture);
 
 		//cascadePicture.position = vec2f(0f, 0f);

@@ -16,7 +16,7 @@ import moxana.graphics.rh;
 import std.container.array;
 import std.range;
 
-import gfm.math;
+import dlib.math;
 
 class MainMenuOption {
 	string name;
@@ -91,7 +91,7 @@ final class MainMenu : IState {
 				if(option.onClick !is null) option.onClick(option);
 			}
 			
-			option.button.update(cast(vec2f)engine.window.cursorPos, engine.window.isMouseButtonDown(MouseButton.left));
+			option.button.update(cast(Vector2f)engine.window.cursorPos, engine.window.isMouseButtonDown(MouseButton.left));
 		}
 	}
 
@@ -120,10 +120,10 @@ class MainMenuRenderer : IRenderHandler {
 		import moxana.graphics.rgbconv;
 		
 		foreach(MainMenuOption option; MainMenuResources.options) {
-			option.button.position = vec2f(startX, penY);
-			option.button.size = vec2f(width, height);
+			option.button.position = Vector2f(startX, penY);
+			option.button.size = Vector2f(width, height);
 			option.button.font = engine.roboto16;
-			option.button.textPos = vec2f(fontStartX, fontPenY);
+			option.button.textPos = Vector2f(fontStartX, fontPenY);
 			option.button.text = option.name;
 			
 			option.button.inactiveColour = rgbaToVec(30, 30, 30, 128);

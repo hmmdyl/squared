@@ -1,0 +1,14 @@
+.dub
+docs.json
+__dummy.html
+docs/
+squareone.so
+squareone.dylib
+squareone.dll
+squareone.a
+squareone.lib
+squareone-test-*
+*.exe
+*.o
+*.obj
+*.lst

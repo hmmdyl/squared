@@ -2,6 +2,7 @@
 
 import square.one.voxelcon.block.processor;
 import square.one.voxelcon.block.textures.dirttexture;
+import dlib.math;
 
 final class Dirt : IBlockVoxelMaterial {
 	/*@property string technical() { return "block_material_dirt"; }
@@ -22,7 +23,7 @@ final class Dirt : IBlockVoxelMaterial {
 		dirtTextureID = bp.getTexture(DirtTexture.technicalStatic).id;
 	}
 	
-	void generateTextureIDs(int vlength, ref vec3f[64] vertices, ref vec3f[64] normals, ref ushort[64] ids) {
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) {
 		ids[] = dirtTextureID;
 	}
 }

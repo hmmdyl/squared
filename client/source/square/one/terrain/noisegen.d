@@ -16,14 +16,12 @@ import core.thread;
 import moxana.procgen.opensimplexnoise;
 import moxana.utils.logger;
 
-import gfm.math;
-
-import accessors;
+import dlib.math;
 
 struct NoiseGeneratorOrder
 {
 	ILoadableVoxelBuffer chunk;
-	vec3d position;
+	Vector3d position;
 	
 	private uint toLoad;
 	@property bool loadChunk() { return ((toLoad) & 1) == true; }
@@ -38,7 +36,7 @@ struct NoiseGeneratorOrder
 
 	@property bool anyRequiresNoise() { return toLoad > 0; }
 
-	this(ILoadableVoxelBuffer chunk, vec3d position)
+	this(ILoadableVoxelBuffer chunk, Vector3d position)
 	{
 		this.chunk = chunk;
 		this.position = position;
@@ -307,7 +305,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				{
 					//vec3f horizPos = ChunkPosition.blockPosRealCoord(chunk.position, vec3i(x, 0, z));
 
-					vec3d horizPos = order.position + vec3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
+					Vector3d horizPos = order.position + Vector3d(x * ChunkData.voxelScale, 0, z * ChunkData.voxelScale);
 
 					/*float height = osn.eval(horizPos.x / 256f, horizPos.z / 256f) * 128f;
 					height += osn.eval(horizPos.x / 128f, horizPos.z / 128f) * 64f;
@@ -334,7 +332,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 					foreach(int y; -sbOffset .. ChunkData.chunkDimensions + sbOffset) 
 					{
-						const vec3d blockPos = order.position + vec3d(x * ChunkData.voxelScale, y * ChunkData.voxelScale, z * ChunkData.voxelScale);
+						const Vector3d blockPos = order.position + Vector3d(x * ChunkData.voxelScale, y * ChunkData.voxelScale, z * ChunkData.voxelScale);
 						//vec3f blockPos = ChunkPosition.blockPosRealCoord(chunk.position, vec3i(x, y, z));
 
 						if(blockPos.y <= height) 

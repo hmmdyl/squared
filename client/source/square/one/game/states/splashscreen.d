@@ -10,7 +10,7 @@ import moxana.graphics.distribute;
 import moxana.graphics.rh;
 import moxana.utils.loadable;
 
-import gfm.math;
+import dlib.math;
 
 import std.datetime.stopwatch;
 
@@ -78,8 +78,8 @@ final class SplashscreenRenderer : IRenderHandler {
 	void renderPostPhysical(RenderContext rc, ref LocalRenderContext lrc) {}
 	
 	void ui(RenderContext rc) {
-		splash.position = vec2i(0, 0);
-		splash.size = cast(vec2f)rc.window.size;
+		splash.position = Vector2i(0, 0);
+		splash.size = cast(Vector2f)rc.window.size;
 		engine.pictureRenderer.render(splash);
 	}
 }

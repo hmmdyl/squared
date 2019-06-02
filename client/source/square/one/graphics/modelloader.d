@@ -3,9 +3,9 @@
 import derelict.assimp3.assimp;
 
 import std.string;
-import gfm.math.vector;
+import dlib.math;
 
-void loadModelVerts(string file, out vec3f[] vertices) {
+void loadModelVerts(string file, out Vector3f[] vertices) {
 	const(aiScene*) scene = aiImportFile(toStringz(file), aiProcess_Triangulate);
 	if(scene == null)
 		throw new Exception("Could not load model from file \"" ~ file ~ "\".");
@@ -18,13 +18,13 @@ void loadModelVerts(string file, out vec3f[] vertices) {
 			foreach(uint k; 0 .. 3) {
 				aiVector3D vert = mesh.mVertices[face.mIndices[k]];
 				
-				vertices ~= vec3f(vert.x, vert.y, vert.z);
+				vertices ~= Vector3f(vert.x, vert.y, vert.z);
 			}
 		}
 	}
 }
 
-void loadModelVertsNorms(string file, out vec3f[] vertices, out vec3f[] normals) {
+void loadModelVertsNorms(string file, out Vector3f[] vertices, out Vector3f[] normals) {
 	return;
 
 	/*const(aiScene*) scene = aiImportFile(toStringz(file), aiProcess_Triangulate);
@@ -47,7 +47,7 @@ void loadModelVertsNorms(string file, out vec3f[] vertices, out vec3f[] normals)
 	}*/
 }
 
-void loadModelVertsNormsUVs(string file, out vec3f[] vertices, out vec3f[] normals, out vec2f[] uvs) {
+void loadModelVertsNormsUVs(string file, out Vector3f[] vertices, out Vector3f[] normals, out Vector2f[] uvs) {
 	const(aiScene*) scene = aiImportFile(toStringz(file), aiProcess_Triangulate);
 	if(scene == null)
 		throw new Exception("Could not load model from file \"" ~ file ~ "\".");
@@ -62,9 +62,9 @@ void loadModelVertsNormsUVs(string file, out vec3f[] vertices, out vec3f[] norma
 				aiVector3D normal = mesh.mNormals[face.mIndices[k]];
 				aiVector3D uv = mesh.mTextureCoords[0][face.mIndices[k]];
 				
-				vertices ~= vec3f(vert.x, vert.y, vert.z);
-				normals ~= vec3f(normal.x, normal.y, normal.z);
-				uvs ~= vec2f(uv.x, uv.y);
+				vertices ~= Vector3f(vert.x, vert.y, vert.z);
+				normals ~= Vector3f(normal.x, normal.y, normal.z);
+				uvs ~= Vector2f(uv.x, uv.y);
 			}
 		}
 	}

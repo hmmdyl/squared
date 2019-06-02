@@ -6,7 +6,8 @@ import square.one.utils.disposable;
 
 import moxana.entity.transform;
 
-import gfm.math;
+import dlib.math;
+import moxana.utils.math;
 import std.math;
 
 import std.datetime.stopwatch;
@@ -291,38 +292,38 @@ enum ChunkNeighbours
 	last
 }
 
-vec3i chunkNeighbourToOffset(ChunkNeighbours n)
+Vector3i chunkNeighbourToOffset(ChunkNeighbours n)
 {
 	final switch(n) with(ChunkNeighbours)
 	{
-		case nxNyNz: return vec3i(-1, -1, -1);
-		case nyNz: return vec3i(0, -1, -1);
-		case pxNyNz: return vec3i(1, -1, -1);
-		case nxNy: return vec3i(-1, -1, 0);
-		case ny: return vec3i(0, -1, 0);
-		case pxNy: return vec3i(1, -1, 0);
-		case nxNyPz: return vec3i(-1, -1, 1);
-		case nyPz: return vec3i(0, -1, 1);
-		case pxNyPz: return vec3i(1, -1, 1);
+		case nxNyNz: return Vector3i(-1, -1, -1);
+		case nyNz: return Vector3i(0, -1, -1);
+		case pxNyNz: return Vector3i(1, -1, -1);
+		case nxNy: return Vector3i(-1, -1, 0);
+		case ny: return Vector3i(0, -1, 0);
+		case pxNy: return Vector3i(1, -1, 0);
+		case nxNyPz: return Vector3i(-1, -1, 1);
+		case nyPz: return Vector3i(0, -1, 1);
+		case pxNyPz: return Vector3i(1, -1, 1);
 
-		case nxNz: return vec3i(-1, 0, -1);
-		case nz: return vec3i(0, 0, -1);
-		case pxNz: return vec3i(1, 0, -1);
-		case nx: return vec3i(-1, 0, 0);
-		case px: return vec3i(1, 0, 0);
-		case nxPz: return vec3i(-1, 0, 1);
-		case pz: return vec3i(0, 0, 1);
-		case pxPz: return vec3i(1, 0, 1);
+		case nxNz: return Vector3i(-1, 0, -1);
+		case nz: return Vector3i(0, 0, -1);
+		case pxNz: return Vector3i(1, 0, -1);
+		case nx: return Vector3i(-1, 0, 0);
+		case px: return Vector3i(1, 0, 0);
+		case nxPz: return Vector3i(-1, 0, 1);
+		case pz: return Vector3i(0, 0, 1);
+		case pxPz: return Vector3i(1, 0, 1);
 
-		case nxPyNz: return vec3i(-1, 1, -1);
-		case pyNz: return vec3i(0, 1, -1);
-		case pxPyNz: return vec3i(1, 1, -1);
-		case nxPy: return vec3i(-1, 1, 0);
-		case py: return vec3i(0, 1, 0);
-		case pxPy: return vec3i(1, 1, 0);
-		case nxPyPz: return vec3i(-1, 1, 1);
-		case pyPz: return vec3i(0, 1, 1);
-		case pxPyPz: return vec3i(1, 1, 1);
+		case nxPyNz: return Vector3i(-1, 1, -1);
+		case pyNz: return Vector3i(0, 1, -1);
+		case pxPyNz: return Vector3i(1, 1, -1);
+		case nxPy: return Vector3i(-1, 1, 0);
+		case py: return Vector3i(0, 1, 0);
+		case pxPy: return Vector3i(1, 1, 0);
+		case nxPyPz: return Vector3i(-1, 1, 1);
+		case pyPz: return Vector3i(0, 1, 1);
+		case pxPyPz: return Vector3i(1, 1, 1);
 
 		case last: throw new Exception("Invalid");
 	}	
@@ -353,27 +354,19 @@ struct ChunkPosition
 		return other.x == x && other.y == y && other.z == z;
 	}
 
-	vec3f toVec3f() const
+	Vector3f toVec3f() const
 	{
-		return vec3f(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
+		return Vector3f(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
-	vec3d toVec3d() const
+	Vector3d toVec3d() const
 	{
-		return vec3d(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
+		return Vector3d(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
-	vec3i toVec3i() { return vec3i(x, y, z); }
+	Vector3i toVec3i() { return Vector3i(x, y, z); }
 
-	static ChunkPosition fromVec3f(vec3f v) 
-	{
-		return ChunkPosition(
-			cast(int)(v.x * ChunkData.invChunkDimensionsMetres), 
-			cast(int)(v.y * ChunkData.invChunkDimensionsMetres), 
-			cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
-	}
-
-	static ChunkPosition fromVec3d(vec3d v)
+	static ChunkPosition fromVec3f(Vector3f v) 
 	{
 		return ChunkPosition(
 			cast(int)(v.x * ChunkData.invChunkDimensionsMetres), 
@@ -381,16 +374,24 @@ struct ChunkPosition
 			cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
 	}
 
-	static vec3f blockPosRealCoord(ChunkPosition cp, vec3i block) {
-		vec3f cpReal = cp.toVec3f();
+	static ChunkPosition fromVec3d(Vector3d v)
+	{
+		return ChunkPosition(
+			cast(int)(v.x * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.y * ChunkData.invChunkDimensionsMetres), 
+			cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
+	}
+
+	static Vector3f blockPosRealCoord(ChunkPosition cp, Vector3i block) {
+		Vector3f cpReal = cp.toVec3f();
 		cpReal.x += (block.x * ChunkData.voxelScale);
 		cpReal.y += (block.y * ChunkData.voxelScale);
 		cpReal.z += (block.z * ChunkData.voxelScale);
 		return cpReal;
 	}
 
-	static vec3l realCoordToBlockPos(vec3f pos) {
-		vec3l bp;
+	static Vector3l realCoordToBlockPos(Vector3f pos) {
+		Vector3l bp;
 		bp.x = cast(long)floor(pos.x * ChunkData.voxelsPerMetre);
 		bp.y = cast(long)floor(pos.y * ChunkData.voxelsPerMetre);
 		bp.z = cast(long)floor(pos.z * ChunkData.voxelsPerMetre);

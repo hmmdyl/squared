@@ -3,7 +3,7 @@
 import std.conv;
 
 import std.math;
-import gfm.math.vector : vec3f;
+import dlib.math;
 
 import moxana.hierarchy.world;
 
@@ -104,10 +104,10 @@ struct IngameTime {
 		return "Time: " ~ to!string(hour) ~ ':' ~ to!string(minute) ~ ':' ~ to!string(second);
 	}
 
-	vec3f timeToSun() {
+	Vector3f timeToSun() {
 		float time24 = asDecimal;
 
-		return vec3f(
+		return Vector3f(
 			0,
 			-cos(inv12Pi * time24),
 			sin(inv12Pi * time24));

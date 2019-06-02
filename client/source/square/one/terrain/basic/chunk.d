@@ -5,7 +5,7 @@ import square.one.terrain.resources;
 
 import moxana.entity.transform;
 
-import gfm.math;
+import dlib.math;
 
 struct BasicChunk 
 {
@@ -16,8 +16,8 @@ struct BasicChunk
         _position = n;
         Transform transform = Transform();
         transform.position = n.toVec3f;
-        transform.rotation = vec3f(0);
-        transform.scale = vec3f(1);
+        transform.rotation = Vector3f(0);
+        transform.scale = Vector3f(1);
         chunk.transform = transform;
     }
 

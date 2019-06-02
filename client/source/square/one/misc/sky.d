@@ -16,10 +16,10 @@ import std.math;
 import std.typecons;
 
 import derelict.opengl3.gl3;
-import gfm.math;
+import dlib.math;
 
 class Sky : IRenderHandler {
-	immutable Tuple!(IngameTime, IngameTime, vec3f)[] coloursPerTime = [
+	immutable Tuple!(IngameTime, IngameTime, Vector3f)[] coloursPerTime = [
 		tuple(IngameTime(5, 35), IngameTime(5, 40), rgbToVec(0, 0, 0)),
 		tuple(IngameTime(5, 40), IngameTime(6, 2), rgbToVec(255, 63, 28)),		/* START SUNRISE */
 		tuple(IngameTime(6, 2), IngameTime(6, 3), rgbToVec(255, 80, 28)),
@@ -45,7 +45,7 @@ class Sky : IRenderHandler {
 	IngameTime time;
 	View view;
 
-	vec3f playerPosition;
+	Vector3f playerPosition;
 
 	DirectionalLight* light;
 	//@property DirectionalLight sunLight() { return light; }
@@ -71,9 +71,9 @@ class Sky : IRenderHandler {
 		//atmosphere.sunDirection = time.timeToSun;
 
 		bool set = false;
-		foreach(int i, Tuple!(IngameTime, IngameTime, vec3f) colour; coloursPerTime) {
+		foreach(int i, Tuple!(IngameTime, IngameTime, Vector3f) colour; coloursPerTime) {
 			if(time >= colour[0] && time <= colour[1]) {
-				Tuple!(IngameTime, IngameTime, vec3f) next = void;
+				Tuple!(IngameTime, IngameTime, Vector3f) next = void;
 				bool slerp = false;
 
 				if(i < coloursPerTime.length - 1) {
@@ -102,7 +102,7 @@ class Sky : IRenderHandler {
 				set = true;
 			}
 		}
-		if(!set) light.colour = vec3f(0f, 0f, 0f);
+		if(!set) light.colour = Vector3f(0f, 0f, 0f);
 	}
 
 	void shadowDepthMapPass(RenderContext rc, ref LocalRenderContext lrc) {}
@@ -110,7 +110,7 @@ class Sky : IRenderHandler {
 	void ui(RenderContext rc) {}
 
 	void renderPostPhysical(RenderContext rc, ref LocalRenderContext lrc) {
-		atmosphere.render(rc, vec3f(0f, 0f, 0f));
+		atmosphere.render(rc, Vector3f(0f, 0f, 0f));
 	}
 }
 
@@ -120,14 +120,14 @@ class AtmosphereRenderer {
 	
 	private int vertexCount;
 	
-	vec3f sunDirection;
+	Vector3f sunDirection;
 	float scale;
 
 	enum float earthRadius = 6371000;
 
 	this(float scale = 637.1f) {
 		this.scale = scale;
-		sunDirection = vec3f(0f, 0f, 0f);
+		sunDirection = Vector3f(0f, 0f, 0f);
 		
 		ShaderEntry[] shaders = [
 			ShaderEntry(readText(buildPath(getcwd(), "assets/shaders/atmospheric_scattering.vs.glsl")), GL_VERTEX_SHADER),
@@ -141,7 +141,7 @@ class AtmosphereRenderer {
 		effect.findUniform("SunDirection");
 		effect.unbind();
 		
-		vec3f[] verts, norms;
+		Vector3f[] verts, norms;
 		loadModelVertsNorms(buildPath(getcwd(), "assets/models/sphere.dae"), verts, norms);
 		vertexCount = cast(int)verts.length;
 		
@@ -150,23 +150,23 @@ class AtmosphereRenderer {
 		glGenBuffers(1, &nbo);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vec3f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, Vector3f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, nbo);
-		glBufferData(GL_ARRAY_BUFFER, vec3f.sizeof * norms.length, norms.ptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, Vector3f.sizeof * norms.length, norms.ptr, GL_STATIC_DRAW);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void render(RenderContext rc, vec3f cameraPos) {
-		mat4f translation = mat4f.translation(cameraPos) * mat4f.scaling(vec3f(scale, scale, scale));		
-		mat4f mvp = rc.primaryProj.matrix * rc.view.matrix * translation;
+	void render(RenderContext rc, Vector3f cameraPos) {
+		Matrix4f translation = translationMatrix(cameraPos) * scaleMatrix(Vector3f(scale, scale, scale));		
+		Matrix4f mvp = rc.primaryProj.matrix * rc.view.matrix * translation;
 		
 		effect.bind();
 		
 		effect["ModelViewProjection"].set(&mvp, true);
 		effect["Model"].set(&translation, true);
-		effect["CamPos"].set(vec3f(0, 6372000, 0));
+		effect["CamPos"].set(Vector3f(0, 6372000, 0));
 		effect["SunDirection"].set(sunDirection);
 		
 		glBindVertexArray(vao);

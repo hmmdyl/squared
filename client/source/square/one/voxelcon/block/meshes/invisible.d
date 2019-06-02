@@ -1,6 +1,7 @@
 ﻿module square.one.voxelcon.block.meshes.invisible;
 
 import square.one.voxelcon.block.processor;
+import dlib.math;
 
 final class Invisible : IBlockVoxelMesh {
 	@property string technical() { return "block_mesh_invisible"; }
@@ -14,7 +15,7 @@ final class Invisible : IBlockVoxelMesh {
 	
 	SideSolidTable isSideSolid(Voxel voxel, VoxelSide side) { return SideSolidTable.notSolid; }
 
-	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, vec3i coord, ref vec3f[64] verts, ref vec3f[64] normals, out int vertCount) {
+	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount) {
 		vertCount = 0;
 	}
 }

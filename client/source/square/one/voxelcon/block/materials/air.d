@@ -1,6 +1,7 @@
 ﻿module square.one.voxelcon.block.materials.air;
 
 import square.one.voxelcon.block.processor;
+import dlib.math;
 
 final class Air : IBlockVoxelMaterial {
 	@property string technical() { return "block_material_air"; }
@@ -16,7 +17,7 @@ final class Air : IBlockVoxelMaterial {
 
 	}
 
-	void generateTextureIDs(int vlength, ref vec3f[64] vertices, ref vec3f[64] normals, ref ushort[64] ids) {
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) {
 		ids[] = 0;
 	}
 }

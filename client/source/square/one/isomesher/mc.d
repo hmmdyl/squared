@@ -5,29 +5,29 @@ import square.one.terrain.voxel;
 
 import square.one.isomesher.mctables;
 
-import gfm.math;
+import dlib.math;
 
 import std.typecons;
 import std.math;
 
-immutable vec3i[7] accessors = 
+immutable Vector3i[7] accessors = 
 [
-	vec3i(1, 0, 0),
-	vec3i(1, 0, 1),
-	vec3i(0, 0, 1),
-	vec3i(0, 1, 0),
-	vec3i(1, 1, 0),
-	vec3i(1, 1, 1),
-	vec3i(0, 1, 1)
+	Vector3i(1, 0, 0),
+	Vector3i(1, 0, 1),
+	Vector3i(0, 0, 1),
+	Vector3i(0, 1, 0),
+	Vector3i(1, 1, 0),
+	Vector3i(1, 1, 1),
+	Vector3i(0, 1, 1)
 ];
 
-alias PnPair = Tuple!(vec3f, "vertex", vec3f, "normal");
+alias PnPair = Tuple!(Vector3f, "vertex", Vector3f, "normal");
 
 enum float isolevel = 0.5f;
 
 private PnPair interp(float d1, float d2,
-					vec3f p1, vec3f p2,
-					vec3f n1, vec3f n2)
+					Vector3f p1, Vector3f p2,
+					Vector3f n1, Vector3f n2)
 {
 	if(abs(isolevel - d1) < 0.0001) return PnPair(p1, n1);
 	if(abs(isolevel - d2) < 0.0001) return PnPair(p2, n2);
@@ -40,10 +40,10 @@ private PnPair interp(float d1, float d2,
 struct Cell
 {
 	float[8] densities;
-	vec3f[8] points;
-	vec3f[8] normals;
+	Vector3f[8] points;
+	Vector3f[8] normals;
 
-	this(float[8] densities, vec3f[8] points, vec3f[8] normals)
+	this(float[8] densities, Vector3f[8] points, Vector3f[8] normals)
 	{
 		this.densities = densities;
 		this.points = points;
@@ -51,7 +51,7 @@ struct Cell
 	}
 }
 
-void meshCell(const Cell c, const float isolevel, out vec3f[15] finalVertices, out vec3f[15] finalNormals, out int vertexCount)
+void meshCell(const Cell c, const float isolevel, out Vector3f[15] finalVertices, out Vector3f[15] finalNormals, out int vertexCount)
 {
 	ubyte edgeType;
 	if(c.densities[0] < isolevel) edgeType |= 1;

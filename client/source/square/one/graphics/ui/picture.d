@@ -12,11 +12,11 @@ import std.file;
 import std.path;
 
 import derelict.opengl3.gl3;
-import gfm.math;
+import dlib.math;
 
 class Picture {
-	vec2f position;
-	vec2f size;
+	Vector2f position;
+	Vector2f size;
 
 	private Texture2D texture_;
 	@property Texture2D texture() { return texture_; }
@@ -71,16 +71,16 @@ class PictureRenderer {
 		glGenVertexArrays(1, &vao);
 		glGenBuffers(1, &vbo);
 
-		vec2f[] verts = [
-			vec2f(0, 0),
-			vec2f(1, 0),
-			vec2f(1, 1),
-			vec2f(1, 1),
-			vec2f(0, 1),
-			vec2f(0, 0)
+		Vector2f[] verts = [
+			Vector2f(0, 0),
+			Vector2f(1, 0),
+			Vector2f(1, 1),
+			Vector2f(1, 1),
+			Vector2f(0, 1),
+			Vector2f(0, 0)
 		];
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vec2f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, Vector2f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
@@ -104,7 +104,7 @@ class PictureRenderer {
 		glEnableVertexAttribArray(0);
 		scope(exit) glDisableVertexAttribArray(0);
 
-		mat4f proj = rcore.orthogonal;
+		Matrix4f proj = rcore.orthogonal;
 		effect["Projection"].set(&proj, true);
 
 		effect["Position"].set(pic.position);

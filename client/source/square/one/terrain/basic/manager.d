@@ -18,7 +18,7 @@ import containers.unrolledlist;
 import containers.dynamicarray;
 import std.experimental.allocator.mallocator;
 
-import gfm.math;
+import dlib.math;
 
 import std.math;
 import std.conv : to;
@@ -28,9 +28,9 @@ import std.parallelism;
 
 struct BasicTmSettings 
 {
-    vec3i addRange;
-	vec3i addRangeExtended;
-    vec3i removeRange;
+    Vector3i addRange;
+	Vector3i addRangeExtended;
+    Vector3i removeRange;
     NoiseGeneratorManager.createNGDel createNg;
     Resources resources;
 
@@ -41,9 +41,9 @@ struct BasicTmSettings
 	static BasicTmSettings createDefault(Resources r, string worldSavesDir, string worldDir, string worldName)
 	{
 		BasicTmSettings tm;
-		tm.addRange = vec3i(5);
-		tm.addRangeExtended = vec3i(20);
-		tm.removeRange = vec3i(4, 6, 4);
+		tm.addRange = Vector3i(5);
+		tm.addRangeExtended = Vector3i(20);
+		tm.removeRange = Vector3i(4, 6, 4);
 		tm.createNg = () { return new DefaultNoiseGenerator(); };
 		tm.resources = r;
 		tm.worldSavesDir = worldSavesDir;
@@ -110,7 +110,7 @@ private final class WorldSaveManager
 	NoiseGeneratorManager noiseGenerator;
 
 	private VoxelBuffer[ChunkPosition] buffers;
-	private HashSet!vec3i outGoingRegions;
+	private HashSet!Vector3i outGoingRegions;
 	BasicChunk[ChunkPosition]* activeChunks;
 
 	const string worldSavesDir;
@@ -126,7 +126,7 @@ private final class WorldSaveManager
 		this.worldName = worldName;
 	}
 
-	private string composeRegionName(vec3i r)
+	private string composeRegionName(Vector3i r)
 	{
 		string regionName;
 		regionName ~= to!string(r.x);
@@ -138,7 +138,7 @@ private final class WorldSaveManager
 		return regionName;
 	}
 
-	private bool regionExists(vec3i r, out string fin)
+	private bool regionExists(Vector3i r, out string fin)
 	{
 		string regionName = composeRegionName(r);
 		import std.path : buildPath;
@@ -146,7 +146,7 @@ private final class WorldSaveManager
 		return exists(fin);
 	}
 
-	private bool chunkInRegionExists(vec3i region, ChunkPosition internal, out string file)
+	private bool chunkInRegionExists(Vector3i region, ChunkPosition internal, out string file)
 	{
 		bool regionFileExists = regionExists(region, file);
 		if(!regionFileExists) return false;
@@ -162,7 +162,7 @@ private final class WorldSaveManager
 		return ((header >> index) & 1) == 1;
 	}
 
-	private void getIndices(vec3i cpInternal, 
+	private void getIndices(Vector3i cpInternal, 
 		out int index, out int start, out int end)
 	{
 		index = flattenIndex(cpInternal.x, cpInternal.y, cpInternal.z, chunksPerRegionAxis);
@@ -172,7 +172,7 @@ private final class WorldSaveManager
 
 	private enum int regionFileSize = chunksPerRegionCubed * ChunkData.chunkDimensionsCubed * Voxel.sizeof + ulong.sizeof;
 
-	private vec3i getRegion(ChunkPosition cp, out ChunkPosition internal)
+	private Vector3i getRegion(ChunkPosition cp, out ChunkPosition internal)
 	{
 		const int rx = ifloordiv(cp.x, chunksPerRegionAxis);
 		const int ry = ifloordiv(cp.y, chunksPerRegionAxis);
@@ -182,7 +182,7 @@ private final class WorldSaveManager
 		internal.y = cp.y - (ry * chunksPerRegionAxis);
 		internal.z = cp.z - (rz * chunksPerRegionAxis);
 
-		return vec3i(rx, ry, rz);
+		return Vector3i(rx, ry, rz);
 	}
 
 	void loadChunk(BasicChunk* chunk)
@@ -191,29 +191,29 @@ private final class WorldSaveManager
 		chunk.chunk.dataLoadBlocking = true;
 
 		ChunkPosition internal;
-		vec3i region = getRegion(chunk.position, internal);
+		Vector3i region = getRegion(chunk.position, internal);
 
 		ChunkPosition[26] neighbours;
 		foreach(int c; 0 .. cast(int)ChunkNeighbours.last)
 		{
 			ChunkNeighbours n = cast(ChunkNeighbours)c;
-			vec3i o = chunkNeighbourToOffset(n);
+			Vector3i o = chunkNeighbourToOffset(n);
 			neighbours[c] = ChunkPosition(chunk.position.x + o.x, chunk.position.y + o.y, chunk.position.z + o.z);
 		}
-		vec3i[26] regionsOfNeighbours;
+		Vector3i[26] regionsOfNeighbours;
 		ChunkPosition[26] internalNeighbours;
 		foreach(int c, ChunkPosition cp; neighbours)
 			regionsOfNeighbours[c] = getRegion(neighbours[c], internalNeighbours[c]);
 
 		NoiseGeneratorOrder order = NoiseGeneratorOrder(chunk.chunk, chunk.position.toVec3d);
 
-		vec3i[27] uniqueRegions;
+		Vector3i[27] uniqueRegions;
 		int numUniqueRegions;
 		uniqueRegions[0] = region;
-		foreach(vec3i o; regionsOfNeighbours)
+		foreach(Vector3i o; regionsOfNeighbours)
 		{
 			bool isFound;
-			foreach(vec3i o2; uniqueRegions)
+			foreach(Vector3i o2; uniqueRegions)
 				if(o2 == o) 
 					isFound = true;
 
@@ -223,7 +223,7 @@ private final class WorldSaveManager
 			uniqueRegions[numUniqueRegions++] = o;
 		}
 
-		foreach(vec3i ron; uniqueRegions)
+		foreach(Vector3i ron; uniqueRegions)
 		{
 			string regionFile;
 			const bool regEx = regionExists(ron, regionFile);	
@@ -300,9 +300,9 @@ private final class WorldSaveManager
 
 				assert(bcn !is null || buffer !is null);
 				
-				const vec3i cnOffset = chunkNeighbourToOffset(cast(ChunkNeighbours)i);
+				const Vector3i cnOffset = chunkNeighbourToOffset(cast(ChunkNeighbours)i);
 				
-				const vec3i neighbourVoxelCoord = vec3i(
+				const Vector3i neighbourVoxelCoord = Vector3i(
 					cnOffset.x < 0 ? ChunkData.chunkDimensions - 1 : 0,
 					cnOffset.y < 0 ? ChunkData.chunkDimensions - 1 : 0,
 					cnOffset.z < 0 ? ChunkData.chunkDimensions - 1 : 0
@@ -343,7 +343,7 @@ private final class WorldSaveManager
 	{
 		// TODO: implement caching 
 		ChunkPosition internal;
-		vec3i region = getRegion(chunk.position, internal);
+		Vector3i region = getRegion(chunk.position, internal);
 
 		string filename;
 		bool regionFileExists = regionExists(region, filename);
@@ -430,17 +430,17 @@ private final class WorldSaveManager
 			buffers[chunk.position] = newBuffer;
 
 		ChunkPosition internal;
-		vec3i region = getRegion(chunk.position, internal);
+		Vector3i region = getRegion(chunk.position, internal);
 		if(!outGoingRegions.contains(region))
 			outGoingRegions.insert(region);
 	}
 
 	void writeChunks()
 	{
-		foreach(vec3i region; outGoingRegions)
+		foreach(Vector3i region; outGoingRegions)
 		{
 			ChunkPosition[chunksPerRegionCubed] inRegions;
-			vec3i[chunksPerRegionCubed] internalCoords;
+			Vector3i[chunksPerRegionCubed] internalCoords;
 			int inRegionsCount;
 			foreach(int ix; 0 .. chunksPerRegionAxis)
 			{
@@ -448,7 +448,7 @@ private final class WorldSaveManager
 				{
 					foreach(int iz; 0 .. chunksPerRegionAxis)
 					{
-						internalCoords[inRegionsCount] = vec3i(ix, iy, iz);
+						internalCoords[inRegionsCount] = Vector3i(ix, iy, iz);
 						ChunkPosition cp;
 						cp.x = region.x * chunksPerRegionAxis + ix;
 						cp.y = region.y * chunksPerRegionAxis + iy;
@@ -594,7 +594,7 @@ final class BasicTerrainRenderer : IRenderHandler
 	{
 		renderedInFrame_ = 0;
 
-		mat4f vp = lrc.perspective.matrix * lrc.view;
+		Matrix4f vp = lrc.perspective.matrix * lrc.view;
 		SqFrustum!float f = SqFrustum!float(vp.transposed());
 
 		foreach(int procID; 0 .. basicTerrainManager.resources.processorCount)
@@ -635,7 +635,7 @@ final class BasicTerrainManager
 	@property BasicTmSettings settings() { return settings_; }
 	Resources resources;
 
-    vec3f cameraPosition;
+    Vector3f cameraPosition;
 
 	private WorldSaveManager worldSaveManager;
 	NoiseGeneratorManager noiseGeneratorManager;
@@ -687,12 +687,12 @@ final class BasicTerrainManager
 
 	private void addChunksLocal(const ChunkPosition cp)
 	{
-		vec3i lower = vec3i(
+		Vector3i lower = Vector3i(
 			cp.x - settings_.addRange.x,
 			cp.y - settings_.addRange.y,
 			cp.z - settings_.addRange.z
 		);
-		vec3i upper = vec3i(
+		Vector3i upper = Vector3i(
 			cp.x + settings_.addRange.x,
 			cp.y + settings_.addRange.y,
 			cp.z + settings_.addRange.z
@@ -755,12 +755,12 @@ final class BasicTerrainManager
 		{
 			isExtensionCacheSorted = false;
 
-			vec3i lower = vec3i(
+			Vector3i lower = Vector3i(
 				cam.x - settings_.addRangeExtended.x,
 				cam.y - settings_.addRangeExtended.y,
 				cam.z - settings_.addRangeExtended.z
 			);
-			vec3i upper = vec3i(
+			Vector3i upper = Vector3i(
 				cam.x + settings_.addRangeExtended.x,
 				cam.y + settings_.addRangeExtended.y,
 				cam.z + settings_.addRangeExtended.z
@@ -952,59 +952,59 @@ final class BasicTerrainManager
     }
 
     // TODO: Implement PxPz, PxNz, NxPz, NxNz
-	private immutable vec3i[][] chunkOffsets = [
+	private immutable Vector3i[][] chunkOffsets = [
 		// Nx Ny Nz
-		[vec3i(-1, 0, 0), vec3i(0, -1, 0), vec3i(0, 0, -1), vec3i(-1, -1, 0), vec3i(-1, 0, -1), vec3i(0, -1, -1), vec3i(-1, -1, -1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(-1, -1, 0), Vector3i(-1, 0, -1), Vector3i(0, -1, -1), Vector3i(-1, -1, -1)],
 		// Nx Ny Pz
-		[vec3i(-1, 0, 0), vec3i(0, -1, 0), vec3i(0, 0, 1), vec3i(-1, -1, 0), vec3i(-1, 0, 1), vec3i(0, -1, 1), vec3i(-1, -1, 1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(-1, -1, 0), Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(-1, -1, 1)],
 		// Nx Ny 
-		[vec3i(-1, 0, 0), vec3i(0, -1, 0), vec3i(-1, -1, 0)],
+		[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(-1, -1, 0)],
 		// Nx Py Nz
-		[vec3i(-1, 0, 0), vec3i(0, 1, 0), vec3i(0, 0, -1), vec3i(-1, 1, 0), vec3i(-1, 0, -1), vec3i(0, 1, -1), vec3i(-1, 1, -1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(-1, 1, 0), Vector3i(-1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, -1)],
 		// Nx Py Pz
-		[vec3i(-1, 0, 0), vec3i(0, 1, 0), vec3i(0, 0, 1), vec3i(-1, 1, 0), vec3i(-1, 0, 1), vec3i(0, 1, 1), vec3i(-1, 1, 1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(-1, 1, 0), Vector3i(-1, 0, 1), Vector3i(0, 1, 1), Vector3i(-1, 1, 1)],
 		// Nx Py
-		[vec3i(-1, 0, 0), vec3i(0, 1, 0), vec3i(-1, 1, 0)],
+		[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(-1, 1, 0)],
 		// Nx Nz
-		[vec3i(-1, 0, 0), vec3i(0, 0, -1), vec3i(-1, 0, -1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, -1)],
 		// Nx Pz
-		[vec3i(-1, 0, 0), vec3i(0, 0, 1), vec3i(-1, 0, 1)],
+		[Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 1)],
 		// Nx
-		[vec3i(-1, 0, 0)],
+		[Vector3i(-1, 0, 0)],
 		// Px Ny Nz
-		[vec3i(1, 0, 0), vec3i(0, -1, 0), vec3i(0, 0, -1), vec3i(1, -1, 0), vec3i(1, 0, -1), vec3i(0, -1, -1), vec3i(1, -1, -1)],
+		[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(1, -1, 0), Vector3i(1, 0, -1), Vector3i(0, -1, -1), Vector3i(1, -1, -1)],
 		// Px Ny Pz
-		[vec3i(1, 0, 0), vec3i(0, -1, 0), vec3i(0, 0, 1), vec3i(1, -1, 0), vec3i(1, 0, 1), vec3i(0, -1, 1), vec3i(1, -1, 1)],
+		[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(1, -1, 0), Vector3i(1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 1)],
 		// Px Ny 
-		[vec3i(1, 0, 0), vec3i(0, -1, 0), vec3i(1, -1, 0)],
+		[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(1, -1, 0)],
 		// Px Py Nz
-		[vec3i(1, 0, 0), vec3i(0, 1, 0), vec3i(0, 0, -1), vec3i(1, 1, 0), vec3i(1, 0, -1), vec3i(0, 1, -1), vec3i(1, 1, -1)],
+		[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(1, 1, 0), Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(1, 1, -1)],
 		// Px Py Pz
-		[vec3i(1, 0, 0), vec3i(0, 1, 0), vec3i(0, 0, 1), vec3i(1, 1, 0), vec3i(1, 0, 1), vec3i(0, 1, 1), vec3i(1, 1, 1)],
+		[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(1, 1, 0), Vector3i(1, 0, 1), Vector3i(0, 1, 1), Vector3i(1, 1, 1)],
 		// Px Py
-		[vec3i(1, 0, 0), vec3i(0, 1, 0), vec3i(1, 1, 0)],
+		[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0)],
 		// Nx Nz
-		[vec3i(1, 0, 0), vec3i(0, 0, -1), vec3i(1, 0, -1)],
+		[Vector3i(1, 0, 0), Vector3i(0, 0, -1), Vector3i(1, 0, -1)],
 		// Nx Pz
-		[vec3i(1, 0, 0), vec3i(0, 0, 1), vec3i(1, 0, 1)],
+		[Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(1, 0, 1)],
 		// Px
-		[vec3i(1, 0, 0)],
+		[Vector3i(1, 0, 0)],
 		// Ny Nz
-		[vec3i(0, -1, 0), vec3i(0, 0, -1), vec3i(0, -1, -1)],
+		[Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(0, -1, -1)],
 		// Ny Pz
-		[vec3i(0, -1, 0), vec3i(0, 0, 1), vec3i(0, -1, 1)],
+		[Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, -1, 1)],
 		// Ny
-		[vec3i(0, -1, 0)],
+		[Vector3i(0, -1, 0)],
 		// Py Nz
-		[vec3i(0, 1, 0), vec3i(0, 0, -1), vec3i(0, 1, -1)],
+		[Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(0, 1, -1)],
 		// Py Pz
-		[vec3i(0, 1, 0), vec3i(0, 0, 1), vec3i(0, 1, 1)],
+		[Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(0, 1, 1)],
 		// Py
-		[vec3i(0, 1, 0)],
+		[Vector3i(0, 1, 0)],
 		// Nz
-		[vec3i(0, 0, -1)],
+		[Vector3i(0, 0, -1)],
 		// Pz
-		[vec3i(0, 0, 1)]
+		[Vector3i(0, 0, 1)]
 	];
 
 	private void setBlockOtherChunkOverruns(Voxel voxel, int x, int y, int z, BasicChunk host) 
@@ -1017,51 +1017,51 @@ final class BasicTerrainManager
 		if(x == 0) {
 			if(y == 0) {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[0])
+					foreach(Vector3i off; chunkOffsets[0])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[1])
+					foreach(Vector3i off; chunkOffsets[1])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[2])
+					foreach(Vector3i off; chunkOffsets[2])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 			}
 			else if(y == ChunkData.chunkDimensions - 1) {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[3])
+					foreach(Vector3i off; chunkOffsets[3])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[4])
+					foreach(Vector3i off; chunkOffsets[4])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[5])
+					foreach(Vector3i off; chunkOffsets[5])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 			}
 			else {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[6])
+					foreach(Vector3i off; chunkOffsets[6])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[7]) 
+					foreach(Vector3i off; chunkOffsets[7]) 
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[8])
+					foreach(Vector3i off; chunkOffsets[8])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
@@ -1070,51 +1070,51 @@ final class BasicTerrainManager
 		else if(x == ChunkData.chunkDimensions - 1) {
 			if(y == 0) {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[9])
+					foreach(Vector3i off; chunkOffsets[9])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[10])
+					foreach(Vector3i off; chunkOffsets[10])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[11])
+					foreach(Vector3i off; chunkOffsets[11])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 			}
 			else if(y == ChunkData.chunkDimensions - 1) {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[12])
+					foreach(Vector3i off; chunkOffsets[12])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[13])
+					foreach(Vector3i off; chunkOffsets[13])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[14])
+					foreach(Vector3i off; chunkOffsets[14])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 			}
 			else {
 				if(z == 0) {
-					foreach(vec3i off; chunkOffsets[15])
+					foreach(Vector3i off; chunkOffsets[15])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else if(z == ChunkData.chunkDimensions - 1) {
-					foreach(vec3i off; chunkOffsets[16]) 
+					foreach(Vector3i off; chunkOffsets[16]) 
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
 				else {
-					foreach(vec3i off; chunkOffsets[17])
+					foreach(Vector3i off; chunkOffsets[17])
 						setBlockForChunkOffset(off, host, x, y, z, voxel);
 					return;
 				}
@@ -1123,52 +1123,52 @@ final class BasicTerrainManager
 
 		if(y == 0) {
 			if(z == 0) {
-				foreach(vec3i off; chunkOffsets[18])
+				foreach(Vector3i off; chunkOffsets[18])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 			else if(z == ChunkData.chunkDimensions - 1) {
-				foreach(vec3i off; chunkOffsets[19])
+				foreach(Vector3i off; chunkOffsets[19])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 			else {
-				foreach(vec3i off; chunkOffsets[20])
+				foreach(Vector3i off; chunkOffsets[20])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 		}
 		else if(y == ChunkData.chunkDimensions - 1) {
 			if(z == 0) {
-				foreach(vec3i off; chunkOffsets[21])
+				foreach(Vector3i off; chunkOffsets[21])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 			else if(z == ChunkData.chunkDimensions - 1) {
-				foreach(vec3i off; chunkOffsets[22])
+				foreach(Vector3i off; chunkOffsets[22])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 			else {
-				foreach(vec3i off; chunkOffsets[23])
+				foreach(Vector3i off; chunkOffsets[23])
 					setBlockForChunkOffset(off, host, x, y, z, voxel);
 				return;
 			}
 		}
 
 		if(z == 0) {
-			foreach(vec3i off; chunkOffsets[24])
+			foreach(Vector3i off; chunkOffsets[24])
 				setBlockForChunkOffset(off, host, x, y, z, voxel);
 			return;
 		}
 		else if(z == ChunkData.chunkDimensions - 1) {
-			foreach(vec3i off; chunkOffsets[25])
+			foreach(Vector3i off; chunkOffsets[25])
 				setBlockForChunkOffset(off, host, x, y, z, voxel);
 			return;
 		}
 	}
 
-	private void setBlockForChunkOffset(vec3i off, BasicChunk host, int x, int y, int z, Voxel voxel) {
+	private void setBlockForChunkOffset(Vector3i off, BasicChunk host, int x, int y, int z, Voxel voxel) {
 		ChunkPosition cp = ChunkPosition(host.position.x + off.x, host.position.y + off.y, host.position.z + off.z);
 		BasicChunk* c = cp in chunksTerrain;
 

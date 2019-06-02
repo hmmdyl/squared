@@ -1,18 +1,18 @@
 ﻿module square.one.voxelcon.block.meshes.horizontalslope;
 
-import gfm.math;
+import dlib.math;
 
 import square.one.voxelcon.block.processor;
 
-immutable vec3f[8] cubeVertices = [
-	vec3f(0, 0, 0), // ind0
-	vec3f(1, 0, 0), // ind1
-	vec3f(0, 0, 1), // ind2
-	vec3f(1, 0, 1), // ind3
-	vec3f(0, 1, 0), // ind4
-	vec3f(1, 1, 0), // ind5
-	vec3f(0, 1, 1), // ind6
-	vec3f(1, 1, 1)  // ind7
+immutable Vector3f[8] cubeVertices = [
+	Vector3f(0, 0, 0), // ind0
+	Vector3f(1, 0, 0), // ind1
+	Vector3f(0, 0, 1), // ind2
+	Vector3f(1, 0, 1), // ind3
+	Vector3f(0, 1, 0), // ind4
+	Vector3f(1, 1, 0), // ind5
+	Vector3f(0, 1, 1), // ind6
+	Vector3f(1, 1, 1)  // ind7
 ];
 
 immutable ushort[3][2][5][4] slopeIndices = [
@@ -46,34 +46,34 @@ immutable ushort[3][2][5][4] slopeIndices = [
 	]
 ];
 
-immutable vec3f[5][4] slopeNormals = [
+immutable Vector3f[5][4] slopeNormals = [
 	[ // ROTATION 0
-		vec3f(-1f, 0f, 0f),
-		vec3f(0f, -1f, 0f),
-		vec3f(0f, 1f, 0f),
-		vec3f(0f, 0f, 1f),
-		vec3f(0.5f, 0f, -0.5f)
+		Vector3f(-1f, 0f, 0f),
+		Vector3f(0f, -1f, 0f),
+		Vector3f(0f, 1f, 0f),
+		Vector3f(0f, 0f, 1f),
+		Vector3f(0.5f, 0f, -0.5f)
 	],
 	[ // ROTATION 1
-		vec3f(-1f, 0f, 0f),
-		vec3f(0f, -1f, 0f),
-		vec3f(0f, 1f, 0f),
-		vec3f(0f, 0f, -1f),
-		vec3f(0.5f, 0f, 0.5f)
+		Vector3f(-1f, 0f, 0f),
+		Vector3f(0f, -1f, 0f),
+		Vector3f(0f, 1f, 0f),
+		Vector3f(0f, 0f, -1f),
+		Vector3f(0.5f, 0f, 0.5f)
 	],
 	[ // ROTATION 2
-		vec3f(1f, 0f, 0f),
-		vec3f(0f, -1f, 0f),
-		vec3f(0f, 1f, 0f),
-		vec3f(0f, 0f, -1f),
-		vec3f(-0.5f, 0f, 0.5f)
+		Vector3f(1f, 0f, 0f),
+		Vector3f(0f, -1f, 0f),
+		Vector3f(0f, 1f, 0f),
+		Vector3f(0f, 0f, -1f),
+		Vector3f(-0.5f, 0f, 0.5f)
 	],
 	[ // ROTATION 3
-		vec3f(1f, 0f, 0f),
-		vec3f(0f, -1f, 0f),
-		vec3f(0f, 1f, 0f),
-		vec3f(0f, 0f, 1f),
-		vec3f(-0.5f, 0f, -0.5f)
+		Vector3f(1f, 0f, 0f),
+		Vector3f(0f, -1f, 0f),
+		Vector3f(0f, 1f, 0f),
+		Vector3f(0f, 0f, 1f),
+		Vector3f(-0.5f, 0f, -0.5f)
 	]
 ];
 
@@ -91,14 +91,14 @@ final class HorizontalSlope : IBlockVoxelMesh {
 		return SST.notSolid;
 	}
 
-	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, vec3i coord, ref vec3f[64] verts, ref vec3f[64] normals, out int vertCount) {
+	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount) {
 		int v = 0, n = 0;
 		
 		ubyte rotation = target.meshData & 7;
 		
 		void addTriag(ushort[3] indices, int dir) {
 			foreach(i; 0 .. 3) {
-				verts[v++] = cubeVertices[indices[i]] * voxelSkip + coord;
+				verts[v++] = cubeVertices[indices[i]] * voxelSkip + Vector3f(coord);
 				normals[n++ ] = slopeNormals[rotation][dir];
 			}
 		}

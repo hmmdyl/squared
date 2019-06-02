@@ -2,7 +2,7 @@
 
 public import square.one.terrain.resources;
 
-public import gfm.math;
+import dlib.math;
 
 import std.container.dlist;
 import core.thread;
@@ -228,10 +228,10 @@ final class BlockProcessor : IProcessor {
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);*/
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * vec3f.sizeof, upItem.bmb.vertices.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, upItem.bmb.vertices.ptr, GL_STATIC_DRAW);
 			
 			foreach(int i; 0 .. upItem.bmb.vertexCount) {
-				vec3f n = upItem.bmb.normals[i];
+				Vector3f n = upItem.bmb.normals[i];
 				
 				float nx = (((clamp(n.x, -1f, 1f) + 1f) * 0.5f) * 1023f);
 				uint nxU = cast(uint)nx & 1023;
@@ -301,10 +301,10 @@ final class BlockProcessor : IProcessor {
 		RenderData* rd = getRdOfChunk(chunk);
 		
 		//vec3f localPos = cast(vec3f)renderContext.localiseCoord(cast(vec3d)chunk.position.toVec3f());
-		vec3f localPos = chunk.transform.position;
-		mat4f m = mat4f.translation(localPos);
-		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
-		mat4f mv = lrc.view * m;
+		Vector3f localPos = chunk.transform.position;
+		Matrix4f m = translationMatrix(localPos);
+		Matrix4f mvp = lrc.perspective.matrix * lrc.view * m;
+		Matrix4f mv = lrc.view * m;
 		effect["ModelViewProjection"].set(&mvp, true);
 		effect["Fit10bScale"].set(rd.fit10bScale);
 		effect["Model"].set(&m, true);
@@ -328,9 +328,9 @@ final class BlockProcessor : IProcessor {
 
 		RenderData* rd = getRdOfChunk(chunk);
 
-		vec3f localPos = chunk.transform.position;
-		mat4f m = mat4f.translation(localPos);
-		mat4f mvp = lrc.perspective.matrix * lrc.view * m;
+		Vector3f localPos = chunk.transform.position;
+		Matrix4f m = translationMatrix(localPos);
+		Matrix4f mvp = lrc.perspective.matrix * lrc.view * m;
 		shadowEffect["ModelViewProjection"].set(&mvp, true);
 
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
@@ -381,12 +381,12 @@ final class BlockProcessor : IProcessor {
 }
 
 interface IBlockVoxelMesh  : IVoxelMesh {
-	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neigbours, ref SideSolidTable[6] sidesSolid, vec3i coord, ref vec3f[64] verts, ref vec3f[64] normals, out int vertCount);
+	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neigbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount);
 }
 
 interface IBlockVoxelMaterial : IVoxelMaterial {
 	void loadTextures(scope BlockProcessor bp);
-	void generateTextureIDs(int vlength, ref vec3f[64] vertices, ref vec3f[64] normals, ref ushort[64] textureIDs);
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] textureIDs);
 }
 
 interface IBlockVoxelTexture : IVoxelContent {
@@ -491,7 +491,7 @@ private class Mesher {
 	}
 
 	private void workerFuncProper() {
-		vec3f[64] verts, normals;
+		Vector3f[64] verts, normals;
 		ushort[64] textureIDs;
 		
 		StopWatch sw = StopWatch(AutoStart.no);
@@ -534,7 +534,7 @@ private class Mesher {
 			while(bmb is null)
 				bmb = host.request(MeshSize.small);
 			
-			void addVert(vec3f vert, vec3f normal, uint meta) {
+			void addVert(Vector3f vert, Vector3f normal, uint meta) {
 				if(bmb.ms == MeshSize.small) {
 					if(bmb.vertexCount + 1 >= vertsSmall) {
 						BlockMeshBuffer nbmb;
@@ -598,7 +598,7 @@ private class Mesher {
 						isSidesSolid[VoxelSide.pz] = resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
 								
 						int vertCount;
-						bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, vec3i(x, y, z), verts, normals, vertCount);
+						bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, Vector3i(x, y, z), verts, normals, vertCount);
 						
 						IBlockVoxelMaterial bvMat = cast(IBlockVoxelMaterial)resources.getMaterial(v.material);
 						if(bvMat is null) writeln(":FUYC");
@@ -660,13 +660,13 @@ private {
 	}
 	
 	enum int vertsSmall = 8_192;
-	enum int vertsSmallMemoryPerArr = vertsSmall * vec3f.sizeof;
+	enum int vertsSmallMemoryPerArr = vertsSmall * Vector3f.sizeof;
 	
 	enum int vertsMedium = 24_576;
-	enum int vertsMediumMemoryPerArr = vertsMedium * vec3f.sizeof;
+	enum int vertsMediumMemoryPerArr = vertsMedium * Vector3f.sizeof;
 	
 	enum int vertsFull = 147_456;
-	enum int vertsFullMemoryPerArr = vertsFull * vec3f.sizeof;
+	enum int vertsFullMemoryPerArr = vertsFull * Vector3f.sizeof;
 }
 
 private void copyBuffer(BlockMeshBuffer smaller, BlockMeshBuffer bigger) 
@@ -684,8 +684,8 @@ body {
 }
 
 private class BlockMeshBuffer{
-	vec3f[] vertices;
-	vec3f[] normals;
+	Vector3f[] vertices;
+	Vector3f[] normals;
 	uint[] meta;
 	
 	int vertexCount;
@@ -712,7 +712,7 @@ private class BlockMeshBuffer{
 		}
 	}
 	
-	void add(vec3f vert, vec3f normal, uint meta) {
+	void add(Vector3f vert, Vector3f normal, uint meta) {
 		vertices[vertexCount] = vert;
 		normals[vertexCount] = normal;
 		this.meta[vertexCount] = meta;

@@ -2,15 +2,15 @@
 
 import entitysysd;
 
-import gfm.math;
+import dlib.math;
 
 @component struct TransformComponent {
-	vec3d position;
-	vec3f rotation;
+	Vector3d position;
+	Vector3f rotation;
 }
 
 @component struct PhysicsComponent {
-	vec3d acceleration;
+	Vector3d acceleration;
 }
 
 @component struct RigidBodyComponent {
