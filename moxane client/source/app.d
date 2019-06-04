@@ -55,7 +55,7 @@ void main()
 
 	entityManager.add(new UISystem(moxane, entityManager));
 
-	sceneManager.current = new SplashscreenScene(moxane, null);
+	sceneManager.current = new SplashscreenScene(moxane, sceneManager, null);
 
 	moxane.run;
 }
