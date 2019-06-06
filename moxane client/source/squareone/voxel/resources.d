@@ -40,7 +40,7 @@ interface IProcessor : IVoxelContent {
 	void finaliseResources(Resources res);
 
 	void meshChunk(MeshOrder c);
-	void removeChunk(MeshOrder c);
+	void removeChunk(IMeshableVoxelBuffer c);
 
 	void updateFromManager();
 
@@ -49,7 +49,7 @@ interface IProcessor : IVoxelContent {
 	void endRenderShadow();*/
 
 	void prepareRender(Renderer);
-	void render(Chunk chunk, ref LocalContext lc);
+	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts);
 	void endRender();
 }
 
