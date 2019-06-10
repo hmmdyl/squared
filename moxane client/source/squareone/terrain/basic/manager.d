@@ -1,6 +1,7 @@
 module squareone.terrain.basic.manager;
 
 import squareone.terrain.basic.chunk;
+import squareone.terrain.gen.noisegen;
 
 import squareone.voxel;
 import moxane.core;
@@ -30,9 +31,30 @@ final class BasicTerrainRenderer : IRenderable
 	}
 }
 
+struct BasicTMSettings
+{
+	Vector3i addRange, extendedAddRange, removeRange;
+	Resources resources;
+}
+
 final class BasicTerrainManager
 {
+	enum ChunkState
+	{
+		notLoaded,
+		hibernated,
+		active
+	}
+
 	Resources resources;
 
 	private BasicChunk[ChunkPosition] chunksTerrain;
+	private ChunkState[ChunkPosition] chunkHoles;
+
+
+
+	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
+	{
+
+	}
 }
