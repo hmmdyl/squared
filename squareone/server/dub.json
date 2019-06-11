@@ -1,0 +1,6 @@
+{
+	"name": "server",
+	"targetType": "executable",
+	"targetPath": "../bin_${ARCH}_${PLATFORM}",
+	"workingDirectory": "../bin_${ARCH}_${PLATFORM}",
+}

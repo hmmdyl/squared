@@ -5,7 +5,7 @@ import moxane.graphics.renderer;
 import moxane.graphics.sprite;
 import moxane.io;
 import moxane.ui;
-import squareone.scenes.splash;
+import squareone.scenes.dbg;
 
 import dlib.math;
 
@@ -33,7 +33,7 @@ void main()
 	moxane.services.register!SpriteRenderer(new SpriteRenderer(moxane, r));
 	r.uiRenderables ~= moxane.services.get!SpriteRenderer;
 
-	r.primaryCamera.perspective.fieldOfView = 90f;
+	/*r.primaryCamera.perspective.fieldOfView = 90f;
 	r.primaryCamera.perspective.near = 0.1f;
 	r.primaryCamera.perspective.far = 10f;
 	r.primaryCamera.isOrtho = false;
@@ -51,11 +51,11 @@ void main()
 		r.uiCamera.deduceOrtho;
 		r.uiCamera.buildProjection;
 		r.cameraUpdated;
-	});
+	});*/
 
 	entityManager.add(new UISystem(moxane, entityManager));
 
-	sceneManager.current = new SplashscreenScene(moxane, sceneManager, null);
+	sceneManager.current = new DebugGameScene(moxane, sceneManager, null);
 
 	moxane.run;
 }

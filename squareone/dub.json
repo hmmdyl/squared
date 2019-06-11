@@ -23,6 +23,14 @@
 		"derelict-enet": "~>3.0.0",
 		"d-cimgui": "~>0.51.0",
 		"cerealed": "~>0.6.11",
+		"squareone:common": "*",
+		"squareone:server": "*",
 	},
-	"targetPath": "bin/",
+	"targetPath": "bin_${ARCH}_${PLATFORM}",
+	"workingDirectory": "bin_${ARCH}_${PLATFORM}",
+	"targetType": "executable",
+	"subPackages": [
+		"./server/",
+		"./common/",
+	]
 }
