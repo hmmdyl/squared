@@ -38,7 +38,9 @@ struct RenderData
 	void create()
 	{
 		import derelict.opengl3.gl3 : glGenBuffers;
-		glGenBuffers(3, buffers.ptr);
+		glGenBuffers(1, &buffers[0]);
+		glGenBuffers(1, &buffers[1]);
+		glGenBuffers(1, &buffers[2]);
 		vertexCount = 0;
 	}
 

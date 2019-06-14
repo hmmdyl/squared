@@ -1,0 +1,2 @@
+[ WARNING] Graphics @ 2019-Jun-13 20:42:22.7862801: Could not get uniform Fit10bScale for effect BlockProcessor
+[ WARNING] Graphics @ 2019-Jun-13 20:42:22.7902837: Could not get uniform Model for effect BlockProcessor

@@ -24,7 +24,7 @@ final class Air : IBlockVoxelMaterial
 
 final class Dirt : IBlockVoxelMaterial 
 {
-	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:air";
+	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:dirt";
 	mixin(VoxelContentQuick!(technicalStatic, "Dirt", appName, dylanGrahamName));
 
 	private ushort id_;

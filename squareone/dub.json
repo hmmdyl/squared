@@ -26,6 +26,7 @@
 		"squareone:common": "*",
 		"squareone:server": "*",
 	},
+	"copyFiles-windows-x86_64": ["../assets/final/content/", "lib/${ARCH}_${PLATFORM}/*"],
 	"targetPath": "bin_${ARCH}_${PLATFORM}",
 	"workingDirectory": "bin_${ARCH}_${PLATFORM}",
 	"targetType": "executable",

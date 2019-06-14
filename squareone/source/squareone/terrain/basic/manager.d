@@ -8,6 +8,8 @@ import moxane.core;
 import moxane.graphics.renderer;
 
 import dlib.math;
+import std.datetime.stopwatch;
+import std.parallelism;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -94,8 +96,8 @@ final class BasicTerrainManager
 				{
 					auto newCp = ChunkPosition(x, y, z);
 
-					ChunkState* getter = newCp in chunkHoles;
-					bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+					BasicChunk* getter = newCp in chunksTerrain;
+					bool doAdd = getter is null;// || *getter == ChunkState.notLoaded;
 
 					if(doAdd)
 					{
@@ -134,6 +136,54 @@ final class BasicTerrainManager
 
 				chunksTerrain.remove(chunk.position);
 				chunk.chunk.deinitialise();
+			}
+		}
+	}
+
+	private StopWatch addExtensionSortSw;
+	private bool isExtensionCacheSorted;
+	private ChunkPosition[] extensionCPCache;
+
+	private void addChunksExtension(const ChunkPosition cam)
+	{
+		bool doSort;
+
+		if(!addExtensionSortSw.running)
+		{
+			addExtensionSortSw.start;
+			doSort = true;
+		}
+		if(addExtensionSortSw.peek.total!"msecs"() >= 300)
+		{
+			addExtensionSortSw.reset;
+			addExtensionSortSw.start;
+			doSort = true;
+		}
+
+		if(doSort)
+		{
+			isExtensionCacheSorted = false;
+
+			Vector3i lower;
+			lower.x = cam.x - settings.extendedAddRange.x;
+			lower.y = cam.y - settings.extendedAddRange.y;
+			lower.z = cam.z - settings.extendedAddRange.z;
+			Vector3i upper;
+			upper.x = cam.x + settings.extendedAddRange.x;
+			upper.y = cam.y + settings.extendedAddRange.y;
+			upper.z = cam.z + settings.extendedAddRange.z;
+
+			int c;
+			foreach(int x; lower.x .. upper.x)
+				foreach(int y; lower.y .. upper.y)
+					foreach(int z; lower.z .. upper.z)
+						extensionCPCache[c++] = ChunkPosition(x, y, z);
+
+			Vector3f camf = cam.toVec3f.length;
+
+			auto cdCmp(ChunkPosition x, ChunkPosition y)
+			{
+
 			}
 		}
 	}

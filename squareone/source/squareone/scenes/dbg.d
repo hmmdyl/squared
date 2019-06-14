@@ -54,7 +54,8 @@ final class DebugGameScene : Scene
 		resources.add(new Dirt);
 		resources.add(new Grass);
 
-		BasicTMSettings settings = BasicTMSettings(Vector3i(4), Vector3i(0), Vector3i(5), resources);
+		resources.finaliseResources;
+		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(0, 0, 0), Vector3i(5, 5, 5), resources);
 		terrainManager = new BasicTerrainManager(settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -62,22 +63,24 @@ final class DebugGameScene : Scene
 		renderer.addSceneRenderable(terrainRenderer);
 
 		Window win = moxane.services.get!Window;
-		win.onFramebufferResize.add((win, size) @trusted {
-			setCamera(size);
-		});
 
 		camera = new FirstPersonCamera;
 		setCamera(win.size);
-		camera.position = Vector3f(0f);
-		camera.rotation = Vector3f(0f);
+		camera.position = Vector3f(0f, 0f, 0f);
+		camera.rotation = Vector3f(0f, 0f, 0f);
 		camera.buildView;
+		renderer.primaryCamera = camera;
+
+		win.onFramebufferResize.add((win, size) @trusted {
+			setCamera(size);
+		});
 	}
 
 	private void setCamera(Vector2i size)
 	{
 		camera.width = cast(uint)size.x;
 		camera.height = cast(uint)size.y;
-		camera.perspective.fieldOfView = 90f;
+		camera.perspective.fieldOfView = 75f;
 		camera.perspective.near = 0.1f;
 		camera.perspective.far = 100f;
 		camera.buildProjection;
@@ -90,7 +93,7 @@ final class DebugGameScene : Scene
 	override void removedCurrent(Scene overwroteBy)
 	{}
 
-	private Vector2d prevCursor = Vector2d(0);
+	private Vector2d prevCursor = Vector2d(0, 0);
 
 	override void onUpdate() @trusted
 	{
@@ -101,16 +104,17 @@ final class DebugGameScene : Scene
 			Vector2d cursor = win.cursorPos;
 			Vector2d c = cursor - prevCursor;
 			
-			win.cursorPos = cast(Vector2d)win.size / 2.0;
+			prevCursor = cast(Vector2d)win.size / 2.0;
+			win.cursorPos = prevCursor;
 
 			Vector3f rotation;
-			rotation.x = cast(float)c.x * cast(float)moxane.deltaTime * 100;
-			rotation.y = cast(float)c.y * cast(float)moxane.deltaTime * 100;
+			rotation.x = cast(float)c.y * cast(float)moxane.deltaTime * 10;
+			rotation.y = cast(float)c.x * cast(float)moxane.deltaTime * 10;
 			rotation.z = 0f;
 
 			camera.rotate(rotation);
 
-			Vector3f a = Vector3f(0f);
+			Vector3f a = Vector3f(0f, 0f, 0f);
 			if(win.isKeyDown(Keys.w)) a.z += 10f;
 			if(win.isKeyDown(Keys.s)) a.z -= 10f;
 			if(win.isKeyDown(Keys.a)) a.x -= 10f;
@@ -127,9 +131,18 @@ final class DebugGameScene : Scene
 		terrainManager.update;
 	}
 
-	override void onRenderBegin()
+	override void onRenderBegin() @trusted
 	{
 		super.onRenderBegin;
+
+		Window win = moxane.services.get!Window;
+		import derelict.opengl3.gl3;
+		if(win.isKeyDown(Keys.x))
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		}
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
 	override void onRender()

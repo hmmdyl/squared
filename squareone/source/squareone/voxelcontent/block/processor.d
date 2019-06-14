@@ -51,6 +51,8 @@ final class BlockProcessor : IProcessor
 		this.moxane = moxane;
 		this.textures = textures;
 
+		foreach(ushort id, IBlockVoxelTexture t; this.textures) t.id = id;
+
 		meshBufferHost = new MeshBufferHost;
 		uploadSyncObj = new Object;
 		renderDataPool = Pool!(RenderData*)(() => new RenderData(), 64);
@@ -98,7 +100,7 @@ final class BlockProcessor : IProcessor
 		Log log = moxane.services.getAOrB!(GraphicsLog, Log);
 		Shader vs = new Shader, fs = new Shader;
 		vs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/blockProcessor.vs.glsl")), GL_VERTEX_SHADER, log);
-		vs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/blockProcessor.vs.glsl")), GL_VERTEX_SHADER, log);
+		fs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/blockProcessor.fs.glsl")), GL_FRAGMENT_SHADER, log);
 		effect = new Effect(moxane, BlockProcessor.stringof);
 		effect.attachAndLink(vs, fs);
 		effect.bind();
@@ -255,6 +257,7 @@ final class BlockProcessor : IProcessor
 
 			chunk.meshBlocking(false, id_);
 
+			upItem.buffer.reset;
 			meshBufferHost.give(upItem.buffer);
 		}
 
@@ -285,9 +288,10 @@ final class BlockProcessor : IProcessor
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
 		RenderData* rd = getRd(chunk);
+		if(rd is null) return;
 
 		Matrix4f m = translationMatrix(chunk.transform.position);
-		Matrix4f nm = lc.model * m;
+		Matrix4f nm = /*lc.model **/ m;
 		Matrix4f mvp = lc.projection * lc.view * nm;
 		Matrix4f mv = lc.view * nm;
 
@@ -335,7 +339,7 @@ final class BlockProcessor : IProcessor
 private class Mesher
 {
 	private Object meshSyncObj;
-	private DList!(MeshOrder)* meshQueue;
+	private DList!(MeshOrder) meshQueue;
 	private Condition meshQueueWaiter;
 	private Mutex meshQueueMutex;
 
@@ -480,8 +484,8 @@ private class Mesher
 			{
 				if(buffer.vertexCount + 1 >= vertsFull) 
 				{
-					//string exp = "Chunk (" ~ chunk.toString() ~ ") is too complex to mesh. Error: too many vertices for buffer.";
-					//throw new Exception(exp);
+					string exp = "Chunk (" ~ "" ~ ") is too complex to mesh. Error: too many vertices for buffer.";
+					throw new Exception(exp);
 				}
 			}
 
@@ -539,6 +543,7 @@ private class Mesher
 		{
 			if(buffer.vertexCount == 0)
 			{
+				buffer.reset;
 				host.give(buffer);
 				buffer = null;
 				chunk.meshBlocking(false, processor.id_);
@@ -569,7 +574,7 @@ enum MeshSize {
 	full
 }
 
-enum int vertsSmall = 8_192;
+enum int vertsSmall = 80_192;
 enum int vertsSmallMemoryPerArr = vertsSmall * Vector3f.sizeof;
 
 enum int vertsMedium = 24_576;

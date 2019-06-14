@@ -170,13 +170,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		static Meshes getMeshes(Resources resources) 
 		{
 			Meshes meshes;
-			meshes.invisible = resources.getMesh("block_mesh_invisible").id;
-			meshes.cube = resources.getMesh("block_mesh_cube").id;
-			meshes.slope = resources.getMesh("block_mesh_slope").id;
-			meshes.tetrahedron = resources.getMesh("block_mesh_tetrahedron").id;
-			meshes.antiTetrahedron = resources.getMesh("block_mesh_antitetrahedron").id;
-			meshes.horizontalSlope = resources.getMesh("block_mesh_horizontal_slope").id;
-			meshes.grassMedium = resources.getMesh("vegetation_mesh_grass_medium").id;
+			meshes.invisible = resources.getMesh("squareOne:voxel:blockMesh:invisible").id;
+			meshes.cube = resources.getMesh("squareOne:voxel:blockMesh:cube").id;
+			meshes.slope = resources.getMesh("squareOne:voxel:blockMesh:slope").id;
+			meshes.tetrahedron = resources.getMesh("squareOne:voxel:blockMesh:tetrahedron").id;
+			meshes.antiTetrahedron = resources.getMesh("squareOne:voxel:blockMesh:antitetrahedron").id;
+			meshes.horizontalSlope = resources.getMesh("squareOne:voxel:blockMesh:horizontalSlope").id;
+			//meshes.grassMedium = resources.getMesh("vegetation_mesh_grass_medium").id;
 			return meshes;
 		}
 	}
@@ -189,10 +189,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			flower;
 		static Materials getMaterials(Resources resources) {
 			Materials materials;
-			materials.air = resources.getMaterial("block_material_air").id;
-			materials.dirt = resources.getMaterial("block_material_dirt").id;
-			materials.grass = resources.getMaterial("block_material_grass").id;
-			materials.flower = resources.getMaterial("vegetation_flower_medium_test").id;
+			materials.air = resources.getMaterial("squareOne:voxel:blockMaterial:air").id;
+			materials.dirt = resources.getMaterial("squareOne:voxel:blockMaterial:dirt").id;
+			materials.grass = resources.getMaterial("squareOne:voxel:blockMaterial:grass").id;
+			//materials.flower = resources.getMaterial("vegetation_flower_medium_test").id;
 			return materials;
 		}
 	}
@@ -303,17 +303,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 2f;
 					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
 
-					/*float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 16f;
-					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 16f;
+					float height = osn.eval(horizPos.x / 16f, horizPos.z / 16f) * 8f;
+					height += osn.eval(horizPos.x / 64f, horizPos.z / 64f) * 4f;
 					height += osn.eval(horizPos.x / 32f, horizPos.z / 32f) * 2f;
 					height += osn.eval(horizPos.x / 4f, horizPos.z / 4f) * 1f;
-					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;*/
+					height += osn.eval(horizPos.x, horizPos.z) * 0.25f;
 
-					float height = -4f;
-					float oan = osn.eval(horizPos.x / 1.6f - 10f, horizPos.z / 1.6f) * 32f;
-					oan -= 20f;
-					if(oan > -4f)
-						height = oan;
+					//float height = -4f;
+					//float oan = osn.eval(horizPos.x / 1.6f - 10f, horizPos.z / 1.6f) * 32f;
+					//oan -= 20f;
+					//if(oan > -4f)
+						//height = oan;
 
 					//double height = 0;
 					//height = osn.eval(horizPos.x / 6.4f, horizPos.z / 6.4f) * 0.5f;
@@ -328,7 +328,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						if(blockPos.y <= height) 
 						{
 							if(mat < 0)
-								source.set(x, y, z, Voxel(materials.dirt, meshes.cube, 0, 0));
+								source.set(x, y, z, Voxel(materials.grass, meshes.cube, 0, 0));
 							else
 								source.set(x, y, z, Voxel(materials.grass, meshes.cube, 0, 0));
 						}
