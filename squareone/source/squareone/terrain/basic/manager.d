@@ -54,6 +54,8 @@ final class BasicTerrainManager
 	private BasicChunk[ChunkPosition] chunksTerrain;
 	private ChunkState[ChunkPosition] chunkStates;
 
+	@property size_t numChunks() const { return chunksTerrain.length; }
+
 	const BasicTMSettings settings;
 
 	Vector3f cameraPosition;
@@ -82,7 +84,7 @@ final class BasicTerrainManager
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
 
 		addChunksLocal(cp);
-		//addChunksExtension(cp);
+		addChunksExtension(cp);
 		foreach(ref BasicChunk bc; chunksTerrain)
 		{
 			manageChunkState(bc);
@@ -153,6 +155,7 @@ final class BasicTerrainManager
 					resources.getProcessor(proc).removeChunk(chunk.chunk);
 
 				chunksTerrain.remove(chunk.position);
+				chunkStates.remove(chunk.position);
 				chunk.chunk.deinitialise();
 			}
 		}
@@ -219,7 +222,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 4;
+		enum addMax = 8;
 
 		foreach(ChunkPosition pos; extensionCPCache)
 		{
@@ -277,6 +280,23 @@ final class BasicTerrainManager
 		}
 	}
 
+	struct ChunkInteraction
+	{
+		private BasicTerrainManager m;
+		invariant { assert(m !is null); }
+
+		BasicChunk* borrow(ChunkPosition pos)
+		{
+			
+		}
+
+		void give(BasicChunk* chunk)
+		{
+
+		}
+	}
+	ChunkInteraction chunk;
+
 	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
 	{
 		return position.x >= camera.x - settings.removeRange.x && position.x < camera.x + settings.removeRange.x &&
@@ -318,3 +338,58 @@ class TerrainDataStream
 {
 	
 }
+
+private immutable Vector3i[][] chunkOffsets = [
+	// Nx Ny Nz
+	[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(-1, -1, 0), Vector3i(-1, 0, -1), Vector3i(0, -1, -1), Vector3i(-1, -1, -1)],
+	// Nx Ny Pz
+	[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(-1, -1, 0), Vector3i(-1, 0, 1), Vector3i(0, -1, 1), Vector3i(-1, -1, 1)],
+	// Nx Ny 
+	[Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(-1, -1, 0)],
+	// Nx Py Nz
+	[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(-1, 1, 0), Vector3i(-1, 0, -1), Vector3i(0, 1, -1), Vector3i(-1, 1, -1)],
+	// Nx Py Pz
+	[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(-1, 1, 0), Vector3i(-1, 0, 1), Vector3i(0, 1, 1), Vector3i(-1, 1, 1)],
+	// Nx Py
+	[Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(-1, 1, 0)],
+	// Nx Nz
+	[Vector3i(-1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, -1)],
+	// Nx Pz
+	[Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 1)],
+	// Nx
+	[Vector3i(-1, 0, 0)],
+	// Px Ny Nz
+	[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(1, -1, 0), Vector3i(1, 0, -1), Vector3i(0, -1, -1), Vector3i(1, -1, -1)],
+	// Px Ny Pz
+	[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(1, -1, 0), Vector3i(1, 0, 1), Vector3i(0, -1, 1), Vector3i(1, -1, 1)],
+	// Px Ny 
+	[Vector3i(1, 0, 0), Vector3i(0, -1, 0), Vector3i(1, -1, 0)],
+	// Px Py Nz
+	[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(1, 1, 0), Vector3i(1, 0, -1), Vector3i(0, 1, -1), Vector3i(1, 1, -1)],
+	// Px Py Pz
+	[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(1, 1, 0), Vector3i(1, 0, 1), Vector3i(0, 1, 1), Vector3i(1, 1, 1)],
+	// Px Py
+	[Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0)],
+	// Nx Nz
+	[Vector3i(1, 0, 0), Vector3i(0, 0, -1), Vector3i(1, 0, -1)],
+	// Nx Pz
+	[Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(1, 0, 1)],
+	// Px
+	[Vector3i(1, 0, 0)],
+	// Ny Nz
+	[Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(0, -1, -1)],
+	// Ny Pz
+	[Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, -1, 1)],
+	// Ny
+	[Vector3i(0, -1, 0)],
+	// Py Nz
+	[Vector3i(0, 1, 0), Vector3i(0, 0, -1), Vector3i(0, 1, -1)],
+	// Py Pz
+	[Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(0, 1, 1)],
+	// Py
+	[Vector3i(0, 1, 0)],
+	// Nz
+	[Vector3i(0, 0, -1)],
+	// Pz
+	[Vector3i(0, 0, 1)]
+];

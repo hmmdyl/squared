@@ -59,7 +59,7 @@ final class DebugGameScene : Scene
 		resources.add(new Grass);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(8, 8, 8), Vector3i(5, 5, 5), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(8, 8, 8), Vector3i(10, 10, 10), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -144,10 +144,13 @@ final class DebugGameScene : Scene
 "Camera position: %0.3f %0.3f %0.3f
 Camera rotation: %0.3f %0.3f %0.3f
 						
-Delta: %0.6fs", 
+Delta: %0.6fs
+						
+Chunks: %d", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
-						moxane.deltaTime);
+						moxane.deltaTime,
+						terrainManager.numChunks);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));
 	}
 
