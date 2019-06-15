@@ -10,6 +10,9 @@ import std.math : floor;
 import core.atomic;
 import std.experimental.allocator.mallocator : Mallocator;
 
+alias BlockOffset = Vector!(int, 3);
+alias BlockPosition = Vector!(long, 3);
+
 struct ChunkData
 {
 	enum int chunkDimensions = 16;
@@ -382,6 +385,19 @@ struct ChunkPosition
 		cpReal.y += (block.y * ChunkData.voxelScale);
 		cpReal.z += (block.z * ChunkData.voxelScale);
 		return cpReal;
+	}
+
+	static void blockPosToChunkPositionAndOffset(Vector!(long, 3) block, out ChunkPosition chunk, out Vector3i offset)
+	{
+		chunk.x = cast(int)(block.x / ChunkData.chunkDimensions);
+		chunk.y = cast(int)(block.y / ChunkData.chunkDimensions);
+		chunk.z = cast(int)(block.z / ChunkData.chunkDimensions);
+		long snapX = chunk.x * ChunkData.chunkDimensions;
+		long snapY = chunk.y * ChunkData.chunkDimensions;
+		long snapZ = chunk.z * ChunkData.chunkDimensions;
+		offset.x = cast(int)(block.x - snapX);
+		offset.y = cast(int)(block.y - snapY);
+		offset.z = cast(int)(block.z - snapZ);
 	}
 
 	static Vector!(long, 3) realCoordToBlockPos(Vector3f pos) {

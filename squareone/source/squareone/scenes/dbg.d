@@ -4,12 +4,15 @@ import moxane.core;
 import moxane.io;
 import moxane.graphics.renderer;
 import moxane.graphics.firstperson;
+import moxane.graphics.sprite;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
 import squareone.voxelcontent.block;
 
 import dlib.math;
+
+import core.stdc.stdio : sprintf;
 
 final class DebugGameScene : Scene
 {
@@ -31,6 +34,7 @@ final class DebugGameScene : Scene
 	private BasicTerrainManager terrainManager;
 
 	private FirstPersonCamera camera;
+	private SpriteFont font;
 
 	private void initialise()
 	{
@@ -55,8 +59,8 @@ final class DebugGameScene : Scene
 		resources.add(new Grass);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(0, 0, 0), Vector3i(5, 5, 5), resources);
-		terrainManager = new BasicTerrainManager(settings);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(8, 8, 8), Vector3i(5, 5, 5), resources);
+		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
 		Renderer renderer = moxane.services.get!Renderer;
@@ -74,6 +78,9 @@ final class DebugGameScene : Scene
 		win.onFramebufferResize.add((win, size) @trusted {
 			setCamera(size);
 		});
+
+		SpriteRenderer spriteRenderer = moxane.services.get!SpriteRenderer;
+		font = spriteRenderer.createFont(AssetManager.translateToAbsoluteDir("content/moxane/font/MODES___.ttf"), 48);
 	}
 
 	private void setCamera(Vector2i size)
@@ -94,6 +101,8 @@ final class DebugGameScene : Scene
 	{}
 
 	private Vector2d prevCursor = Vector2d(0, 0);
+
+	private char[1024] buffer;
 
 	override void onUpdate() @trusted
 	{
@@ -129,6 +138,17 @@ final class DebugGameScene : Scene
 
 		terrainManager.cameraPosition = camera.position;
 		terrainManager.update;
+
+		buffer[] = char.init;
+		int l = sprintf(buffer.ptr, 
+"Camera position: %0.3f %0.3f %0.3f
+Camera rotation: %0.3f %0.3f %0.3f
+						
+Delta: %0.6fs", 
+						camera.position.x, camera.position.y, camera.position.z,
+						camera.rotation.x, camera.rotation.y, camera.rotation.z,
+						moxane.deltaTime);
+		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));
 	}
 
 	override void onRenderBegin() @trusted

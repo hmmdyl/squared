@@ -9,6 +9,8 @@ import squareone.scenes.dbg;
 
 import dlib.math;
 
+extern(C) export ulong NvOptimusEnablement = 0x01;
+
 void main()
 {
 	const MoxaneBootSettings settings = 

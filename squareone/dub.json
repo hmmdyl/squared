@@ -6,7 +6,7 @@
 	],
 	"copyright": "Copyright © 2019, Dylan Graham",
 	"name": "squareone",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"dependencies": {
 		"moxane": {
 			"path": "../moxane/"
@@ -26,9 +26,9 @@
 		"squareone:common": "*",
 		"squareone:server": "*",
 	},
-	"copyFiles-windows-x86_64": ["../assets/final/content/", "lib/${ARCH}_${PLATFORM}/*"],
-	"targetPath": "bin_${ARCH}_${PLATFORM}",
-	"workingDirectory": "bin_${ARCH}_${PLATFORM}",
+	"copyFiles-windows-x86_64": ["../assets/final/content/", "lib/*"],
+	"targetPath": "bin",
+	"workingDirectory": "bin",
 	"targetType": "executable",
 	"subPackages": [
 		"./server/",

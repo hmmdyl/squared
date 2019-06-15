@@ -73,7 +73,7 @@ immutable Vector3f[4][8] tetrahedronNormals = [
 		Vector3f(0, 0, 1),
 		Vector3f(0.5f, 0.5f, -0.5f)
 	]
-	];
+];
 
 alias SST = SideSolidTable;
 
@@ -140,7 +140,8 @@ final class Tetrahedron : IBlockVoxelMesh
 			case 0:
 				if(!(sidesSolid[VoxelSide.nx] == SST.solid || sidesSolid[VoxelSide.nx] == SST.slope_0_1_3))
 					addTriag(tetrahedronIndices[0][0], 0);
-				if(!(sidesSolid[VoxelSide.ny] == SST.solid || sidesSolid[VoxelSide.ny] == SST.slope_0_2_3))
+				//if(!(sidesSolid[VoxelSide.ny] == SST.solid || sidesSolid[VoxelSide.ny] == SST.slope_0_2_3))
+				if(!(sidesSolid[VoxelSide.ny] == SST.solid || sidesSolid[VoxelSide.ny] == SST.slope_0_1_3))
 					addTriag(tetrahedronIndices[0][1], 1);
 				if(!(sidesSolid[VoxelSide.nz] == SST.solid || sidesSolid[VoxelSide.nz] == SST.slope_1_3_2))
 					addTriag(tetrahedronIndices[0][2], 2);
@@ -164,7 +165,7 @@ final class Tetrahedron : IBlockVoxelMesh
 			case 2:
 				if(!(sidesSolid[VoxelSide.px] == SST.solid || sidesSolid[VoxelSide.px] == SST.slope_0_1_3))
 					addTriag(tetrahedronIndices[2][0], 0);
-				if(!(sidesSolid[VoxelSide.ny] == SST.solid || sidesSolid[VoxelSide.ny] == SST.slope_0_1_3))
+				if(!(sidesSolid[VoxelSide.ny] == SST.solid || sidesSolid[VoxelSide.ny] == SST.slope_0_2_3))
 					addTriag(tetrahedronIndices[2][1], 1);
 				if(!(sidesSolid[VoxelSide.pz] == SST.solid || sidesSolid[VoxelSide.pz] == SST.slope_1_3_2))
 					addTriag(tetrahedronIndices[2][2], 2);

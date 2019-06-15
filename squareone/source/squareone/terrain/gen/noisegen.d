@@ -1,5 +1,6 @@
 module squareone.terrain.gen.noisegen;
 
+import moxane.core : Moxane, Log;
 import squareone.voxel;
 import squareone.terrain.gen.simplex;
 
@@ -55,6 +56,18 @@ class NoiseGeneratorManager
 		this.seed = seed;
 
 		threadCount = threadNum;
+	}
+
+	~this()
+	{
+		while(!generators.empty)
+		{
+			NoiseGenerator generator = generators.front;
+			generators.removeFront;
+			generator.terminate = true;
+			//destroy(generator);
+			delete generator;
+		}
 	}
 
 	double averageTime = 0, lowestTime = 0, highestTime = 0;
@@ -203,13 +216,39 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	private Object queueSync = new Object;
 	private CyclicBuffer!NoiseGeneratorOrder orderQueue;
 
-	this() 
+	Moxane moxane;
+
+	this(Moxane moxane) 
 	{
+		this.moxane = moxane;
 		thread = new Thread(&generator);
 		thread.isDaemon = true;
 
 		mutex = new Mutex;
 		condition = new Condition(mutex);
+	}
+
+	~this()
+	{
+		try 
+		{	
+			if(!terminate)
+			{
+				terminate = true;
+				synchronized(mutex)
+					condition.notify;
+			}
+			thread.join;
+		}
+		catch(Exception e) 
+			moxane.services.get!Log().write(Log.Severity.info, "Exception thrown in terminated noise generator thread.");
+
+		while(!orderQueue.empty)
+		{
+			NoiseGeneratorOrder c = orderQueue.front;
+			orderQueue.removeFront;
+			c.chunk.dataLoadBlocking = false;
+		}
 	}
 
 	override void add(NoiseGeneratorOrder order) 
@@ -232,6 +271,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		if(queueEmpty)
 			synchronized(mutex)
 				condition.wait;
+
+		if(terminate) throw new Exception("Abortion.");
 
 		synchronized(queueSync) 
 		{
@@ -277,6 +318,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		while(!terminate) 
 		{
 			NoiseGeneratorOrder order = getNextFromQueue;
+
 			ILoadableVoxelBuffer chunk = order.chunk;
 			busy = true;
 

@@ -2,7 +2,6 @@ module squareone.terrain.basic.manager;
 
 import squareone.terrain.basic.chunk;
 import squareone.terrain.gen.noisegen;
-
 import squareone.voxel;
 import moxane.core;
 import moxane.graphics.renderer;
@@ -10,6 +9,7 @@ import moxane.graphics.renderer;
 import dlib.math;
 import std.datetime.stopwatch;
 import std.parallelism;
+import std.typecons;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -49,21 +49,32 @@ final class BasicTerrainManager
 	}
 
 	Resources resources;
+	Moxane moxane;
 
 	private BasicChunk[ChunkPosition] chunksTerrain;
-	private ChunkState[ChunkPosition] chunkHoles;
+	private ChunkState[ChunkPosition] chunkStates;
 
 	const BasicTMSettings settings;
 
 	Vector3f cameraPosition;
 	NoiseGeneratorManager noiseGeneratorManager;
 
-	this(BasicTMSettings settings)
+	this(Moxane moxane, BasicTMSettings settings)
 	{
+		this.moxane = moxane;
 		this.settings = settings;
 		resources = settings.resources;
 
-		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(), 0);
+		voxel = VoxelInteraction(this);
+
+		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(moxane), 0);
+		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
+		extensionCPCache = new ChunkPosition[ecpcNum];
+	}
+
+	~this()
+	{
+		destroy(noiseGeneratorManager);
 	}
 
 	void update()
@@ -71,10 +82,22 @@ final class BasicTerrainManager
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
 
 		addChunksLocal(cp);
+		//addChunksExtension(cp);
 		foreach(ref BasicChunk bc; chunksTerrain)
 		{
 			manageChunkState(bc);
+			removeChunkHandler(bc, cp);
 		}
+	}
+
+	private BasicChunk createChunk(ChunkPosition pos, bool needsData = true)
+	{
+		Chunk c = new Chunk(resources);
+		c.initialise;
+		c.needsData = needsData;
+		c.lod = 0;
+		c.blockskip = 1;
+		return BasicChunk(c, pos);
 	}
 
 	private void addChunksLocal(const ChunkPosition cp)
@@ -96,19 +119,14 @@ final class BasicTerrainManager
 				{
 					auto newCp = ChunkPosition(x, y, z);
 
-					BasicChunk* getter = newCp in chunksTerrain;
-					bool doAdd = getter is null;// || *getter == ChunkState.notLoaded;
+					ChunkState* getter = newCp in chunkStates;
+					bool doAdd = getter is null || *getter == ChunkState.notLoaded;
 
 					if(doAdd)
 					{
-						auto c = new Chunk(resources);
-						c.initialise();
-						c.needsData = true;
-						c.lod = 0;
-						c.blockskip = 1;
-						auto chunk = BasicChunk(c, newCp);
+						auto chunk = createChunk(newCp);
 						chunksTerrain[newCp] = chunk;
-						chunkHoles[newCp] = ChunkState.active;
+						chunkStates[newCp] = ChunkState.active;
 
 						//chunksAdded++;
 					}
@@ -179,11 +197,44 @@ final class BasicTerrainManager
 					foreach(int z; lower.z .. upper.z)
 						extensionCPCache[c++] = ChunkPosition(x, y, z);
 
-			Vector3f camf = cam.toVec3f.length;
+			float camf = cam.toVec3f.length;
 
 			auto cdCmp(ChunkPosition x, ChunkPosition y)
 			{
+				float x1 = x.toVec3f.length - camf;
+				float y1 = y.toVec3f.length - camf;
+				return x1 < y1;
+			}
 
+			void sortTask(ChunkPosition[] cache)
+			{
+				import std.algorithm.sorting : sort;
+				sort!cdCmp(cache);
+				isExtensionCacheSorted = true;
+			}
+
+			taskPool.put(task(&sortTask, extensionCPCache));
+		}
+
+		if(!isExtensionCacheSorted) return;
+
+		int doAddNum;
+		enum addMax = 4;
+
+		foreach(ChunkPosition pos; extensionCPCache)
+		{
+			ChunkState* getter = pos in chunkStates;
+			bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+
+			if(doAdd)
+			{
+				if(doAddNum > addMax) return;
+
+				BasicChunk chunk = createChunk(pos);
+				chunksTerrain[pos] = chunk;
+				chunkStates[pos] = ChunkState.active;
+
+				doAddNum++;
 			}
 		}
 	}
@@ -212,7 +263,7 @@ final class BasicTerrainManager
 				{
 					chunksTerrain.remove(position);
 					chunk.deinitialise();
-					chunkHoles[position] = ChunkState.hibernated;
+					chunkStates[position] = ChunkState.hibernated;
 					//chunksHibernated++;
 					return;
 				}
@@ -232,4 +283,38 @@ final class BasicTerrainManager
 			position.y >= camera.y - settings.removeRange.y && position.y < camera.y + settings.removeRange.y &&
 			position.z >= camera.z - settings.removeRange.z && position.z < camera.z + settings.removeRange.z;
 	}
+
+	struct VoxelInteraction
+	{
+		private BasicTerrainManager manager;
+		invariant { assert(manager !is null); }
+		
+		Nullable!Voxel get(long x, long y, long z)
+		{
+			ChunkPosition cp;
+			BlockOffset offset;
+			ChunkPosition.blockPosToChunkPositionAndOffset(Vector!(long, 3)(x, y, z), cp, offset);
+			return get(cp, offset);
+		}
+
+		Nullable!Voxel get(ChunkPosition chunkPosition, BlockOffset cp)
+		{
+			ChunkState* state = chunkPosition in manager.chunkStates;
+			if(state is null || *state != ChunkState.active)
+			{
+				Nullable!Voxel ret;
+				ret.nullify;
+				return ret;
+			}
+
+			return Nullable!Voxel(manager.chunksTerrain[chunkPosition].chunk.get(cp.x, cp.y, cp.z));
+		}
+
+	}
+	VoxelInteraction voxel;
+}
+
+class TerrainDataStream
+{
+	
 }
