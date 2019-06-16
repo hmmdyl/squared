@@ -10,6 +10,7 @@ import dlib.math;
 import std.datetime.stopwatch;
 import std.parallelism;
 import std.typecons;
+import containers;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -67,7 +68,8 @@ final class BasicTerrainManager
 		this.settings = settings;
 		resources = settings.resources;
 
-		voxel = VoxelInteraction(this);
+		chunk = new ChunkInteraction(this);
+		voxel = new VoxelInteraction(this);
 
 		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
@@ -255,6 +257,7 @@ final class BasicTerrainManager
 			}
 			if(chunk.dataLoadCompleted)
 			{
+				newChunkLoadNeighbours(bc);
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
 			}
@@ -280,6 +283,13 @@ final class BasicTerrainManager
 		}
 	}
 
+	private void newChunkLoadNeighbours(ref BasicChunk bc)
+	{
+		// TODO: complete
+
+		// this loads in neighbour data from neighbouring active chunks
+	}
+
 	struct ChunkInteraction
 	{
 		private BasicTerrainManager m;
@@ -287,15 +297,23 @@ final class BasicTerrainManager
 
 		BasicChunk* borrow(ChunkPosition pos)
 		{
-			
+			ChunkState* state = pos in m.chunkStates;
+			if(state is null || *state == ChunkState.notLoaded || *state == ChunkState.hibernated)
+				return null;
+
+			BasicChunk* chunk = pos in m.chunksTerrain;
+			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+				return null;
+
+			chunk.chunk.dataLoadBlocking = true;
+			return chunk;
 		}
 
 		void give(BasicChunk* chunk)
-		{
-
-		}
+		in { assert((chunk.position in m.chunksTerrain) !is null); }
+		do { chunk.chunk.dataLoadBlocking = false; }
 	}
-	ChunkInteraction chunk;
+	ChunkInteraction* chunk;
 
 	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
 	{
@@ -304,11 +322,42 @@ final class BasicTerrainManager
 			position.z >= camera.z - settings.removeRange.z && position.z < camera.z + settings.removeRange.z;
 	}
 
+	private struct VoxelSetCommand
+	{
+		Voxel voxel;
+		BlockPosition blockPosition;
+		bool forceLoadChunk;
+	}
+	private DynamicArray!VoxelSetCommand setBlockCommands;
+	private struct VoxelNeighbourSetCommand
+	{
+		Voxel voxel;
+		ChunkPosition chunkPosition;
+		BlockOffset offset;
+	}
+	private DynamicArray!VoxelNeighbourSetCommand neighbourSetCommands;
+
+	struct VoxelSetFailure
+	{
+		Voxel voxel;
+		BasicChunk* chunk;
+		Vector!(long, 3) blockPos;
+	}
+	private EventWaiter!VoxelSetFailure onSetFailure;
+
 	struct VoxelInteraction
 	{
 		private BasicTerrainManager manager;
 		invariant { assert(manager !is null); }
-		
+
+		EventWaiter!VoxelSetFailure* onSetFailure;
+
+		this(BasicTerrainManager m)
+		{
+			this.manager = m;
+			this.onSetFailure = &m.onSetFailure;
+		}
+
 		Nullable!Voxel get(long x, long y, long z)
 		{
 			ChunkPosition cp;
@@ -330,8 +379,229 @@ final class BasicTerrainManager
 			return Nullable!Voxel(manager.chunksTerrain[chunkPosition].chunk.get(cp.x, cp.y, cp.z));
 		}
 
+		void set(Voxel voxel, BlockPosition blockPosition, bool forceLoad = false)
+		{
+			VoxelSetCommand comm = {
+				voxel : voxel,
+				blockPosition : blockPosition,
+				forceLoadChunk : forceLoad
+			};
+			setBlockCommands.insertBack(comm);
+		}
 	}
-	VoxelInteraction voxel;
+	VoxelInteraction* voxel;
+
+	private void executeSetVoxel(VoxelSetCommand c)
+	{
+		BlockOffset blockOffset;
+		ChunkPosition chunkPos;
+		ChunkPosition.blockPosToChunkPositionAndOffset(c.blockPosition, chunkPos, blockOffset);
+
+		BasicChunk chunk = void;
+		ChunkState* state = c.chunk.position in chunkStates;
+		if(state is null || *state == ChunkState.hibernated || ChunkState.notLoaded)
+		{
+			if(c.forceLoadChunk)
+			{
+				BasicChunk ch = createChunk(chunkPos, true);
+				chunksTerrain[chunkPos] = ch;
+				chunkStates[chunkPos] = ChunkState.active;
+				setBlockCommands.insertBack(c);
+			}
+			else
+				onSetFailure.emit(VoxelSetFailure(c.voxel, chunkPos in chunksTerrain, c.blockPosition));
+			return;
+		}
+		else if(*state == ChunkState.active)
+		{
+			chunk = chunkPos in chunksTerrain;
+		}
+
+
+	}
+
+	private void executeNeighbourSet(VoxelNeighbourSetCommand c)
+	{
+		ChunkState* state = c.chunkPosition in chunkStates;
+		if(state is null || *state == ChunkState.hibernated || *state == ChunkState.notLoaded)
+			return;
+
+	}
+
+	private void setBlockOtherChunkOverruns(Voxel voxel, int x, int y, int z, BasicChunk host) 
+	in {
+		assert(x >= 0 && x < ChunkData.chunkDimensions);
+		assert(y >= 0 && y < ChunkData.chunkDimensions);
+		assert(z >= 0 && z < ChunkData.chunkDimensions);
+	}
+	do {
+		if(x == 0) {
+			if(y == 0) {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[0])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[1])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[2])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+			else if(y == ChunkData.chunkDimensions - 1) {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[3])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[4])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[5])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+			else {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[6])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[7]) 
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[8])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+		}
+		else if(x == ChunkData.chunkDimensions - 1) {
+			if(y == 0) {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[9])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[10])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[11])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+			else if(y == ChunkData.chunkDimensions - 1) {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[12])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[13])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[14])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+			else {
+				if(z == 0) {
+					foreach(Vector3i off; chunkOffsets[15])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else if(z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[16]) 
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[17])
+						setBlockForChunkOffset(off, host, x, y, z, voxel);
+					return;
+				}
+			}
+		}
+
+		if(y == 0) {
+			if(z == 0) {
+				foreach(Vector3i off; chunkOffsets[18])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+			else if(z == ChunkData.chunkDimensions - 1) {
+				foreach(Vector3i off; chunkOffsets[19])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+			else {
+				foreach(Vector3i off; chunkOffsets[20])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+		}
+		else if(y == ChunkData.chunkDimensions - 1) {
+			if(z == 0) {
+				foreach(Vector3i off; chunkOffsets[21])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+			else if(z == ChunkData.chunkDimensions - 1) {
+				foreach(Vector3i off; chunkOffsets[22])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+			else {
+				foreach(Vector3i off; chunkOffsets[23])
+					setBlockForChunkOffset(off, host, x, y, z, voxel);
+				return;
+			}
+		}
+
+		if(z == 0) {
+			foreach(Vector3i off; chunkOffsets[24])
+				setBlockForChunkOffset(off, host, x, y, z, voxel);
+			return;
+		}
+		else if(z == ChunkData.chunkDimensions - 1) {
+			foreach(Vector3i off; chunkOffsets[25])
+				setBlockForChunkOffset(off, host, x, y, z, voxel);
+			return;
+		}
+	}
+
+	private void setBlockForChunkOffset(Vector3i off, BasicChunk host, int x, int y, int z, Voxel voxel) {
+		ChunkPosition cp = ChunkPosition(host.position.x + off.x, host.position.y + off.y, host.position.z + off.z);
+
+		int newX = x + (-off.x * ChunkData.chunkDimensions);
+		int newY = y + (-off.y * ChunkData.chunkDimensions);
+		int newZ = z + (-off.z * ChunkData.chunkDimensions);
+
+		//c.chunk.set(newX, newY, newZ, voxel);
+		////c.countAir();
+		//c.chunk.needsMesh = true;
+
+		neighbourSetCommands.insertBack(VoxelNeighbourSetCommand(voxel, cp, BlockOffset(newX, newY, newZ)));
+	}
 }
 
 class TerrainDataStream
