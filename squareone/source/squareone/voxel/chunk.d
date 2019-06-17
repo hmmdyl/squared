@@ -365,7 +365,7 @@ struct ChunkPosition
 
 	BlockPosition toBlockPosition(BlockOffset offset)
 	{
-		return BlockPosition(x * chunkDimensions + offset.x, y * chunkDimensions + offset.y, z * chunkDimensions + offset.z);
+		return BlockPosition(x * ChunkData.chunkDimensions + offset.x, y * ChunkData.chunkDimensions + offset.y, z * ChunkData.chunkDimensions + offset.z);
 	}
 
 	static ChunkPosition fromVec3f(Vector3f v) 

@@ -14,6 +14,7 @@ struct NoiseGeneratorOrder
 {
 	ILoadableVoxelBuffer chunk;
 	Vector3d position;
+	Fiber fiber;
 
 	private uint toLoad;
 	@property bool loadChunk() { return ((toLoad) & 1) == true; }
@@ -28,11 +29,12 @@ struct NoiseGeneratorOrder
 
 	@property bool anyRequiresNoise() { return toLoad > 0; }
 
-	this(ILoadableVoxelBuffer chunk, Vector3d position)
+	this(ILoadableVoxelBuffer chunk, Vector3d position, Fiber fiber)
 	{
 		this.chunk = chunk;
 		this.position = position;
 		this.toLoad = 0;
+		this.fiber = fiber;
 	}
 
 	void setLoadAll() { toLoad = 0x7FF_FFFF; }
@@ -49,6 +51,9 @@ class NoiseGeneratorManager
 
 	const long seed;
 
+	private CyclicBuffer!NoiseGeneratorOrder completed;
+	private Object completedLock;
+
 	this(Resources resources, int threadNum, createNGDel createNG, long seed) 
 	{
 		this.resources = resources;
@@ -56,6 +61,7 @@ class NoiseGeneratorManager
 		this.seed = seed;
 
 		threadCount = threadNum;
+		completedLock = new Object;
 	}
 
 	~this()
@@ -67,6 +73,24 @@ class NoiseGeneratorManager
 			generator.terminate = true;
 			//destroy(generator);
 			delete generator;
+		}
+	}
+
+	void pumpCompletedQueue()
+	{
+		size_t l;
+		synchronized(completedLock) l = completed.length;
+
+		foreach(i; 0 .. l)
+		{
+			NoiseGeneratorOrder order;
+			synchronized(completedLock)
+			{
+				order = completed.front;
+				completed.removeFront;
+			}
+			if(order.fiber !is null)
+				order.fiber.call;
 		}
 	}
 
@@ -158,10 +182,15 @@ abstract class NoiseGenerator
 		this.seed = seed;
 	}
 
-	void setChunkComplete(ILoadableVoxelBuffer c) 
+	void setChunkComplete(NoiseGeneratorOrder order) 
 	{
-		c.dataLoadCompleted = true;
-		c.dataLoadBlocking = false;
+		order.chunk.dataLoadCompleted = true;
+		order.chunk.dataLoadBlocking = false;
+
+		if(order.fiber is null) return;
+
+		synchronized(manager.completedLock)
+			manager.completed.put(order);
 	}
 }
 
@@ -475,7 +504,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				}
 			}
 
-			setChunkComplete(chunk);
+			setChunkComplete(order);
 
 			sw.stop;
 			double nt = sw.peek.total!"nsecs"() / 1_000_000.0;

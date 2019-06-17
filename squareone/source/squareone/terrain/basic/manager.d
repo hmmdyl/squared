@@ -68,7 +68,7 @@ final class BasicTerrainManager
 		this.settings = settings;
 		resources = settings.resources;
 
-		chunk = new ChunkInteraction(this);
+		chunkSys = new ChunkInteraction(this);
 		voxel = new VoxelInteraction(this);
 
 		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(moxane), 0);
@@ -87,6 +87,8 @@ final class BasicTerrainManager
 
 		addChunksLocal(cp);
 		addChunksExtension(cp);
+		executeSetVoxels;
+		noiseGeneratorManager.pumpCompletedQueue;
 		foreach(ref BasicChunk bc; chunksTerrain)
 		{
 			manageChunkState(bc);
@@ -131,13 +133,6 @@ final class BasicTerrainManager
 						auto chunk = createChunk(newCp);
 						chunksTerrain[newCp] = chunk;
 						chunkStates[newCp] = ChunkState.active;
-
-						//chunksAdded++;
-					}
-					else
-					{
-
-						//pendingRemove = false;
 					}
 				}
 			}
@@ -250,14 +245,14 @@ final class BasicTerrainManager
 		{
 			if(chunk.needsData && !chunk.isAnyMeshBlocking) 
 			{
-				auto ngo = NoiseGeneratorOrder(chunk, position.toVec3d);
+				auto ngo = NoiseGeneratorOrder(chunk, position.toVec3d, null);
 				ngo.loadChunk = true;
 				ngo.setLoadAll();
 				noiseGeneratorManager.generate(ngo);
 			}
 			if(chunk.dataLoadCompleted)
 			{
-				newChunkLoadNeighbours(bc);
+				//newChunkLoadNeighbours(bc);
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
 			}
@@ -283,37 +278,44 @@ final class BasicTerrainManager
 		}
 	}
 
-	private void newChunkLoadNeighbours(ref BasicChunk bc)
-	{
-		// TODO: complete
-
-		// this loads in neighbour data from neighbouring active chunks
-	}
-
 	struct ChunkInteraction
 	{
 		private BasicTerrainManager m;
 		invariant { assert(m !is null); }
 
-		BasicChunk* borrow(ChunkPosition pos)
+		@property bool isPresent(ChunkPosition pos) const
 		{
-			ChunkState* state = pos in m.chunkStates;
+			const ChunkState* state = pos in m.chunkStates;
 			if(state is null || *state == ChunkState.notLoaded || *state == ChunkState.hibernated)
-				return null;
-
-			BasicChunk* chunk = pos in m.chunksTerrain;
-			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
-				return null;
-
-			chunk.chunk.dataLoadBlocking = true;
-			return chunk;
+				return false;
+			else return true;
 		}
 
-		void give(BasicChunk* chunk)
+		Nullable!BasicChunk borrow(ChunkPosition pos)
+		{
+			Nullable!BasicChunk ret;
+			ret.nullify;
+
+			ChunkState* state = pos in m.chunkStates;
+			if(state is null || *state == ChunkState.notLoaded || *state == ChunkState.hibernated)
+				return ret;
+
+			BasicChunk* chunk = pos in m.chunksTerrain;
+			if(chunk is null)
+				return ret;
+			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+				return ret;
+			chunk.chunk.dataLoadBlocking = true;
+
+			ret = *chunk;
+			return ret;
+		}
+
+		void give(BasicChunk chunk)
 		in { assert((chunk.position in m.chunksTerrain) !is null); }
 		do { chunk.chunk.dataLoadBlocking = false; }
 	}
-	ChunkInteraction* chunk;
+	ChunkInteraction* chunkSys;
 
 	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
 	{
@@ -321,29 +323,6 @@ final class BasicTerrainManager
 			position.y >= camera.y - settings.removeRange.y && position.y < camera.y + settings.removeRange.y &&
 			position.z >= camera.z - settings.removeRange.z && position.z < camera.z + settings.removeRange.z;
 	}
-
-	private struct VoxelSetCommand
-	{
-		Voxel voxel;
-		BlockPosition blockPosition;
-		bool forceLoadChunk;
-	}
-	private DynamicArray!VoxelSetCommand setBlockCommands;
-	private struct VoxelNeighbourSetCommand
-	{
-		Voxel voxel;
-		ChunkPosition chunkPosition;
-		BlockOffset offset;
-	}
-	private DynamicArray!VoxelNeighbourSetCommand neighbourSetCommands;
-
-	struct VoxelSetFailure
-	{
-		Voxel voxel;
-		BasicChunk* chunk;
-		Vector!(long, 3) blockPos;
-	}
-	private EventWaiter!VoxelSetFailure onSetFailure;
 
 	struct VoxelInteraction
 	{
@@ -386,46 +365,64 @@ final class BasicTerrainManager
 				blockPosition : blockPosition,
 				forceLoadChunk : forceLoad
 			};
-			setBlockCommands.insertBack(comm);
+			manager.setBlockCommands.insertBack(comm);
 		}
 	}
 	VoxelInteraction* voxel;
 
-	private void executeSetVoxel(VoxelSetCommand c)
+	private struct VoxelSetCommand
 	{
-		BlockOffset blockOffset;
-		ChunkPosition chunkPos;
-		ChunkPosition.blockPosToChunkPositionAndOffset(c.blockPosition, chunkPos, blockOffset);
-
-		BasicChunk chunk = void;
-		ChunkState* state = c.chunk.position in chunkStates;
-		if(state is null || *state == ChunkState.hibernated || ChunkState.notLoaded)
-		{
-			if(c.forceLoadChunk)
-			{
-				BasicChunk ch = createChunk(chunkPos, true);
-				chunksTerrain[chunkPos] = ch;
-				chunkStates[chunkPos] = ChunkState.active;
-				setBlockCommands.insertBack(c);
-			}
-			else
-				onSetFailure.emit(VoxelSetFailure(c.voxel, chunkPos in chunksTerrain, c.blockPosition));
-			return;
-		}
-		else if(*state == ChunkState.active)
-		{
-			chunk = chunkPos in chunksTerrain;
-		}
-
-
+		Voxel voxel;
+		BlockPosition blockPosition;
+		bool forceLoadChunk;
 	}
+	private CyclicBuffer!VoxelSetCommand setBlockCommands;
 
-	private void executeNeighbourSet(VoxelNeighbourSetCommand c)
+	struct VoxelSetFailure
 	{
-		ChunkState* state = c.chunkPosition in chunkStates;
-		if(state is null || *state == ChunkState.hibernated || *state == ChunkState.notLoaded)
-			return;
+		Voxel voxel;
+		BasicChunk* chunk;
+		Vector!(long, 3) blockPos;
+	}
+	private EventWaiter!VoxelSetFailure onSetFailure;
 
+	private void executeSetVoxels()
+	{
+		void executeSetVoxel(VoxelSetCommand c)
+		{
+			BlockOffset blockOffset;
+			ChunkPosition chunkPos;
+			ChunkPosition.blockPosToChunkPositionAndOffset(c.blockPosition, chunkPos, blockOffset);
+
+			if(!chunkSys.isPresent(chunkPos))
+			{
+				if(c.forceLoadChunk)
+				{
+					BasicChunk ch = createChunk(chunkPos, true);
+					chunksTerrain[chunkPos] = ch;
+					chunkStates[chunkPos] = ChunkState.active;
+					setBlockCommands.insertBack(c);
+				}
+				else
+					onSetFailure.emit(VoxelSetFailure(c.voxel, null, c.blockPosition));
+				return;
+			}
+
+			Nullable!BasicChunk bc;
+			mixin(ForceBorrowScope!("chunkPos"));
+
+			setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, bc.get);
+
+			bc.get.chunk.set(blockOffset.x, blockOffset.y, blockOffset.z, c.voxel);
+			bc.get.chunk.needsMesh = true;
+		}
+
+		const size_t l = setBlockCommands.length;
+		foreach(i; 0 .. l)
+		{
+			executeSetVoxel(setBlockCommands.front);
+			setBlockCommands.removeFront;
+		}		
 	}
 
 	private void setBlockOtherChunkOverruns(Voxel voxel, int x, int y, int z, BasicChunk host) 
@@ -596,11 +593,13 @@ final class BasicTerrainManager
 		int newY = y + (-off.y * ChunkData.chunkDimensions);
 		int newZ = z + (-off.z * ChunkData.chunkDimensions);
 
-		//c.chunk.set(newX, newY, newZ, voxel);
-		////c.countAir();
-		//c.chunk.needsMesh = true;
+		if(!chunkSys.isPresent(cp)) return;
 
-		neighbourSetCommands.insertBack(VoxelNeighbourSetCommand(voxel, cp, BlockOffset(newX, newY, newZ)));
+		Nullable!BasicChunk bc;
+		mixin(ForceBorrowScope!("cp"));
+
+		bc.get.chunk.set(newX, newY, newZ, voxel);
+		bc.get.chunk.needsMesh = true;
 	}
 }
 
@@ -663,3 +662,13 @@ private immutable Vector3i[][] chunkOffsets = [
 	// Pz
 	[Vector3i(0, 0, 1)]
 ];
+
+template ForceBorrow(string chunkPosName, string basicChunkName = "bc")
+{
+	const char[] ForceBorrow = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".isNull); ";
+}
+
+template ForceBorrowScope(string chunkPosName, string basicChunkName = "bc")
+{
+	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".isNull); scope(exit) chunkSys.give(" ~ basicChunkName ~ "); ";
+}
