@@ -1,6 +1,6 @@
 module squareone.terrain.gen.noisegen;
 
-import moxane.core : Moxane, Log;
+import moxane.core : Moxane, Log, Channel;
 import squareone.voxel;
 import squareone.terrain.gen.simplex;
 
@@ -9,6 +9,7 @@ import dlib.math.vector;
 import core.thread;
 import core.sync.condition;
 import core.atomic;
+import optional : Optional, unwrap;
 
 struct NoiseGeneratorOrder
 {
@@ -32,7 +33,7 @@ struct NoiseGeneratorOrder
 	this(ILoadableVoxelBuffer chunk, ChunkPosition position, Fiber fiber)
 	{
 		this.chunk = chunk;
-		this.position = position;
+		this.chunkPosition = position;
 		this.toLoad = 0;
 		this.fiber = fiber;
 	}
@@ -196,6 +197,61 @@ abstract class NoiseGenerator
 
 final class DefaultNoiseGenerator : NoiseGenerator
 {
+	private Channel!NoiseGeneratorOrder orders;
+	private Thread thread;
+
+	override void add(NoiseGeneratorOrder order) { orders.send(order); }
+
+	Moxane moxane;
+
+	this(Moxane moxane)
+	{
+		this.moxane = moxane;
+		orders = new Channel!NoiseGeneratorOrder;
+	}
+
+	~this()
+	{
+		if(thread !is null && thread.isRunning)
+		{
+			terminate = true;
+			orders.notifyUnsafe;
+
+			thread.join;
+			orders.clearUnsafe;
+		}
+	}
+
+	override void setFields(Resources resources, NoiseGeneratorManager manager, long seed)
+	{
+		super.setFields(resources, manager, seed);
+		assert(thread is null);
+		thread = new Thread(&worker);
+		thread.isDaemon = true;
+		thread.start;
+	}
+
+	private void worker()
+	{
+		try
+		{
+			while(!terminate)
+			{
+				Optional!NoiseGeneratorOrder order = orders.await;
+				if(auto o = order.unwrap)
+					execute(*o);
+				else
+					return;
+			}
+		}
+		catch(Throwable t)
+		{}
+	}
+
+	private void execute(scope NoiseGeneratorOrder order)
+	{
+
+	}
 }
 
 version(none)

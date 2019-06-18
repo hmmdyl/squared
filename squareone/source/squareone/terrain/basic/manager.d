@@ -234,7 +234,7 @@ final class BasicTerrainManager
 
 				BasicChunk chunk = createChunk(pos);
 				chunksTerrain[pos] = chunk;
-				chunkStates[pos] = ChunkState.active;
+				chunkStates[pos] = ChunkState.notLoaded;
 
 				doAddNum++;
 			}
@@ -247,10 +247,7 @@ final class BasicTerrainManager
 		{
 			if(chunk.needsData && !chunk.isAnyMeshBlocking) 
 			{
-				auto ngo = NoiseGeneratorOrder(chunk, position.toVec3d, null);
-				ngo.loadChunk = true;
-				ngo.setLoadAll();
-				noiseGeneratorManager.generate(ngo);
+				chunkLoadNeighbours(bc);
 			}
 			if(chunk.dataLoadCompleted)
 			{
@@ -279,6 +276,55 @@ final class BasicTerrainManager
 				chunk.needsMesh = false;
 			}
 		}
+	}
+
+	private void chunkLoadNeighbours(ref BasicChunk bc)
+	{
+		enum CSource
+		{
+			activeChunk,
+			region,
+			noise
+		}
+
+		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc.chunk, bc.position, null);
+		CSource[26] neighbourSources;
+		foreach(n; 0 .. cast(int)ChunkNeighbours.last)
+		{
+			ChunkNeighbours nn = cast(ChunkNeighbours)n;
+			ChunkPosition offset = chunkNeighbourToOffset(nn);
+			ChunkPosition np = bc.position + offset;
+
+			ChunkState* state = np in chunkStates;
+			if(state !is null && *state == ChunkState.active)
+			{
+				Optional!BasicChunk nc;
+				mixin(ForceBorrowScope!("np", "nc"));
+
+				Vector3i[2] bin = neighbourBounds[n];
+				foreach(x; bin[0].x .. bin[1].x)
+				{
+					foreach(y; bin[0].y .. bin[1].y)
+					{
+						foreach(z; bin[0].z .. bin[1].z)
+						{
+							BlockPosition bp = np.toBlockPosition(BlockOffset(x, y, z));
+							BlockOffset bcOff = bc.position.toOffset(bp);
+
+							bc.chunk.set(bcOff.x, bcOff.y, bcOff.z, nc.unwrap.chunk.get(x, y, z));
+						}
+					}
+				}
+
+				continue;
+			}
+
+			noiseOrder.loadNeighbour(nn, true);
+		}
+
+		noiseOrder.loadChunk = true;
+
+		noiseGeneratorManager.generate(noiseOrder);
 	}
 
 	struct ChunkInteraction
@@ -604,7 +650,7 @@ final class BasicTerrainManager
 	}
 }
 
-class ChunkLoadNeighbourOrder
+/*class ChunkLoadNeighbourOrder
 {
 	private Fiber fiber;
 
@@ -651,7 +697,7 @@ class ChunkLoadNeighbourOrder
 			if(state !is null && *state == BasicTerrainManager.ChunkState.active)
 			{
 				Optional!BasicChunk nc;
-				mixin(ForceBorrowScope!("np", "nc"));
+				mixin(ForceBorrowScope!("np", "nc", true));
 
 				Vector3i[2] bin = neighbourBounds[n];
 				foreach(x; bin[0].x .. bin[1].x)
@@ -663,7 +709,7 @@ class ChunkLoadNeighbourOrder
 							BlockPosition bp = np.toBlockPosition(BlockOffset(x, y, z));
 							BlockOffset bcOff = bc.position.toOffset(bp);
 
-							bc.chunk.set(bcOff.x, bcOff.y, bcOff.z, nc.unwrap.get(x, y, z));
+							bc.chunk.set(bcOff.x, bcOff.y, bcOff.z, nc.unwrap.chunk.get(x, y, z));
 						}
 					}
 				}
@@ -671,12 +717,14 @@ class ChunkLoadNeighbourOrder
 				continue;
 			}
 
-			noiseOrder.loadNeighour(nn, true);
+			noiseOrder.loadNeighbour(nn, true);
 		}
 
+		noiseOrder.loadChunk = true;
 
+		manager.noiseGeneratorManager.generate(noiseOrder);
 	}
-}
+}*/
 
 class TerrainDataStream
 {
@@ -738,12 +786,12 @@ private immutable Vector3i[][] chunkOffsets = [
 	[Vector3i(0, 0, 1)]
 ];
 
-template ForceBorrow(string chunkPosName, string basicChunkName = "bc")
+/*template ForceBorrow(string chunkPosName, string basicChunkName = "bc")
 {
 	const char[] ForceBorrow = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); ";
-}
+}*/
 
-template ForceBorrowScope(string chunkPosName, string basicChunkName = "bc")
+template ForceBorrowScope(string chunkPosName, string basicChunkName = "bc", bool outer = false, string man = "manager")
 {
-	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); scope(exit) chunkSys.give(" ~ basicChunkName ~ "); ";
+	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = " ~ (outer == true ? man : "this") ~ ".chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); scope(exit) " ~ (outer == true ? man : "this") ~ ".chunkSys.give(" ~ basicChunkName ~ "); ";
 }
