@@ -13,7 +13,7 @@ import core.atomic;
 struct NoiseGeneratorOrder
 {
 	ILoadableVoxelBuffer chunk;
-	Vector3d position;
+	ChunkPosition chunkPosition;
 	Fiber fiber;
 
 	private uint toLoad;
@@ -29,7 +29,7 @@ struct NoiseGeneratorOrder
 
 	@property bool anyRequiresNoise() { return toLoad > 0; }
 
-	this(ILoadableVoxelBuffer chunk, Vector3d position, Fiber fiber)
+	this(ILoadableVoxelBuffer chunk, ChunkPosition position, Fiber fiber)
 	{
 		this.chunk = chunk;
 		this.position = position;
@@ -194,6 +194,12 @@ abstract class NoiseGenerator
 	}
 }
 
+final class DefaultNoiseGenerator : NoiseGenerator
+{
+}
+
+version(none)
+{
 final class DefaultNoiseGenerator : NoiseGenerator 
 {
 	private Thread thread;
@@ -719,4 +725,5 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				tempBuffer1.set(x, y, z, voxel);
 		}
 	}
+}
 }

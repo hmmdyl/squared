@@ -289,38 +289,62 @@ enum ChunkNeighbours
 	last
 }
 
-Vector3i chunkNeighbourToOffset(ChunkNeighbours n)
+// in block space of neighbour chunk
+private Vector3i[2] boundsNeighbour(ChunkNeighbours n)
+{
+	ChunkPosition offset = chunkNeighbourToOffset(n);
+	Vector3i base, end;
+	foreach(x; 0..3)
+	{
+		base[x] = offset[x] == 1 ? 0 : offset[x] == -1 ? ChunkData.chunkDimensions - 1 : 0;
+		end[x] = offset[x] == 1 ? 0 : offset[x] == -1 ? ChunkData.chunkDimensions - 1 : ChunkData.chunkDimensions;
+	}
+	return [base, end];
+}
+
+private Vector3i[2][26] getNeighbourBounds()
+{
+	Vector3i[2][26] ret;
+	foreach(x; 0 .. cast(int)ChunkNeighbours.last)
+		ret[x] = boundsNeighbour(cast(ChunkNeighbours)x);
+	//pragma(msg, ret);
+	return ret;
+}
+
+static enum Vector3i[2][26] neighbourBounds = getNeighbourBounds;
+
+ChunkPosition chunkNeighbourToOffset(ChunkNeighbours n)
 {
 	final switch(n) with(ChunkNeighbours)
 	{
-		case nxNyNz: return Vector3i(-1, -1, -1);
-		case nyNz: return Vector3i(0, -1, -1);
-		case pxNyNz: return Vector3i(1, -1, -1);
-		case nxNy: return Vector3i(-1, -1, 0);
-		case ny: return Vector3i(0, -1, 0);
-		case pxNy: return Vector3i(1, -1, 0);
-		case nxNyPz: return Vector3i(-1, -1, 1);
-		case nyPz: return Vector3i(0, -1, 1);
-		case pxNyPz: return Vector3i(1, -1, 1);
+		case nxNyNz: return ChunkPosition(-1, -1, -1);
+		case nyNz: return ChunkPosition(0, -1, -1);
+		case pxNyNz: return ChunkPosition(1, -1, -1);
+		case nxNy: return ChunkPosition(-1, -1, 0);
+		case ny: return ChunkPosition(0, -1, 0);
+		case pxNy: return ChunkPosition(1, -1, 0);
+		case nxNyPz: return ChunkPosition(-1, -1, 1);
+		case nyPz: return ChunkPosition(0, -1, 1);
+		case pxNyPz: return ChunkPosition(1, -1, 1);
 
-		case nxNz: return Vector3i(-1, 0, -1);
-		case nz: return Vector3i(0, 0, -1);
-		case pxNz: return Vector3i(1, 0, -1);
-		case nx: return Vector3i(-1, 0, 0);
-		case px: return Vector3i(1, 0, 0);
-		case nxPz: return Vector3i(-1, 0, 1);
-		case pz: return Vector3i(0, 0, 1);
-		case pxPz: return Vector3i(1, 0, 1);
+		case nxNz: return ChunkPosition(-1, 0, -1);
+		case nz: return ChunkPosition(0, 0, -1);
+		case pxNz: return ChunkPosition(1, 0, -1);
+		case nx: return ChunkPosition(-1, 0, 0);
+		case px: return ChunkPosition(1, 0, 0);
+		case nxPz: return ChunkPosition(-1, 0, 1);
+		case pz: return ChunkPosition(0, 0, 1);
+		case pxPz: return ChunkPosition(1, 0, 1);
 
-		case nxPyNz: return Vector3i(-1, 1, -1);
-		case pyNz: return Vector3i(0, 1, -1);
-		case pxPyNz: return Vector3i(1, 1, -1);
-		case nxPy: return Vector3i(-1, 1, 0);
-		case py: return Vector3i(0, 1, 0);
-		case pxPy: return Vector3i(1, 1, 0);
-		case nxPyPz: return Vector3i(-1, 1, 1);
-		case pyPz: return Vector3i(0, 1, 1);
-		case pxPyPz: return Vector3i(1, 1, 1);
+		case nxPyNz: return ChunkPosition(-1, 1, -1);
+		case pyNz: return ChunkPosition(0, 1, -1);
+		case pxPyNz: return ChunkPosition(1, 1, -1);
+		case nxPy: return ChunkPosition(-1, 1, 0);
+		case py: return ChunkPosition(0, 1, 0);
+		case pxPy: return ChunkPosition(1, 1, 0);
+		case nxPyPz: return ChunkPosition(-1, 1, 1);
+		case pyPz: return ChunkPosition(0, 1, 1);
+		case pxPyPz: return ChunkPosition(1, 1, 1);
 
 		case last: throw new Exception("Invalid");
 	}	
@@ -346,6 +370,22 @@ struct ChunkPosition
 		return hash;
 	}
 
+	ChunkPosition opBinary(string op)(ref const ChunkPosition right)
+	{
+		return mixin("ChunkPosition(this.x"~op~"right.x, this.y"~op~"right.y, this.z"~op~"right.z)");
+	}
+
+	int opIndex(size_t offset)
+	{
+		switch(offset)
+		{
+			case 0: return x;
+			case 1: return y;
+			case 2: return z;
+			default: throw new Exception("Out of bounds");
+		}
+	}
+
 	bool opEquals(ref const ChunkPosition other) const @safe pure nothrow 
 	{
 		return other.x == x && other.y == y && other.z == z;
@@ -366,6 +406,15 @@ struct ChunkPosition
 	BlockPosition toBlockPosition(BlockOffset offset)
 	{
 		return BlockPosition(x * ChunkData.chunkDimensions + offset.x, y * ChunkData.chunkDimensions + offset.y, z * ChunkData.chunkDimensions + offset.z);
+	}
+
+	BlockOffset toOffset(BlockPosition pos)
+	{
+		BlockOffset offset;
+		offset.x = cast(int)(pos.x - x * ChunkData.chunkDimensions);
+		offset.y = cast(int)(pos.y - y * ChunkData.chunkDimensions);
+		offset.z = cast(int)(pos.z - z * ChunkData.chunkDimensions);
+		return offset;
 	}
 
 	static ChunkPosition fromVec3f(Vector3f v) 

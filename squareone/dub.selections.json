@@ -1,6 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"bolts": "0.11.1",
 		"cerealed": "0.6.11",
 		"colorize": "1.0.5",
 		"concepts": "0.0.8",
@@ -14,7 +15,9 @@
 		"dlib": "0.15.0",
 		"emsi_containers": "0.8.0-alpha.15",
 		"moxane": {"path":"../moxane/"},
+		"optional": "0.15.0",
 		"resusage": "0.2.8",
+		"silly": "0.8.2",
 		"stdx-allocator": "2.77.5",
 		"unit-threaded": "0.7.55"
 	}

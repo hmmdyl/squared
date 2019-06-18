@@ -9,8 +9,9 @@ import moxane.graphics.renderer;
 import dlib.math;
 import std.datetime.stopwatch;
 import std.parallelism;
-import std.typecons;
+import optional;
 import containers;
+import core.thread;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -44,8 +45,9 @@ final class BasicTerrainManager
 {
 	enum ChunkState
 	{
+		deallocated,
+		/// memory is assigned, but no voxel data.
 		notLoaded,
-		hibernated,
 		active
 	}
 
@@ -126,13 +128,13 @@ final class BasicTerrainManager
 					auto newCp = ChunkPosition(x, y, z);
 
 					ChunkState* getter = newCp in chunkStates;
-					bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+					bool doAdd = getter is null || *getter == ChunkState.deallocated;
 
 					if(doAdd)
 					{
 						auto chunk = createChunk(newCp);
 						chunksTerrain[newCp] = chunk;
-						chunkStates[newCp] = ChunkState.active;
+						chunkStates[newCp] = ChunkState.notLoaded;
 					}
 				}
 			}
@@ -224,7 +226,7 @@ final class BasicTerrainManager
 		foreach(ChunkPosition pos; extensionCPCache)
 		{
 			ChunkState* getter = pos in chunkStates;
-			bool doAdd = getter is null || *getter == ChunkState.notLoaded;
+			bool doAdd = getter is null || *getter == ChunkState.deallocated;
 
 			if(doAdd)
 			{
@@ -253,6 +255,7 @@ final class BasicTerrainManager
 			if(chunk.dataLoadCompleted)
 			{
 				//newChunkLoadNeighbours(bc);
+				chunkStates[position] = ChunkState.active;
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
 			}
@@ -264,7 +267,7 @@ final class BasicTerrainManager
 				{
 					chunksTerrain.remove(position);
 					chunk.deinitialise();
-					chunkStates[position] = ChunkState.hibernated;
+					chunkStates[position] = ChunkState.notLoaded;
 					//chunksHibernated++;
 					return;
 				}
@@ -286,34 +289,36 @@ final class BasicTerrainManager
 		@property bool isPresent(ChunkPosition pos) const
 		{
 			const ChunkState* state = pos in m.chunkStates;
-			if(state is null || *state == ChunkState.notLoaded || *state == ChunkState.hibernated)
+			if(state is null || *state == ChunkState.deallocated || *state == ChunkState.notLoaded)
 				return false;
 			else return true;
 		}
 
-		Nullable!BasicChunk borrow(ChunkPosition pos)
+		Optional!BasicChunk borrow(ChunkPosition pos)
 		{
-			Nullable!BasicChunk ret;
-			ret.nullify;
-
 			ChunkState* state = pos in m.chunkStates;
-			if(state is null || *state == ChunkState.notLoaded || *state == ChunkState.hibernated)
-				return ret;
+			if(state is null || *state == ChunkState.deallocated || *state == ChunkState.notLoaded)
+				return no!BasicChunk;
 
 			BasicChunk* chunk = pos in m.chunksTerrain;
 			if(chunk is null)
-				return ret;
+				return no!BasicChunk;
 			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
-				return ret;
+				return no!BasicChunk;
 			chunk.chunk.dataLoadBlocking = true;
 
-			ret = *chunk;
-			return ret;
+			return Optional!BasicChunk(*chunk);
 		}
 
 		void give(BasicChunk chunk)
 		in { assert((chunk.position in m.chunksTerrain) !is null); }
 		do { chunk.chunk.dataLoadBlocking = false; }
+
+		void give(Optional!BasicChunk chunk)
+		{
+			if(auto bc = chunk.unwrap)
+				give(*bc);
+		}
 	}
 	ChunkInteraction* chunkSys;
 
@@ -337,7 +342,7 @@ final class BasicTerrainManager
 			this.onSetFailure = &m.onSetFailure;
 		}
 
-		Nullable!Voxel get(long x, long y, long z)
+		Optional!Voxel get(long x, long y, long z)
 		{
 			ChunkPosition cp;
 			BlockOffset offset;
@@ -345,17 +350,13 @@ final class BasicTerrainManager
 			return get(cp, offset);
 		}
 
-		Nullable!Voxel get(ChunkPosition chunkPosition, BlockOffset cp)
+		Optional!Voxel get(ChunkPosition chunkPosition, BlockOffset cp)
 		{
 			ChunkState* state = chunkPosition in manager.chunkStates;
 			if(state is null || *state != ChunkState.active)
-			{
-				Nullable!Voxel ret;
-				ret.nullify;
-				return ret;
-			}
+				return no!Voxel;
 
-			return Nullable!Voxel(manager.chunksTerrain[chunkPosition].chunk.get(cp.x, cp.y, cp.z));
+			return Optional!Voxel(manager.chunksTerrain[chunkPosition].chunk.get(cp.x, cp.y, cp.z));
 		}
 
 		void set(Voxel voxel, BlockPosition blockPosition, bool forceLoad = false)
@@ -408,13 +409,13 @@ final class BasicTerrainManager
 				return;
 			}
 
-			Nullable!BasicChunk bc;
+			Optional!BasicChunk bc;
 			mixin(ForceBorrowScope!("chunkPos"));
 
-			setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, bc.get);
+			setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, *bc.unwrap);
 
-			bc.get.chunk.set(blockOffset.x, blockOffset.y, blockOffset.z, c.voxel);
-			bc.get.chunk.needsMesh = true;
+			bc.dispatch.chunk.set(blockOffset.x, blockOffset.y, blockOffset.z, c.voxel);
+			bc.dispatch.chunk.needsMesh = true;
 		}
 
 		const size_t l = setBlockCommands.length;
@@ -595,11 +596,85 @@ final class BasicTerrainManager
 
 		if(!chunkSys.isPresent(cp)) return;
 
-		Nullable!BasicChunk bc;
+		Optional!BasicChunk bc;
 		mixin(ForceBorrowScope!("cp"));
 
-		bc.get.chunk.set(newX, newY, newZ, voxel);
-		bc.get.chunk.needsMesh = true;
+		bc.dispatch.chunk.set(newX, newY, newZ, voxel);
+		bc.dispatch.chunk.needsMesh = true;
+	}
+}
+
+class ChunkLoadNeighbourOrder
+{
+	private Fiber fiber;
+
+	BasicChunk bc;
+	BasicTerrainManager manager;
+	invariant { assert(manager !is null); }
+
+	this(BasicTerrainManager m)
+	{
+		manager = m;
+		fiber = new Fiber(&internal);
+	}
+
+	this(BasicTerrainManager m, BasicChunk bc)
+	{
+		this(m);
+		run(bc);
+	}
+
+	void run(BasicChunk bc)
+	{
+		this.bc = bc;
+		fiber.call;
+	}
+
+	private void internal()
+	{
+		enum CSource
+		{
+			activeChunk,
+			region,
+			noise
+		}
+
+		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc.chunk, bc.position, null);
+		CSource[26] neighbourSources;
+		foreach(n; 0 .. cast(int)ChunkNeighbours.last)
+		{
+			ChunkNeighbours nn = cast(ChunkNeighbours)n;
+			ChunkPosition offset = chunkNeighbourToOffset(nn);
+			ChunkPosition np = bc.position + offset;
+
+			BasicTerrainManager.ChunkState* state = np in manager.chunkStates;
+			if(state !is null && *state == BasicTerrainManager.ChunkState.active)
+			{
+				Optional!BasicChunk nc;
+				mixin(ForceBorrowScope!("np", "nc"));
+
+				Vector3i[2] bin = neighbourBounds[n];
+				foreach(x; bin[0].x .. bin[1].x)
+				{
+					foreach(y; bin[0].y .. bin[1].y)
+					{
+						foreach(z; bin[0].z .. bin[1].z)
+						{
+							BlockPosition bp = np.toBlockPosition(BlockOffset(x, y, z));
+							BlockOffset bcOff = bc.position.toOffset(bp);
+
+							bc.chunk.set(bcOff.x, bcOff.y, bcOff.z, nc.unwrap.get(x, y, z));
+						}
+					}
+				}
+
+				continue;
+			}
+
+			noiseOrder.loadNeighour(nn, true);
+		}
+
+
 	}
 }
 
@@ -665,10 +740,10 @@ private immutable Vector3i[][] chunkOffsets = [
 
 template ForceBorrow(string chunkPosName, string basicChunkName = "bc")
 {
-	const char[] ForceBorrow = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".isNull); ";
+	const char[] ForceBorrow = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); ";
 }
 
 template ForceBorrowScope(string chunkPosName, string basicChunkName = "bc")
 {
-	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".isNull); scope(exit) chunkSys.give(" ~ basicChunkName ~ "); ";
+	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); scope(exit) chunkSys.give(" ~ basicChunkName ~ "); ";
 }
