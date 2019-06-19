@@ -248,9 +248,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		{}
 	}
 
-	private void execute(scope NoiseGeneratorOrder order)
+	private void execute(NoiseGeneratorOrder order)
 	{
-
+		x = order;
 	}
 }
 
