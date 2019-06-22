@@ -250,6 +250,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void execute(NoiseGeneratorOrder order)
 	{
+
 	}
 }
 

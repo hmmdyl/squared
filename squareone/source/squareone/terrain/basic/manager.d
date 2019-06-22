@@ -245,19 +245,18 @@ final class BasicTerrainManager
 	{
 		with(bc)
 		{
-			if(chunk.needsData && !chunk.isAnyMeshBlocking) 
+			if(chunk.needsData && !chunk.isAnyMeshBlocking && chunk.readonlyRefs == 0) 
 			{
 				chunkLoadNeighbours(bc);
 			}
 			if(chunk.dataLoadCompleted)
 			{
-				//newChunkLoadNeighbours(bc);
 				chunkStates[position] = ChunkState.active;
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
 			}
 
-			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted)
+			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
 			{
 				if(chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
 				   chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed) 
@@ -298,8 +297,8 @@ final class BasicTerrainManager
 			ChunkState* state = np in chunkStates;
 			if(state !is null && *state == ChunkState.active)
 			{
-				Optional!BasicChunk nc;
-				mixin(ForceBorrowScope!("np", "nc"));
+				Optional!BasicChunkReadonly nc;
+				mixin(ForceBorrowReadonly!("np", "nc"));
 
 				Vector3i[2] bin = neighbourBounds[n];
 				foreach(x; bin[0].x .. bin[1].x)
@@ -349,7 +348,7 @@ final class BasicTerrainManager
 			BasicChunk* chunk = pos in m.chunksTerrain;
 			if(chunk is null)
 				return no!BasicChunk;
-			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking || chunk.chunk.readonlyRefs > 0)
 				return no!BasicChunk;
 			chunk.chunk.dataLoadBlocking = true;
 
@@ -360,10 +359,25 @@ final class BasicTerrainManager
 		in { assert((chunk.position in m.chunksTerrain) !is null); }
 		do { chunk.chunk.dataLoadBlocking = false; }
 
-		void give(Optional!BasicChunk chunk)
+		Optional!BasicChunkReadonly borrowReadonly(ChunkPosition pos)
 		{
-			if(auto bc = chunk.unwrap)
-				give(*bc);
+			ChunkState* state = pos in m.chunkStates;
+			if(state is null || *state == ChunkState.deallocated || *state == ChunkState.notLoaded)
+				return no!BasicChunkReadonly;
+
+			BasicChunk* chunk = pos in m.chunksTerrain;
+			if(chunk is null)
+				return no!BasicChunkReadonly;
+			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted || chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+				return no!BasicChunkReadonly;
+			chunk.chunk.incrementReadonlyRef;
+
+			return Optional!BasicChunkReadonly(BasicChunkReadonly(chunk.chunk, pos, m));
+		}
+
+		void giveReadonly(ref BasicChunkReadonly chunk)
+		{
+			chunk.chunk.decrementReadonlyRef;
 		}
 	}
 	ChunkInteraction* chunkSys;
@@ -793,5 +807,10 @@ private immutable Vector3i[][] chunkOffsets = [
 
 template ForceBorrowScope(string chunkPosName, string basicChunkName = "bc", bool outer = false, string man = "manager")
 {
-	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = " ~ (outer == true ? man : "this") ~ ".chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); scope(exit) " ~ (outer == true ? man : "this") ~ ".chunkSys.give(" ~ basicChunkName ~ "); ";
+	const char[] ForceBorrowScope = "do " ~ basicChunkName ~ " = " ~ (outer == true ? man : "this") ~ ".chunkSys.borrow(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); scope(exit) " ~ (outer == true ? man : "this") ~ ".chunkSys.give(*" ~ basicChunkName ~ ".unwrap); ";
+}
+
+template ForceBorrowReadonly(string chunkPosName, string basicChunkName = "bc", bool outer = false, string man = "manager")
+{
+	const char[] ForceBorrowReadonly = "do " ~ basicChunkName ~ " = " ~ (outer == true ? man : "this") ~ ".chunkSys.borrowReadonly(" ~ chunkPosName ~ "); while(" ~ basicChunkName ~ ".unwrap is null); ";
 }

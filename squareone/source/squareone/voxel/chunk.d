@@ -65,6 +65,13 @@ interface ILoadableVoxelBuffer : IVoxelBuffer
 	@property void dataLoadCompleted(bool);
 }
 
+interface IReadonlyVoxelBuffer : IVoxelBuffer
+{
+	@property int readonlyRefs();
+	void incrementReadonlyRef();
+	void decrementReadonlyRef();
+}
+
 interface IRenderableVoxelBuffer : IVoxelBuffer 
 {
 	@property ref Transform transform();
@@ -98,7 +105,7 @@ interface ICompressableVoxelBuffer : IVoxelBuffer
 	void deallocateCompressedData();
 }
 
-class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ICompressableVoxelBuffer
+class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMeshableVoxelBuffer, ICompressableVoxelBuffer, IReadonlyVoxelBuffer
 {
 	private Voxel[] voxelData;
     private ubyte[] _compressedData;
@@ -271,6 +278,11 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
     private shared bool _pendingRemove;
     @property bool pendingRemove() { return atomicLoad(_pendingRemove); }
     @property void pendingRemove(bool n) { atomicStore(_pendingRemove, n); }
+
+	private shared int _readonlyRefCount;
+	@property int readonlyRefs() { return atomicLoad(_readonlyRefCount); }
+	void incrementReadonlyRef() { atomicOp!"+="(_readonlyRefCount, 1); }
+	void decrementReadonlyRef() { atomicOp!"-="(_readonlyRefCount, 1); }
 }
 
 enum ChunkNeighbours
