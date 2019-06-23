@@ -17,28 +17,16 @@ struct NoiseGeneratorOrder
 	ChunkPosition chunkPosition;
 	Fiber fiber;
 
-	private uint toLoad;
-	@property bool loadChunk() { return ((toLoad) & 1) == true; }
-	@property void loadChunk(bool n) {
-		toLoad |= (cast(int)n);
-	}
+	bool loadRing, loadChunk;
 
-	@property bool loadNeighbour(ChunkNeighbours n) { return ((toLoad >> (cast(int)n + 1)) & 1) == true; }
-	@property void loadNeighbour(ChunkNeighbours n, bool e) {
-		toLoad |= ((cast(int)e) << (cast(int)n + 1));
-	}
-
-	@property bool anyRequiresNoise() { return toLoad > 0; }
-
-	this(ILoadableVoxelBuffer chunk, ChunkPosition position, Fiber fiber)
+	this(ILoadableVoxelBuffer chunk, ChunkPosition position, Fiber fiber, bool loadChunk, bool loadRing)
 	{
 		this.chunk = chunk;
 		this.chunkPosition = position;
-		this.toLoad = 0;
 		this.fiber = fiber;
+		this.loadChunk = loadChunk;
+		this.loadRing = loadRing;
 	}
-
-	void setLoadAll() { toLoad = 0x7FF_FFFF; }
 }
 
 class NoiseGeneratorManager 
@@ -203,11 +191,15 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	override void add(NoiseGeneratorOrder order) { orders.send(order); }
 
 	Moxane moxane;
+	private OpenSimplexNoise!float simplex;
 
 	this(Moxane moxane)
 	{
 		this.moxane = moxane;
 		orders = new Channel!NoiseGeneratorOrder;
+
+		raw = VoxelBuffer(overrunDimensions, overrun);
+		simplex = new OpenSimplexNoise!float(4);
 	}
 
 	~this()
@@ -226,10 +218,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	{
 		super.setFields(resources, manager, seed);
 		assert(thread is null);
+
+		meshes = Meshes.get(resources);
+
 		thread = new Thread(&worker);
 		thread.isDaemon = true;
 		thread.start;
 	}
+
+	private enum int overrun = ChunkData.voxelOffset + 1;
+	private enum int overrunDimensions = ChunkData.chunkDimensions + overrun * 2;
+	private enum int overrunDimensions3 = overrunDimensions ^^ 3;
 
 	private void worker()
 	{
@@ -250,8 +249,162 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void execute(NoiseGeneratorOrder order)
 	{
+		scope(success) setChunkComplete(order);
 
+		if(!order.loadChunk && !order.loadRing) { return; }
+
+		const int s = order.loadRing ? -overrun : 0;
+		const int e = order.loadRing ? order.chunk.dimensionsProper + overrun : order.chunk.dimensionsProper;
+
+		int premC;
+
+		foreach(int box; s .. e)
+		foreach(int boz; s .. e)
+		{
+			if(!order.loadChunk)
+				if(box >= 1 && boz >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1)
+					continue;
+
+			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
+			float height = simplex.eval(realPos.x / 16f, realPos.z / 16f) * 8f;
+
+			foreach(int boy; s .. e)
+			{
+				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
+				if(realPos1.y <= height)
+					raw.set(box, boy, boz, Voxel(1, meshes.cube, 0, 0));
+				else
+				{
+					raw.set(box, boy, boz, Voxel(0, meshes.invisible, 0, 0));
+					premC++;
+				}
+			}
+		}
+
+		postProcess(order, premC);
+		countAir(order);
 	}
+
+	private void postProcess(NoiseGeneratorOrder order, int premC)
+	{
+		const int s = -order.chunk.overrun;
+		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
+		if(premC < overrunDimensions3)
+		{
+			foreach(x; s..e)
+			foreach(y; s..e)
+			foreach(z; s..e)
+			{
+				if(!order.loadChunk)
+					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
+						continue;
+				order.chunk.set(x, y, z, raw.get(x, y, z));
+			}
+		}
+		else
+		{
+			foreach(x; s..e)
+			foreach(y; s..e)
+			foreach(z; s..e)
+			{
+				if(!order.loadChunk)
+					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
+						continue;
+
+				order.chunk.set(x, y, z, raw.get(x, y, z));
+			}
+		}
+	}
+
+	private void countAir(NoiseGeneratorOrder order)
+	{
+		const int s = -order.chunk.overrun;
+		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
+		int airCount, solidCount;
+		foreach(x; s..e)
+		foreach(y; s..e)
+		foreach(z; s..e)
+		{
+			if(!order.loadChunk)
+				if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
+					continue;
+
+			Voxel voxel = order.chunk.get(x, y, z);
+			if(voxel.mesh == meshes.invisible)
+				airCount++;
+			else 
+				solidCount++;
+		}
+		order.chunk.airCount = airCount;
+		order.chunk.solidCount = solidCount;
+	}
+
+	private VoxelBuffer raw;
+
+	private struct VoxelBuffer
+	{
+		private Voxel[] voxels;
+		const int dimensions, offset;
+
+		this(const int dimensions, const int offset)
+		{
+			this.dimensions = dimensions;
+			this.offset = offset;
+			this.voxels = new Voxel[]((dimensions + offset * 2) ^^ 3);
+		}
+
+		void dupFrom(const ref VoxelBuffer other)
+		in {
+			assert(other.dimensions == dimensions);
+			assert(other.offset == offset);
+			assert(other.voxels.length == voxels.length);
+		}
+		do { foreach(size_t i, Voxel voxel; other.voxels) voxels[i] = voxel; }
+
+		private size_t fltIdx(int x, int y, int z) const
+		{ return x + dimensions * (y + dimensions * z); }
+
+		Voxel get(int x, int y, int z) const 
+		in {
+			assert(x >= -offset && x < dimensions + offset);
+			assert(y >= -offset && y < dimensions + offset);
+			assert(z >= -offset && z < dimensions + offset);
+		}
+		do { return voxels[fltIdx(x + offset, y + offset, z + offset)]; }
+
+		void set(int x, int y, int z, Voxel voxel)
+		in {
+			assert(x >= -offset && x < dimensions + offset);
+			assert(y >= -offset && y < dimensions + offset);
+			assert(z >= -offset && z < dimensions + offset);
+		}
+		do { voxels[fltIdx(x + offset, y + offset, z + offset)] = voxel; }
+	}
+
+	private struct Meshes
+	{
+		ushort invisible,
+			cube,
+			slope,
+			tetrahedron,
+			antiTetrahedron,
+			horizontalSlope;
+
+		static Meshes get(Resources resources)
+		{
+			import squareone.voxelcontent.block.meshes;
+
+			Meshes meshes;
+			meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
+			meshes.cube = resources.getMesh(Cube.technicalStatic).id;
+			meshes.slope = resources.getMesh(Slope.technicalStatic).id;
+			meshes.tetrahedron = resources.getMesh(Tetrahedron.technicalStatic).id;
+			meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
+			meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
+			return meshes;
+		}
+	}
+	private Meshes meshes;
 }
 
 version(none)
@@ -576,6 +729,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				manager.highestTime = nt;
 
 			if(manager.averageTime == 0)
+
 				manager.averageTime = nt;
 			else 
 			{

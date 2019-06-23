@@ -286,8 +286,8 @@ final class BasicTerrainManager
 			noise
 		}
 
-		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc.chunk, bc.position, null);
-		CSource[26] neighbourSources;
+		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc.chunk, bc.position, null, true, true);
+		/*CSource[26] neighbourSources;
 		foreach(n; 0 .. cast(int)ChunkNeighbours.last)
 		{
 			ChunkNeighbours nn = cast(ChunkNeighbours)n;
@@ -319,9 +319,7 @@ final class BasicTerrainManager
 			}
 
 			noiseOrder.loadNeighbour(nn, true);
-		}
-
-		noiseOrder.loadChunk = true;
+		}*/
 
 		noiseGeneratorManager.generate(noiseOrder);
 	}

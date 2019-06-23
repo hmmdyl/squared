@@ -314,16 +314,29 @@ private Vector3i[2] boundsNeighbour(ChunkNeighbours n)
 	return [base, end];
 }
 
-private Vector3i[2][26] getNeighbourBounds()
+private Vector3i[2] boundsNeighbourInChunk(ChunkNeighbours n)
+{
+	ChunkPosition offset = chunkNeighbourToOffset(n);
+	Vector3i base, end;
+	foreach(x; 0..3)
+	{
+		base[x] = offset[x] == 1 ? ChunkData.chunkDimensions : offset[x] == -1 ? -1 : 0;
+		end[x] = offset[x] == 1 ? ChunkData.chunkDimensions : offset[x] == -1 ? -1 : ChunkData.chunkDimensions;
+	}
+	return [base, end];
+}
+
+private Vector3i[2][26] getNeighbourBounds(Vector3i[2] function(ChunkNeighbours) fn)
 {
 	Vector3i[2][26] ret;
 	foreach(x; 0 .. cast(int)ChunkNeighbours.last)
-		ret[x] = boundsNeighbour(cast(ChunkNeighbours)x);
+		ret[x] = fn(cast(ChunkNeighbours)x);
 	//pragma(msg, ret);
 	return ret;
 }
 
-static enum Vector3i[2][26] neighbourBounds = getNeighbourBounds;
+static enum Vector3i[2][26] neighbourBounds = getNeighbourBounds(&boundsNeighbour);
+static enum Vector3i[2][26] neighbourBoundsInChunk = getNeighbourBounds(&boundsNeighbourInChunk);
 
 ChunkPosition chunkNeighbourToOffset(ChunkNeighbours n)
 {
@@ -413,9 +426,19 @@ struct ChunkPosition
 		return Vector3d(x * ChunkData.chunkDimensionsMetres, y * ChunkData.chunkDimensionsMetres, z * ChunkData.chunkDimensionsMetres);
 	}
 
+	Vector3d toVec3dOffset(BlockOffset offset) const
+	{
+		BlockPosition p = toBlockPosition(offset);
+		Vector3d r;
+		r.x = p.x * ChunkData.voxelScale;
+		r.y = p.y * ChunkData.voxelScale;
+		r.z = p.z * ChunkData.voxelScale;
+		return r;
+	}
+
 	Vector3i toVec3i() { return Vector3i(x, y, z); }
 
-	BlockPosition toBlockPosition(BlockOffset offset)
+	BlockPosition toBlockPosition(BlockOffset offset) const
 	{
 		return BlockPosition(x * ChunkData.chunkDimensions + offset.x, y * ChunkData.chunkDimensions + offset.y, z * ChunkData.chunkDimensions + offset.z);
 	}
@@ -445,12 +468,17 @@ struct ChunkPosition
 							 cast(int)(v.z * ChunkData.invChunkDimensionsMetres));
 	}
 
-	static Vector3f blockPosRealCoord(ChunkPosition cp, Vector3i block) {
+	static Vector3f blockOffsetRealCoord(ChunkPosition cp, Vector3i block) {
 		Vector3f cpReal = cp.toVec3f();
 		cpReal.x += (block.x * ChunkData.voxelScale);
 		cpReal.y += (block.y * ChunkData.voxelScale);
 		cpReal.z += (block.z * ChunkData.voxelScale);
 		return cpReal;
+	}
+
+	static Vector3d blockPosRealCoord(BlockPosition bp)
+	{
+		return Vector3d(bp.x * ChunkData.voxelScale, bp.y * ChunkData.voxelScale, bp.z * ChunkData.voxelScale);
 	}
 
 	static void blockPosToChunkPositionAndOffset(Vector!(long, 3) block, out ChunkPosition chunk, out Vector3i offset)
