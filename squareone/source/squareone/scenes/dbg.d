@@ -9,6 +9,7 @@ import moxane.graphics.sprite;
 import squareone.terrain.basic.manager;
 import squareone.voxel;
 import squareone.voxelcontent.block;
+import squareone.voxelcontent.fluid.processor;
 
 import dlib.math;
 
@@ -30,6 +31,7 @@ final class DebugGameScene : Scene
 
 	private Resources resources;
 	private BlockProcessor blockProcessor;
+	private FluidProcessor fluidProcessor;
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
@@ -48,18 +50,21 @@ final class DebugGameScene : Scene
 
 		blockProcessor = new BlockProcessor(moxane, bvts);
 		resources.add(blockProcessor);
+		fluidProcessor = new FluidProcessor(moxane);
+		resources.add(fluidProcessor);
 
 		resources.add(new Cube);
 		resources.add(new Slope);
 		resources.add(new Tetrahedron);
 		resources.add(new AntiTetrahedron);
 		resources.add(new HorizontalSlope);
+		resources.add(new FluidMesh);
 
 		resources.add(new Dirt);
 		resources.add(new Grass);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(4, 4, 4), Vector3i(8, 8, 8), Vector3i(10, 10, 10), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(6, 6, 6), Vector3i(16, 16, 16), Vector3i(20, 20, 20), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 

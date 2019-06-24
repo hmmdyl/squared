@@ -440,7 +440,7 @@ struct ChunkPosition
 
 	BlockPosition toBlockPosition(BlockOffset offset) const
 	{
-		return BlockPosition(x * ChunkData.chunkDimensions + offset.x, y * ChunkData.chunkDimensions + offset.y, z * ChunkData.chunkDimensions + offset.z);
+		return BlockPosition(cast(long)x * cast(long)ChunkData.chunkDimensions + cast(long)offset.x, cast(long)y * cast(long)ChunkData.chunkDimensions + cast(long)offset.y, cast(long)z * cast(long)ChunkData.chunkDimensions + cast(long)offset.z);
 	}
 
 	BlockOffset toOffset(BlockPosition pos)

@@ -236,9 +236,16 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		{
 			while(!terminate)
 			{
+				import std.datetime.stopwatch;
+				import std.stdio;
 				Optional!NoiseGeneratorOrder order = orders.await;
 				if(auto o = order.unwrap)
+				{
+					StopWatch sw = StopWatch(AutoStart.yes);
 					execute(*o);
+					sw.stop;
+					//writeln(sw.peek.total!"nsecs" / 1_000_000f, "msecs");
+				}
 				else
 					return;
 			}
@@ -270,13 +277,24 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			foreach(int boy; s .. e)
 			{
+				if(!order.loadChunk)
+					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
+						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
 					raw.set(box, boy, boz, Voxel(1, meshes.cube, 0, 0));
 				else
 				{
-					raw.set(box, boy, boz, Voxel(0, meshes.invisible, 0, 0));
-					premC++;
+					if(realPos1.y <= -0.25)
+					{
+						raw.set(box, boy, boz, Voxel(0, meshes.fluid, 0, 0));
+						//premC--;
+					}
+					else
+					{
+						raw.set(box, boy, boz, Voxel(0, meshes.invisible, 0, 0));
+						premC++;
+					}
 				}
 			}
 		}
@@ -330,7 +348,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					continue;
 
 			Voxel voxel = order.chunk.get(x, y, z);
-			if(voxel.mesh == meshes.invisible)
+			if(voxel.mesh == meshes.invisible || voxel.mesh == meshes.fluid)
 				airCount++;
 			else 
 				solidCount++;
@@ -388,11 +406,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			slope,
 			tetrahedron,
 			antiTetrahedron,
-			horizontalSlope;
+			horizontalSlope,
+			fluid;
 
 		static Meshes get(Resources resources)
 		{
 			import squareone.voxelcontent.block.meshes;
+			import squareone.voxelcontent.fluid.processor;
 
 			Meshes meshes;
 			meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
@@ -401,6 +421,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			meshes.tetrahedron = resources.getMesh(Tetrahedron.technicalStatic).id;
 			meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
 			meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
+			meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
 			return meshes;
 		}
 	}
