@@ -64,7 +64,7 @@ final class DebugGameScene : Scene
 		resources.add(new Grass);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(6, 6, 6), Vector3i(22, 22, 22), Vector3i(24, 24, 24), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(6, 6, 6), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
