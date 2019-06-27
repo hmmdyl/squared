@@ -15,6 +15,8 @@ import dlib.math.matrix;
 import dlib.math.vector;
 import dlib.math.transformation;
 import dlib.math.utils : clamp;
+import std.random;
+import std.algorithm;
 
 final class FluidProcessor : IProcessor
 {
@@ -38,6 +40,12 @@ final class FluidProcessor : IProcessor
 
 	private uint vao;
 	private Effect effect;
+
+	private float fluidTime = 1f;
+	private float[8] waveAmplitudes;
+	private float[8] waveWavelengths;
+	private float[8] waveSpeeds;
+	private Vector2f[8] waveDirections;
 
 	this(Moxane moxane)
 	in(moxane !is null)
@@ -73,7 +81,22 @@ final class FluidProcessor : IProcessor
 		effect.findUniform("ModelViewProjection");
 		effect.findUniform("ModelView");
 		effect.findUniform("Fit10bScale");
+		effect.findUniform("Model");
+		effect.findUniform("Time");
+		effect.findUniform("Amplitudes");
+		effect.findUniform("Wavelengths");
+		effect.findUniform("Speed");
+		effect.findUniform("Direction");
 		effect.unbind;
+
+		foreach(ref float amplitude; waveAmplitudes)
+			amplitude = uniform01!float() * 0.075f;
+		foreach(ref float wavelength; waveWavelengths)
+			wavelength = uniform01!float() * 10f;
+		foreach(ref float speed; waveSpeeds)
+			speed = uniform01!float() * 0.5f;
+		foreach(ref Vector2f direction; waveDirections)
+			direction = Vector2f(((uniform01!float() - 0.5f) * 2f), ((uniform01!float() - 0.5f) * 2f));
 	}
 
 	~this()
@@ -188,6 +211,13 @@ final class FluidProcessor : IProcessor
 			glEnableVertexAttribArray(x);
 
 		effect.bind;
+
+		fluidTime += moxane.deltaTime;
+		effect["Time"].set(fluidTime);
+		effect["Amplitudes"].set(waveAmplitudes.ptr, 8);
+		effect["Wavelengths"].set(waveWavelengths.ptr, 8);
+		effect["Speed"].set(waveSpeeds.ptr, 8);
+		effect["Direction"].set(waveDirections.ptr, 8);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
@@ -203,6 +233,7 @@ final class FluidProcessor : IProcessor
 		effect["ModelViewProjection"].set(&mvp);
 		effect["ModelView"].set(&mv);
 		effect["Fit10bScale"].set(rd.fit10BitScale);
+		effect["Model"].set(&nm);
 
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
@@ -371,11 +402,7 @@ private class Mesher
 		for(int z = 0; z < c.dimensionsProper; z += blockskip)
 		{
 			Voxel v = c.get(x, y, z);
-			if(v.mesh != fluidID) continue;
-
 			Voxel[6] neighbours;
-			SideSolidTable[6] isSideSolid;
-			Vector3f vbias = Vector3f(x, y, z);
 
 			neighbours[VoxelSide.nx] = c.get(x - blockskip, y, z);
 			neighbours[VoxelSide.px] = c.get(x + blockskip, y, z);
@@ -384,31 +411,42 @@ private class Mesher
 			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip);
 			neighbours[VoxelSide.pz] = c.get(x, y, z + blockskip);
 
-			isSideSolid[VoxelSide.nx] = neighbours[VoxelSide.nx].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
-			isSideSolid[VoxelSide.px] = neighbours[VoxelSide.px].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
-			isSideSolid[VoxelSide.ny] = neighbours[VoxelSide.ny].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
-			isSideSolid[VoxelSide.py] = neighbours[VoxelSide.py].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
-			isSideSolid[VoxelSide.nz] = neighbours[VoxelSide.nz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
-			isSideSolid[VoxelSide.pz] = neighbours[VoxelSide.pz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
-
-			void addTriangle(ushort[3] indices, int dir)
+			void addVoxel()
 			{
-				buffer.add((cubeVertices[indices[0]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
-				buffer.add((cubeVertices[indices[1]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
-				buffer.add((cubeVertices[indices[2]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
-			}
-			void addSide(int dir)
-			{
-				addTriangle(cubeIndices[dir][0], dir);
-				addTriangle(cubeIndices[dir][1], dir);
+				SideSolidTable[6] isSideSolid;
+				Vector3f vbias = Vector3f(x, y-0.125f, z);
+
+				isSideSolid[VoxelSide.nx] = neighbours[VoxelSide.nx].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
+				isSideSolid[VoxelSide.px] = neighbours[VoxelSide.px].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
+				isSideSolid[VoxelSide.ny] = neighbours[VoxelSide.ny].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
+				isSideSolid[VoxelSide.py] = neighbours[VoxelSide.py].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
+				isSideSolid[VoxelSide.nz] = neighbours[VoxelSide.nz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
+				isSideSolid[VoxelSide.pz] = neighbours[VoxelSide.pz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
+
+				void addTriangle(ushort[3] indices, int dir)
+				{
+					buffer.add((cubeVertices[indices[0]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
+					buffer.add((cubeVertices[indices[1]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
+					buffer.add((cubeVertices[indices[2]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
+				}
+				void addSide(int dir)
+				{
+					addTriangle(cubeIndices[dir][0], dir);
+					addTriangle(cubeIndices[dir][1], dir);
+				}
+
+				if(isSideSolid[VoxelSide.nx] != SideSolidTable.solid) addSide(VoxelSide.nx);
+				if(isSideSolid[VoxelSide.px] != SideSolidTable.solid) addSide(VoxelSide.px);
+				if(isSideSolid[VoxelSide.ny] != SideSolidTable.solid) addSide(VoxelSide.ny);
+				if(isSideSolid[VoxelSide.py] != SideSolidTable.solid) addSide(VoxelSide.py);
+				if(isSideSolid[VoxelSide.nz] != SideSolidTable.solid) addSide(VoxelSide.nz);
+				if(isSideSolid[VoxelSide.pz] != SideSolidTable.solid) addSide(VoxelSide.pz);
 			}
 
-			if(isSideSolid[VoxelSide.nx] != SideSolidTable.solid) addSide(VoxelSide.nx);
-			if(isSideSolid[VoxelSide.px] != SideSolidTable.solid) addSide(VoxelSide.px);
-			if(isSideSolid[VoxelSide.ny] != SideSolidTable.solid) addSide(VoxelSide.ny);
-			if(isSideSolid[VoxelSide.py] != SideSolidTable.solid) addSide(VoxelSide.py);
-			if(isSideSolid[VoxelSide.nz] != SideSolidTable.solid) addSide(VoxelSide.nz);
-			if(isSideSolid[VoxelSide.pz] != SideSolidTable.solid) addSide(VoxelSide.pz);
+			//if(v.mesh != fluidID) continue;
+
+			if(v.mesh == fluidID || (v.mesh != fluidID && v.mesh != 0 && any!((Voxel v) => v.mesh == fluidID)(neighbours[])))
+				addVoxel();
 		}
 
 		if(buffer.vertexCount == 0)

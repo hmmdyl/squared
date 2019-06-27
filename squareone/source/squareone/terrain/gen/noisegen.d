@@ -338,7 +338,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	{
 		const int s = -order.chunk.overrun;
 		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
-		int airCount, solidCount;
+		int airCount, solidCount, fluidCount;
 		foreach(x; s..e)
 		foreach(y; s..e)
 		foreach(z; s..e)
@@ -348,13 +348,16 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					continue;
 
 			Voxel voxel = order.chunk.get(x, y, z);
-			if(voxel.mesh == meshes.invisible || voxel.mesh == meshes.fluid)
+			if(voxel.mesh == meshes.invisible)
 				airCount++;
+			else if(voxel.mesh == meshes.fluid)
+				fluidCount++;
 			else 
 				solidCount++;
 		}
 		order.chunk.airCount = airCount;
 		order.chunk.solidCount = solidCount;
+		order.chunk.fluidCount = fluidCount;
 	}
 
 	private VoxelBuffer raw;

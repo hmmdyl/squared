@@ -259,7 +259,8 @@ final class BasicTerrainManager
 			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
 			{
 				if(chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
-				   chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed) 
+				   chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed ||
+				   chunk.fluidCount == ChunkData.chunkOverrunDimensionsCubed) 
 				{
 					chunksTerrain.remove(position);
 					chunk.deinitialise();

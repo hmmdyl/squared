@@ -48,6 +48,8 @@ interface IVoxelBuffer
 	@property void solidCount(int);
 	@property int airCount();
 	@property void airCount(int);
+	@property int fluidCount();
+	@property void fluidCount(int);
 
 	Voxel get(int x, int y, int z);
 	Voxel getRaw(int x, int y, int z);
@@ -211,6 +213,10 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
 	private int _solidCount;
 	@property int solidCount() { return _solidCount; }
 	@property void solidCount(int ac) { _solidCount = ac; }
+	
+	private int fluidCount_;
+	@property int fluidCount() { return fluidCount_; }
+	@property void fluidCount(int ac) { fluidCount_ = ac; }
 
     private shared(bool) _needsData;
     @property bool needsData() { return atomicLoad(_needsData); }
