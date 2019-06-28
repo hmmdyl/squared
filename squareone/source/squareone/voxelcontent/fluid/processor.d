@@ -414,7 +414,7 @@ private class Mesher
 			void addVoxel()
 			{
 				SideSolidTable[6] isSideSolid;
-				Vector3f vbias = Vector3f(x, y-0.125f, z);
+				Vector3f vbias = Vector3f(x, y, z);
 
 				isSideSolid[VoxelSide.nx] = neighbours[VoxelSide.nx].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
 				isSideSolid[VoxelSide.px] = neighbours[VoxelSide.px].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
