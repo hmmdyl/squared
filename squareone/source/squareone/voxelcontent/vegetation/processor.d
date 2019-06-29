@@ -3,12 +3,14 @@ module squareone.voxelcontent.vegetation.processor;
 import squareone.voxel;
 import squareone.voxelcontent.vegetation.types;
 import squareone.util.spec;
+import squareone.terrain.gen.simplex;
 
 import moxane.core;
 import moxane.utils.pool;
 
 import dlib.math.vector;
 import core.thread;
+import optional : Optional, unwrap, none;
 
 final class VegetationProcessor : IProcessor
 {
@@ -22,6 +24,9 @@ final class VegetationProcessor : IProcessor
 
 	package Pool!MeshBuffer meshBufferPool;
 	package Channel!MeshResult meshResults;
+
+	package IVegetationVoxelMesh[] meshes;
+	package IVegetationVoxelMaterial[] materials;
 }
 
 private struct MeshResult
@@ -38,11 +43,14 @@ private final class Mesher
 	private bool terminate;
 	private Thread thread;
 
+	private OpenSimplexNoise!float simplex;
+
 	this(VegetationProcessor processor)
 	in(processor !is null)
 	do {
 		this.processor = processor;
 		orders = new Channel!MeshOrder;
+		simplex = new OpenSimplexNoise!float;
 		thread = new Thread(&worker);
 		thread.name = VegetationProcessor.stringof ~ " " ~ Mesher.stringof;
 		thread.isDaemon = true;
@@ -82,7 +90,35 @@ private final class Mesher
 
 	private void execute(MeshOrder order)
 	{
-		
+		for(int x = 0; x < order.chunk.dimensionsProper; x += order.chunk.blockskip)
+		for(int y = 0; y < order.chunk.dimensionsProper; y += order.chunk.blockskip)
+		for(int z = 0; z < order.chunk.dimensionsProper; z += order.chunk.blockskip)
+		{
+			Voxel voxel = order.chunk.get(x, y, z);
+
+			IVegetationVoxelMesh mesh = processor.meshes[voxel.mesh];
+			if(mesh is null) continue;
+
+			Voxel ny = order.chunk.get(x, y - order.chunk.blockskip, z);
+			const bool shiftDown = processor.resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
+
+			const Vector3f colour = voxel.extractColour;
+			ubyte[4] colourBytes = [
+				cast(ubyte)(colour.x * 255),
+				cast(ubyte)(colour.y * 255),
+				cast(ubyte)(colour.z * 255),
+				0
+			];
+
+			IVegetationVoxelMaterial material = processor.materials[voxel.material];
+			if(material is null) throw new Exception("Yeetus");
+
+			if(mesh.meshType == MeshType.grass)
+			{
+				colourBytes[3] = material.grassTexture;
+				
+			}
+		}
 	}
 }
 
@@ -106,7 +142,7 @@ private final class MeshBuffer
 
 	void add(Vector3f vertex, ubyte[4] colour, Vector2f texCoord)
 	{
-		vertices[vertexCount] = v;
+		vertices[vertexCount] = vertex;
 		colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour[];
 		texCoords[vertexCount] = texCoord;
 		vertexCount++;

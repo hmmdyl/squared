@@ -3,6 +3,7 @@ module squareone.voxelcontent.vegetation.types;
 import squareone.voxel;
 
 import dlib.math.vector;
+import dlib.math.utils;
 
 enum MeshType : ubyte
 {
@@ -25,7 +26,7 @@ interface IVegetationVoxelTexture : IVoxelContent
 	@property ubyte id() const;
 	@property void id(ubyte);
 
-	@property string file;
+	@property string file();
 }
 
 Vector3f extractColour(const Voxel v)
