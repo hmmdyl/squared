@@ -5,15 +5,40 @@ import squareone.voxel;
 import dlib.math.vector;
 import dlib.math.utils;
 
-enum MeshType : ubyte
+enum MeshType
 {
-	other = 1 << 0,
-	grass = 1 << 1,
-	flowerShort = 1 << 2,
-	flower = 1 << 3,
+	other,
+	grassHalf,
+	grass,
+	grass2,
+	grass4,
+	grass8,
+	flowerShort,
+	flower,
 }
 
 enum flowerShortHeight = 1; // block
+
+float meshTypeToBlockHeight(const MeshType mt)
+{
+	final switch(mt) with(MeshType)
+	{
+		case other: return float.nan;
+		case grassHalf: return 0.5f;
+		case grass: return 1f;
+		case grass2: return 2f;
+		case grass4: return 4f;
+		case grass8: return 8f;
+		case flowerShort: return 1f;
+		case flower: return 2f;
+	}
+}
+
+bool isGrass(const MeshType mt)
+{
+	with(MeshType)
+		return mt == grassHalf || mt == grass || mt == grass2 || mt == grass4 || mt == grass8;
+}
 
 interface IVegetationVoxelMesh : IVoxelMesh
 {
@@ -72,6 +97,30 @@ void setFlowerRotation(FlowerRotation fr, Voxel* v) {
 	v.materialData = v.materialData | (twobits << 18);
 	v.meshData = v.meshData & ~(0x1 << 19);
 	v.meshData = v.meshData | (onebit << 19);
+}
+
+ubyte getGrassOffset(const Voxel v)
+{
+	return ((v.meshData >> 17) & 0x3);
+}
+
+void setGrassOffset(ubyte o, Voxel* v)
+{
+	v.meshData = v.meshData & ~(0x3 << 17);
+	v.meshData = v.meshData | ((o & 0x3) << 17);
+}
+
+struct VegetationVoxel
+{
+	private Voxel voxel;
+	alias voxel this;
+
+	@property Vector3f colour() { return extractColour(voxel); }
+	@property void colour(Vector3f c) { insertColour(c, &voxel); }
+	@property FlowerRotation flowerRotation() { return getFlowerRotation(voxel); }
+	@property void flowerRotation(FlowerRotation fr) { setFlowerRotation(fr, &voxel); }
+	@property ubyte grassOffset() { return getGrassOffset(voxel); }
+	@property void grassOffset(ubyte o) { setGrassOffset(o, &voxel); }
 }
 
 interface IVegetationVoxelMaterial : IVoxelMaterial
