@@ -251,7 +251,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 		catch(Throwable t)
-		{}
+		{
+			import std.stdio;
+			writeln(t.info);
+		}
 	}
 
 	private void execute(NoiseGeneratorOrder order)
@@ -300,7 +303,32 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		}
 
 		postProcess(order, premC);
+		addGrassBlades(order, premC);
 		countAir(order);
+	}
+
+	private void addGrassBlades(NoiseGeneratorOrder order, ref int premC)
+	{
+		const int s = -order.chunk.overrun;
+		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
+		foreach(x; s..e)
+		foreach_reverse(y; s..e)
+		foreach(z; s..e)
+		{
+			if(y < 0) continue; 
+
+			Voxel ny = order.chunk.get(x, y - order.chunk.blockskip, z);
+			Voxel v = order.chunk.get(x, y, z);
+
+			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid)
+			{
+				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
+				float a = simplex.eval(realPos.x / 2f + 27, realPos.z / 2f + 675);
+				if(a <= 0.5f) continue;
+				order.chunk.set(x, y, z, Voxel(3, meshes.grassBlades, 0, 0));
+				//premC--;
+			}
+		}
 	}
 
 	private void postProcess(NoiseGeneratorOrder order, int premC)
@@ -410,12 +438,14 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			tetrahedron,
 			antiTetrahedron,
 			horizontalSlope,
-			fluid;
+			fluid,
+			grassBlades;
 
 		static Meshes get(Resources resources)
 		{
 			import squareone.voxelcontent.block.meshes;
 			import squareone.voxelcontent.fluid.processor;
+			import squareone.voxelcontent.vegetation;
 
 			Meshes meshes;
 			meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
@@ -425,6 +455,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
 			meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
 			meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
+			meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
 			return meshes;
 		}
 	}

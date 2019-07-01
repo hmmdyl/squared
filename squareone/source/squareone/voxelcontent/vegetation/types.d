@@ -1,6 +1,7 @@
 module squareone.voxelcontent.vegetation.types;
 
 import squareone.voxel;
+import squareone.voxelcontent.vegetation.processor;
 
 import dlib.math.vector;
 import dlib.math.utils;
@@ -8,37 +9,12 @@ import dlib.math.utils;
 enum MeshType
 {
 	other,
-	grassHalf,
 	grass,
-	grass2,
-	grass4,
-	grass8,
 	flowerShort,
 	flower,
 }
 
 enum flowerShortHeight = 1; // block
-
-float meshTypeToBlockHeight(const MeshType mt)
-{
-	final switch(mt) with(MeshType)
-	{
-		case other: return float.nan;
-		case grassHalf: return 0.5f;
-		case grass: return 1f;
-		case grass2: return 2f;
-		case grass4: return 4f;
-		case grass8: return 8f;
-		case flowerShort: return 1f;
-		case flower: return 2f;
-	}
-}
-
-bool isGrass(const MeshType mt)
-{
-	with(MeshType)
-		return mt == grassHalf || mt == grass || mt == grass2 || mt == grass4 || mt == grass8;
-}
 
 interface IVegetationVoxelMesh : IVoxelMesh
 {
@@ -110,6 +86,29 @@ void setGrassOffset(ubyte o, Voxel* v)
 	v.meshData = v.meshData | ((o & 0x3) << 17);
 }
 
+float grassHeightCodeToBlockHeight(const ubyte d)
+{
+	final switch(d)
+	{
+		case 0: return 0.5f;
+		case 1: return 1f;
+		case 2: return 1.5f;
+		case 3: return 2f;
+		case 4: return 3f;
+		case 5: return 4f;
+		case 6: return 6f;
+		case 7: return 8f;
+	}
+}
+
+float getBlockHeight(const Voxel v)
+{
+	ubyte d = ((v.meshData >> 14) & 0x7);
+	return grassHeightCodeToBlockHeight(d);
+}
+
+//void setBlockHeight(float )
+
 struct VegetationVoxel
 {
 	private Voxel voxel;
@@ -125,7 +124,7 @@ struct VegetationVoxel
 
 interface IVegetationVoxelMaterial : IVoxelMaterial
 {
-	void loadTextures();
+	void loadTextures(VegetationProcessor);
 
 	@property ubyte grassTexture() const;
 	@property ubyte flowerStorkTexture() const;

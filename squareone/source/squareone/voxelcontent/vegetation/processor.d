@@ -7,6 +7,9 @@ import squareone.terrain.gen.simplex;
 
 import moxane.core;
 import moxane.utils.pool;
+import moxane.graphics.texture;
+import moxane.graphics.effect;
+import moxane.graphics.renderer;
 
 import dlib.math.vector;
 import dlib.math.matrix;
@@ -27,26 +30,43 @@ final class VegetationProcessor : IProcessor
 
 	package Pool!MeshBuffer meshBufferPool;
 	package Channel!MeshResult meshResults;
+	private enum mesherCount = 1;
+	private Mesher[] meshers;
+	private int meshBarrel;
+	private Pool!(RenderData*) renderDataPool;
 
 	package IVegetationVoxelTexture[] textures;
 	package IVegetationVoxelMesh[ushort] meshes;
 	package IVegetationVoxelMaterial[ushort] materials;
 
-	private uint vao;
+	private Texture2DArray textureArray;
 
-	this(IVegetationVoxelTexture[] textures)
+	private uint vao;
+	private Effect effect;
+
+	this(Moxane moxane, IVegetationVoxelTexture[] textures)
+	in(moxane !is null)
 	in(textures !is null)
 	do {
 		this.textures = textures;
+		this.moxane = moxane;
 
 		meshBufferPool = Pool!MeshBuffer(() => new MeshBuffer, 24, false);
 		meshResults = new Channel!MeshResult;
+		renderDataPool = Pool!(RenderData*)(() => new RenderData, 64);
 	}
 
 	~this()
 	{
 		import derelict.opengl3.gl3 : glDeleteVertexArrays;
 		glDeleteVertexArrays(1, &vao);
+
+		foreach(x; 0 .. meshers.length)
+		{
+			Mesher m = meshers[x];
+			destroy(m);
+			meshers[x] = null;
+		}
 	}
 
 	void finaliseResources(Resources resources)
@@ -56,13 +76,179 @@ final class VegetationProcessor : IProcessor
 
 		foreach(ushort x; 0 .. resources.meshCount)
 		{
-			IVegetationVoxelMesh vvm = cast(IVegetationVoxelMesh)resources.getMaterial(x);
+			IVegetationVoxelMesh vvm = cast(IVegetationVoxelMesh)resources.getMesh(x);
 			if(vvm is null) continue;
 			meshes[x] = vvm;
 		}
 		meshes = meshes.rehash;
 
+		string[] textureFiles = new string[](textures.length);
+		foreach(size_t x, IVegetationVoxelTexture texture; textures)
+		{
+			texture.id = cast(ubyte)x;
+			textureFiles[x] = texture.file;
+		}
+		textureArray = new Texture2DArray(textureFiles, false, Filter.linear, Filter.nearest, true);
 
+		foreach(ushort x; 0 .. resources.materialCount)
+		{
+			IVegetationVoxelMaterial vvm = cast(IVegetationVoxelMaterial)resources.getMaterial(x);
+			if(vvm is null) continue;
+			vvm.loadTextures(this);
+			materials[x] = vvm;
+		}
+		materials.rehash;
+
+		foreach(x; 0 .. mesherCount)
+			meshers ~= new Mesher(this);
+
+		import std.file : readText;
+		import derelict.opengl3.gl3 : glGenVertexArrays, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER;
+		glGenVertexArrays(1, &vao);
+
+		Log log = moxane.services.get!(Log);
+		Shader vs = new Shader, fs = new Shader;
+		vs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/veggieProcessor.vs.glsl")), GL_VERTEX_SHADER, log);
+		fs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/veggieProcessor.fs.glsl")), GL_FRAGMENT_SHADER, log);
+		effect = new Effect(moxane, VegetationProcessor.stringof);
+		effect.attachAndLink(vs, fs);
+		effect.bind;
+		effect.findUniform("ModelViewProjection");
+		effect.findUniform("Model");
+		effect.findUniform("Textures");
+		effect.unbind;
+	}
+
+	private bool isRdNull(IMeshableVoxelBuffer vb) { return vb.renderData[id_] is null; }
+	private RenderData* getRD(IMeshableVoxelBuffer vb) { return cast(RenderData*)vb.renderData[id_]; }
+
+	void meshChunk(MeshOrder o)
+	{
+		meshers[meshBarrel++].orders.send(o);
+		if(meshBarrel >= mesherCount) meshBarrel = 0;
+	}
+
+	void removeChunk(IMeshableVoxelBuffer c)
+	{
+		if(isRdNull(c)) return;
+
+		RenderData* rd = getRD(c);
+		rd.destroy;
+		renderDataPool.give(rd);
+
+		c.renderData[id_] = null;
+	}
+
+	void updateFromManager()
+	{}
+
+	void performUploads()
+	{
+		while(!meshResults.empty)
+		{
+			Optional!MeshResult meshResult = meshResults.tryGet;
+			if(meshResult == none) return;
+
+			MeshResult result = *unwrap(meshResult);
+
+			if(result.buffer is null)
+			{
+				if(!isRdNull(result.order.chunk))
+					removeChunk(result.order.chunk);
+				continue;
+			}
+
+			bool hasRD = !isRdNull(result.order.chunk);
+			RenderData* rd;
+			if(hasRD)
+				rd = getRD(result.order.chunk);
+			else
+			{
+				rd = renderDataPool.get;
+				rd.create;
+				result.order.chunk.renderData[id_] = cast(void*)rd;
+			}
+
+			rd.vertexCount = result.buffer.vertexCount;
+
+			import derelict.opengl3.gl3;
+			
+			glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, result.buffer.vertices.ptr, GL_STATIC_DRAW);
+			
+			glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, result.buffer.colours.ptr, GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.texCoords.ptr, GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			result.order.chunk.meshBlocking(false, id_);
+			result.buffer.reset;
+			meshBufferPool.give(result.buffer);
+		}
+	}
+
+	Renderer renderer;
+	void prepareRender(Renderer renderer)
+	{
+		this.renderer = renderer;
+		import derelict.opengl3.gl3;
+
+		performUploads;
+		glBindVertexArray(vao);
+
+		foreach(x; 0 .. 3)
+			glEnableVertexAttribArray(x);
+
+		effect.bind;
+		textureArray.bind;
+		effect["Textures"].set(0);
+	}
+
+	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
+	{
+		RenderData* rd = getRD(chunk);
+		if(rd is null) return;
+
+		Matrix4f m = translationMatrix(chunk.transform.position);
+		Matrix4f nm = lc.model * m;
+		Matrix4f mvp = lc.projection * lc.view * nm;
+		Matrix4f mv = lc.view * nm;
+
+		effect["ModelViewProjection"].set(&mvp);
+		effect["Model"].set(&nm);
+
+		import derelict.opengl3.gl3;
+		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
+		glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
+		glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
+		numVerts += rd.vertexCount;
+		drawCalls++;
+	}
+
+	void endRender()
+	{
+		import derelict.opengl3.gl3;
+		foreach(x; 0 .. 3)
+			glDisableVertexAttribArray(x);
+		effect.unbind;
+		glBindVertexArray(0);
+	}
+
+	ubyte textureID(string tech)
+	{
+		foreach(IVegetationVoxelTexture t; textures)
+			if(t.technical == tech)
+				return t.id;
+		return 0;
 	}
 }
 
@@ -137,31 +323,34 @@ private final class Mesher
 		{
 			Voxel voxel = order.chunk.get(x, y, z);
 
-			IVegetationVoxelMesh mesh = processor.meshes[voxel.mesh];
-			if(mesh is null) continue;
+			IVegetationVoxelMesh* meshPtr = voxel.mesh in processor.meshes;
+			if(meshPtr is null) continue;
+			IVegetationVoxelMesh mesh = *meshPtr;
 
 			Voxel ny = order.chunk.get(x, y - order.chunk.blockskip, z);
 			const bool shiftDown = processor.resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
 
 			const Vector3f colour = voxel.extractColour;
 			ubyte[4] colourBytes = [
-				cast(ubyte)(colour.x * 255),
-				cast(ubyte)(colour.y * 255),
-				cast(ubyte)(colour.z * 255),
+				cast(ubyte)(/*colour.x * */255),
+				cast(ubyte)(/*colour.y * */255),
+				cast(ubyte)(/*colour.z * */255),
 				0
 			];
 
-			IVegetationVoxelMaterial material = processor.materials[voxel.material];
-			if(material is null) throw new Exception("Yeetus");
+			IVegetationVoxelMaterial* materialPtr = voxel.material in processor.materials;
+			if(materialPtr is null) throw new Exception("Yeetus");
+			IVegetationVoxelMaterial material = *materialPtr;
 
-			if(isGrass(mesh.meshType))
+			if(mesh.meshType == MeshType.grass)
 			{
-				float height = meshTypeToBlockHeight(mesh.meshType);
+				// TODO: implement height
+				float height = 1f; //meshTypeToBlockHeight(mesh.meshType);
 				colourBytes[3] = material.grassTexture;
 				
 				foreach(size_t vid, immutable Vector3f v; grassBundle3)
 				{
-					size_t tid = vid / grassPlane.length;
+					size_t tid = vid % grassPlane.length;
 					Vector3f vertex = Vector3f(v.x, v.y, v.z);
 					Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
 					
@@ -214,11 +403,11 @@ do {
 	foreach(planeNum; 0 .. numPlanes)
 	{
 		float rotation = segment * planeNum;
-		Matrix4f rotMat = rotationMatrix!float(Axis.y, degtorad(rotation));
+		Matrix4f rotMat = rotationMatrix(Axis.y, degtorad(rotation)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
 
 		foreach(size_t vid, immutable Vector3f v; grassSinglePlane)
 		{
-			Vector3f vT = (rotation * Vector4f(v.arrayof[0], v.arrayof[1], v.arrayof[2], 1.0f)).xyz;
+			Vector3f vT = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * translationMatrix(Vector3f(0.5f, 0.5f, 0.5f))).xyz;
 			result[resultI++] = vT;
 		}
 	}
@@ -226,7 +415,13 @@ do {
 	return result;
 }
 
-private immutable Vector3f[] grassBundle3 = calculateGrassBundle(grassPlane, 3);
+private __gshared static Vector3f[] grassBundle3;
+
+shared static this() 
+{ 
+	grassBundle3 = calculateGrassBundle(grassPlane, 3);
+	import std.stdio; writeln(grassBundle3); 
+}
 
 private immutable Vector2f[] grassPlaneTexCoords = [
 	Vector2f(0.25, 0),
@@ -237,7 +432,7 @@ private immutable Vector2f[] grassPlaneTexCoords = [
 	Vector2f(0.25, 0),
 ];
 
-private enum bufferMaxVertices = 8_192;
+private enum bufferMaxVertices = 80_192;
 
 private final class MeshBuffer
 {
@@ -262,9 +457,4 @@ private final class MeshBuffer
 		texCoords[vertexCount] = texCoord;
 		vertexCount++;
 	}
-}
-
-private final class MeshBufferHost
-{
-
 }

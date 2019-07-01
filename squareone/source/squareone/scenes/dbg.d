@@ -10,6 +10,7 @@ import squareone.terrain.basic.manager;
 import squareone.voxel;
 import squareone.voxelcontent.block;
 import squareone.voxelcontent.fluid.processor;
+import squareone.voxelcontent.vegetation;
 
 import dlib.math;
 
@@ -32,6 +33,7 @@ final class DebugGameScene : Scene
 	private Resources resources;
 	private BlockProcessor blockProcessor;
 	private FluidProcessor fluidProcessor;
+	private VegetationProcessor veggieProcessor;
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
@@ -48,10 +50,15 @@ final class DebugGameScene : Scene
 		bvts[0] = new DirtTexture;
 		bvts[1] = new GrassTexture;
 
+		IVegetationVoxelTexture[] vvts;
+		vvts ~= new GrassBladeTexture;
+
 		blockProcessor = new BlockProcessor(moxane, bvts);
 		resources.add(blockProcessor);
 		fluidProcessor = new FluidProcessor(moxane);
 		resources.add(fluidProcessor);
+		veggieProcessor = new VegetationProcessor(moxane, vvts);
+		resources.add(veggieProcessor);
 
 		resources.add(new Cube);
 		resources.add(new Slope);
@@ -59,9 +66,11 @@ final class DebugGameScene : Scene
 		resources.add(new AntiTetrahedron);
 		resources.add(new HorizontalSlope);
 		resources.add(new FluidMesh);
+		resources.add(new GrassMesh);
 
 		resources.add(new Dirt);
 		resources.add(new Grass);
+		resources.add(new GrassBlade);
 
 		resources.finaliseResources;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(6, 6, 6), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);

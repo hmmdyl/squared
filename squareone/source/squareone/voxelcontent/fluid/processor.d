@@ -149,7 +149,8 @@ final class FluidProcessor : IProcessor
 
 			if(result.buffer is null)
 			{
-				removeChunk(result.order.chunk);
+				if(!isRdNull(result.order.chunk))
+					removeChunk(result.order.chunk);
 				continue;
 			}
 
