@@ -284,7 +284,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
-				if(realPos1.y <= height)
+				if(realPos1.y <= 0)
 					raw.set(box, boy, boz, Voxel(1, meshes.cube, 0, 0));
 				else
 				{
@@ -309,6 +309,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void addGrassBlades(NoiseGeneratorOrder order, ref int premC)
 	{
+		import squareone.voxelcontent.vegetation;
+		import std.math : floor;
+
 		const int s = -order.chunk.overrun;
 		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
 		foreach(x; s..e)
@@ -323,9 +326,16 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid)
 			{
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
-				float a = simplex.eval(realPos.x / 2f + 27, realPos.z / 2f + 675);
-				if(a <= 0.5f) continue;
-				order.chunk.set(x, y, z, Voxel(3, meshes.grassBlades, 0, 0));
+				float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
+				if(a < 0.5f) continue;
+
+				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
+
+				GrassVoxel gv = GrassVoxel(Voxel(3, meshes.grassBlades, 0, 0));
+				gv.offset = offset;
+				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
+
+				order.chunk.set(x, y, z, gv.v);
 				//premC--;
 			}
 		}

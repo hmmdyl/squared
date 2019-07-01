@@ -88,7 +88,7 @@ final class VegetationProcessor : IProcessor
 			texture.id = cast(ubyte)x;
 			textureFiles[x] = texture.file;
 		}
-		textureArray = new Texture2DArray(textureFiles, false, Filter.linear, Filter.nearest, true);
+		textureArray = new Texture2DArray(textureFiles, false, Filter.nearest, Filter.nearest, true);
 
 		foreach(ushort x; 0 .. resources.materialCount)
 		{
@@ -322,7 +322,7 @@ private final class Mesher
 		for(int z = 0; z < order.chunk.dimensionsProper; z += order.chunk.blockskip)
 		{
 			Voxel voxel = order.chunk.get(x, y, z);
-
+			
 			IVegetationVoxelMesh* meshPtr = voxel.mesh in processor.meshes;
 			if(meshPtr is null) continue;
 			IVegetationVoxelMesh mesh = *meshPtr;
@@ -332,9 +332,9 @@ private final class Mesher
 
 			const Vector3f colour = voxel.extractColour;
 			ubyte[4] colourBytes = [
-				cast(ubyte)(/*colour.x * */255),
-				cast(ubyte)(/*colour.y * */255),
-				cast(ubyte)(/*colour.z * */255),
+				cast(ubyte)(/*colour.x * */28),
+				cast(ubyte)(/*colour.y * */248),
+				cast(ubyte)(/*colour.z * */78),
 				0
 			];
 
@@ -344,17 +344,33 @@ private final class Mesher
 
 			if(mesh.meshType == MeshType.grass)
 			{
+				GrassVoxel gv = GrassVoxel(voxel);
 				// TODO: implement height
-				float height = 1f; //meshTypeToBlockHeight(mesh.meshType);
+				float height = gv.blockHeight;
 				colourBytes[3] = material.grassTexture;
+
+				//gv.offset = 2;
+
+				Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((60f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
+				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
 				
 				foreach(size_t vid, immutable Vector3f v; grassBundle3)
 				{
 					size_t tid = vid % grassPlane.length;
-					Vector3f vertex = Vector3f(v.x, v.y, v.z);
 					Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
+
+					//Vector3f vertex = Vector3f(v.x, v.y, v.z);
+					Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
+
+					import std.math;
+					ubyte offset = gv.offset;
+					float xOffset = offset == 0 ? 0f : cos(degtorad((360f / 7f) * (offset-1))) * 0.25f;
+					float yOffset = offset == 0 ? 0f : sin(degtorad((360f / 7f) * (offset-1))) * 0.25f;
+
+					vertex += Vector3f(xOffset, 0f, yOffset);
+					//vertex -= Vector3f(0.25f, 0f, 0.25f);
 					
-					vertex = (vertex * Vector3f(1, height, 1)) * order.chunk.blockskip + Vector3f(x, y, z);
+					vertex = (vertex * Vector3f(1f, height + (height * gv.heightOffset), 1f)) * order.chunk.blockskip + Vector3f(x, y, z);
 					if(shiftDown) vertex.y -= order.chunk.blockskip;
 					vertex *= order.chunk.voxelScale;
 					buffer.add(vertex, colourBytes, texCoord);
@@ -384,13 +400,31 @@ private final class Mesher
 	}
 }
 
-private immutable Vector3f[] grassPlane = [
+/+private immutable Vector3f[] grassPlane = [
 	Vector3f(0, 0, 0.5),
 	Vector3f(1, 0, 0.5),
 	Vector3f(1, 1, 0.5),
 	Vector3f(1, 1, 0.5),
 	Vector3f(0, 1, 0.5),
 	Vector3f(0, 0, 0.5)
+];+/
+
+/+private immutable Vector3f[] grassPlane = [
+	Vector3f(-0.2f, 0, 0.5),
+	Vector3f(1.2f, 0, 0.5),
+	Vector3f(1.2f, 1, 0.5),
+	Vector3f(1.2f, 1, 0.5),
+	Vector3f(-0.2f, 1, 0.5),
+	Vector3f(-0.2f, 0, 0.5)
+];+/
+
+private immutable Vector3f[] grassPlane = [
+	Vector3f(-0.2f, 0, 0.15),
+	Vector3f(1.2f, 0, 0.15),
+	Vector3f(1.2f, 1, 0.95),
+	Vector3f(1.2f, 1, 0.95),
+	Vector3f(-0.2f, 1, 0.95),
+	Vector3f(-0.2f, 0, 0.15)
 ];
 
 private Vector3f[] calculateGrassBundle(immutable Vector3f[] grassSinglePlane, uint numPlanes)
@@ -424,12 +458,18 @@ shared static this()
 }
 
 private immutable Vector2f[] grassPlaneTexCoords = [
-	Vector2f(0.25, 0),
+	/+Vector2f(0.25, 0),
 	Vector2f(0.75, 0),
 	Vector2f(0.75, 1),
 	Vector2f(0.75, 1),
 	Vector2f(0.25, 1),
-	Vector2f(0.25, 0),
+	Vector2f(0.25, 0),+/
+	Vector2f(0, 0),
+	Vector2f(1, 0),
+	Vector2f(1, 1),
+	Vector2f(1, 1),
+	Vector2f(0, 1),
+	Vector2f(0, 0),
 ];
 
 private enum bufferMaxVertices = 80_192;

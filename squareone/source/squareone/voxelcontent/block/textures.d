@@ -19,7 +19,7 @@ final class DirtTexture : IBlockVoxelTexture
 	@property ushort id() { return id_; }
 	@property void id(ushort v) { id_ = v; }
 
-	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/dirt.png"); }
+	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/stone.png"); }
 }
 
 final class GrassTexture : IBlockVoxelTexture 
@@ -31,5 +31,5 @@ final class GrassTexture : IBlockVoxelTexture
 	@property ushort id() { return id_; }
 	@property void id(ushort v) { id_ = v; }
 
-	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/grass.png"); }
+	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/stone.png"); }
 }

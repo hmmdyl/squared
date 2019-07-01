@@ -30,7 +30,7 @@ interface IVegetationVoxelTexture : IVoxelContent
 	@property string file();
 }
 
-Vector3f extractColour(const Voxel v)
+Vector3f extractColour(immutable Voxel v)
 {
 	uint col = v.materialData & 0x3_FFFF;
 	uint r = col & 0x3F;
@@ -75,18 +75,70 @@ void setFlowerRotation(FlowerRotation fr, Voxel* v) {
 	v.meshData = v.meshData | (onebit << 19);
 }
 
-ubyte getGrassOffset(const Voxel v)
+ubyte getGrassOffset(immutable Voxel v)
 {
-	return ((v.meshData >> 17) & 0x3);
+	return ((v.meshData >> 16) & 0x7);
 }
 
-void setGrassOffset(ubyte o, Voxel* v)
+void setGrassOffset(immutable ubyte o, Voxel* v)
 {
-	v.meshData = v.meshData & ~(0x3 << 17);
-	v.meshData = v.meshData | ((o & 0x3) << 17);
+	v.meshData = v.meshData & ~(0x7 << 16);
+	v.meshData = v.meshData | ((o & 0x7) << 16);
 }
 
-float grassHeightCodeToBlockHeight(const ubyte d)
+float offsetToHeight(immutable ubyte offset) pure
+{
+	switch(offset)
+	{
+		case 0: return 0f;
+		case 1: return 0.05f;
+		case 2: return 0.1f;
+		case 3: return 0.15f;
+		case 4: return 0.2f;
+		case 5: return -0.05f;
+		case 6: return -0.125f;
+		case 7: return -0.2f;
+		default: return float.nan;
+	}
+}
+
+/*ubyte heightToOffset(immutable float height) pure
+{
+	switch(height)
+	{
+		case height >= -0.025f && height < 0.025f: return 0;
+		case /+0.05f+/ height >= 0.025f && height < 0.075f: return 1;
+		case /+0.1f+/ height >= 0.075f && height < 0.125f: return 2;
+		case /+0.15f+/ height >= 0.125f && height < 0.175f: return 3;
+		case /+0.2f+/: return 4;
+		case -0.05f: return 5;
+		case -0.125f: return 6;
+		case -0.5f: return 7;
+		default: return 255;
+	}
+}*/
+
+struct GrassVoxel
+{
+	Voxel v;
+	alias v this;
+
+	this(Voxel voxel) {this.v = voxel;}
+
+	@property Vector3f colour() const { return extractColour(v); }
+	@property void colour(Vector3f col) { insertColour(col, &v); }
+
+	@property ubyte offset() const { return getGrassOffset(v); }
+	@property void offset(ubyte off) { setGrassOffset(off, &v); }
+
+	@property float heightOffset() const { return offsetToHeight(offset()); }
+
+	@property float blockHeight() const { return getBlockHeight(v); }
+	@property ubyte blockHeightCode() const { return getBlockHeightCode(v); }
+	@property void blockHeightCode(ubyte n) { setBlockHeightCode(n, &v); }
+}
+
+float grassHeightCodeToBlockHeight(immutable ubyte d) pure
 {
 	final switch(d)
 	{
@@ -101,25 +153,31 @@ float grassHeightCodeToBlockHeight(const ubyte d)
 	}
 }
 
-float getBlockHeight(const Voxel v)
+ubyte getBlockHeightCode(immutable Voxel v) { return ((v.meshData >> 13) & 0x7); }
+void setBlockHeightCode(immutable ubyte h, Voxel* v)
 {
-	ubyte d = ((v.meshData >> 14) & 0x7);
-	return grassHeightCodeToBlockHeight(d);
+	v.meshData = v.meshData & ~(0x7 << 13);
+	v.meshData = v.meshData | ((h & 0x7) << 13);
 }
 
-//void setBlockHeight(float )
+float getBlockHeight(immutable Voxel v) { return grassHeightCodeToBlockHeight(getBlockHeightCode(v)); }
 
 struct VegetationVoxel
 {
-	private Voxel voxel;
-	alias voxel this;
+	Voxel v;
+	alias v this;
 
-	@property Vector3f colour() { return extractColour(voxel); }
-	@property void colour(Vector3f c) { insertColour(c, &voxel); }
-	@property FlowerRotation flowerRotation() { return getFlowerRotation(voxel); }
-	@property void flowerRotation(FlowerRotation fr) { setFlowerRotation(fr, &voxel); }
-	@property ubyte grassOffset() { return getGrassOffset(voxel); }
-	@property void grassOffset(ubyte o) { setGrassOffset(o, &voxel); }
+	this(Voxel v)
+	{
+		this.v = v;
+	}
+
+	@property Vector3f colour() { return extractColour(v); }
+	@property void colour(Vector3f c) { insertColour(c, &v); }
+	@property FlowerRotation flowerRotation() { return getFlowerRotation(v); }
+	@property void flowerRotation(FlowerRotation fr) { setFlowerRotation(fr, &v); }
+	@property ubyte grassOffset() { return getGrassOffset(v); }
+	@property void grassOffset(ubyte o) { setGrassOffset(o, &v); }
 }
 
 interface IVegetationVoxelMaterial : IVoxelMaterial
