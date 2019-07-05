@@ -38,5 +38,5 @@ final class GrassBladeTexture : IVegetationVoxelTexture
 	@property ubyte id() const { return id_; }
 	@property void id(ubyte c) { id_ = c; }
 
-	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/grass_blades_shitty.png"); }
+	@property string file() { return AssetManager.translateToAbsoluteDir("content/textures/grassBlades.png"); }
 }

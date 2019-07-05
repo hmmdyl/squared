@@ -33,6 +33,10 @@ struct MeshOrder
 	bool custom;
 }
 
+alias ProcID = ubyte;
+alias MaterialID = ushort;
+alias MeshID = ushort;
+
 interface IProcessor : IVoxelContent {
 	@property ubyte id();
 	@property void id(ubyte newID);

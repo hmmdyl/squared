@@ -43,6 +43,7 @@ final class VegetationProcessor : IProcessor
 
 	private uint vao;
 	private Effect effect;
+	private float waveTime = 1f;
 
 	this(Moxane moxane, IVegetationVoxelTexture[] textures)
 	in(moxane !is null)
@@ -114,8 +115,9 @@ final class VegetationProcessor : IProcessor
 		effect.attachAndLink(vs, fs);
 		effect.bind;
 		effect.findUniform("ModelViewProjection");
-		effect.findUniform("Model");
+		effect.findUniform("ModelView");
 		effect.findUniform("Textures");
+		effect.findUniform("Time");
 		effect.unbind;
 	}
 
@@ -181,6 +183,9 @@ final class VegetationProcessor : IProcessor
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.texCoords.ptr, GL_STATIC_DRAW);
+			
+			//glBindBuffer(GL_ARRAY_BUFFER, rd.normal);
+			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.normals.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -205,6 +210,8 @@ final class VegetationProcessor : IProcessor
 		effect.bind;
 		textureArray.bind;
 		effect["Textures"].set(0);
+		waveTime += moxane.deltaTime;
+		effect["Time"].set(waveTime);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
@@ -218,7 +225,7 @@ final class VegetationProcessor : IProcessor
 		Matrix4f mv = lc.view * nm;
 
 		effect["ModelViewProjection"].set(&mvp);
-		effect["Model"].set(&nm);
+		effect["ModelView"].set(&mv);
 
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
@@ -227,6 +234,8 @@ final class VegetationProcessor : IProcessor
 		glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
 		glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
+		//glBindBuffer(GL_ARRAY_BUFFER, rd.normals);
+		//glVertexAttribPointer(3, 3, GL_FLOAT, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
@@ -332,9 +341,9 @@ private final class Mesher
 
 			const Vector3f colour = voxel.extractColour;
 			ubyte[4] colourBytes = [
-				cast(ubyte)(/*colour.x * */28),
-				cast(ubyte)(/*colour.y * */248),
-				cast(ubyte)(/*colour.z * */78),
+				cast(ubyte)(colour.x * 255),
+				cast(ubyte)(colour.y * 255),
+				cast(ubyte)(colour.z * 255),
 				0
 			];
 
@@ -349,17 +358,13 @@ private final class Mesher
 				float height = gv.blockHeight;
 				colourBytes[3] = material.grassTexture;
 
-				//gv.offset = 2;
-
-				Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((60f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
+				Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((360f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
 				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
 				
-				foreach(size_t vid, immutable Vector3f v; grassBundle3)
+				foreach(size_t vid, immutable Vector3f v; grassBundle2)
 				{
 					size_t tid = vid % grassPlane.length;
 					Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
-
-					//Vector3f vertex = Vector3f(v.x, v.y, v.z);
 					Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
 
 					import std.math;
@@ -368,7 +373,6 @@ private final class Mesher
 					float yOffset = offset == 0 ? 0f : sin(degtorad((360f / 7f) * (offset-1))) * 0.25f;
 
 					vertex += Vector3f(xOffset, 0f, yOffset);
-					//vertex -= Vector3f(0.25f, 0f, 0.25f);
 					
 					vertex = (vertex * Vector3f(1f, height + (height * gv.heightOffset), 1f)) * order.chunk.blockskip + Vector3f(x, y, z);
 					if(shiftDown) vertex.y -= order.chunk.blockskip;
@@ -400,14 +404,23 @@ private final class Mesher
 	}
 }
 
-/+private immutable Vector3f[] grassPlane = [
+private immutable Vector3f[] grassPlane = [
 	Vector3f(0, 0, 0.5),
 	Vector3f(1, 0, 0.5),
-	Vector3f(1, 1, 0.5),
+	Vector3f(1, 1, 0.5),  
 	Vector3f(1, 1, 0.5),
 	Vector3f(0, 1, 0.5),
 	Vector3f(0, 0, 0.5)
-];+/
+];
+
+private immutable Vector3f[] grassPlaneSlanted = [
+	Vector3f(-0.5, 0, 0.35),
+	Vector3f(1.5, 0, 0.35),
+	Vector3f(1.5, 1, 0.9),  
+	Vector3f(1.5, 1, 0.9),
+	Vector3f(-0.5, 1, 0.9),
+	Vector3f(-0.5, 0, 0.35)
+];
 
 /+private immutable Vector3f[] grassPlane = [
 	Vector3f(-0.2f, 0, 0.5),
@@ -418,14 +431,14 @@ private final class Mesher
 	Vector3f(-0.2f, 0, 0.5)
 ];+/
 
-private immutable Vector3f[] grassPlane = [
+/+private immutable Vector3f[] grassPlane = [
 	Vector3f(-0.2f, 0, 0.15),
 	Vector3f(1.2f, 0, 0.15),
 	Vector3f(1.2f, 1, 0.95),
 	Vector3f(1.2f, 1, 0.95),
 	Vector3f(-0.2f, 1, 0.95),
 	Vector3f(-0.2f, 0, 0.15)
-];
+];+/
 
 private Vector3f[] calculateGrassBundle(immutable Vector3f[] grassSinglePlane, uint numPlanes)
 in(numPlanes > 0 && numPlanes <= 10)
@@ -450,10 +463,12 @@ do {
 }
 
 private __gshared static Vector3f[] grassBundle3;
+private __gshared static Vector3f[] grassBundle2;
 
 shared static this() 
 { 
 	grassBundle3 = calculateGrassBundle(grassPlane, 3);
+	grassBundle2 = calculateGrassBundle(grassPlaneSlanted, 2);
 	import std.stdio; writeln(grassBundle3); 
 }
 

@@ -3,6 +3,7 @@ module squareone.terrain.gen.noisegen;
 import moxane.core : Moxane, Log, Channel;
 import squareone.voxel;
 import squareone.terrain.gen.simplex;
+import squareone.voxelutils.smoother;
 
 import containers.cyclicbuffer;
 import dlib.math.vector;
@@ -183,6 +184,18 @@ abstract class NoiseGenerator
 	}
 }
 
+private template loadChunkSkip(string x = "x", string y = "y", string z = "z")
+{
+	const char[] loadChunkSkip = "
+		if(!order.loadChunk)
+		if("~x~">= 1 && "~y~">= 1 && "~z~" >= 1 && 
+		"~x~" < order.chunk.dimensionsProper - 1 && 
+		"~y~" < order.chunk.dimensionsProper - 1 && 
+		"~z~" < order.chunk.dimensionsProper - 1)
+
+		continue;";
+}
+
 final class DefaultNoiseGenerator : NoiseGenerator
 {
 	private Channel!NoiseGeneratorOrder orders;
@@ -199,6 +212,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		orders = new Channel!NoiseGeneratorOrder;
 
 		raw = VoxelBuffer(overrunDimensions, overrun);
+		smootherOutput = VoxelBuffer(overrunDimensions, overrun);
 		simplex = new OpenSimplexNoise!float(4);
 	}
 
@@ -220,6 +234,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		assert(thread is null);
 
 		meshes = Meshes.get(resources);
+		smootherCfg.root = meshes.cube;
+		smootherCfg.inv = meshes.invisible;
+		smootherCfg.cube = meshes.cube;
+		smootherCfg.slope = meshes.slope;
+		smootherCfg.tetrahedron = meshes.tetrahedron;
+		smootherCfg.antiTetrahedron = meshes.antiTetrahedron;
+		smootherCfg.horizontalSlope = meshes.horizontalSlope;
 
 		thread = new Thread(&worker);
 		thread.isDaemon = true;
@@ -284,11 +305,11 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
-				if(realPos1.y <= 0)
+				if(realPos1.y <= height)
 					raw.set(box, boy, boz, Voxel(1, meshes.cube, 0, 0));
 				else
 				{
-					if(realPos1.y <= -0.25)
+					if(realPos1.y <= 0)
 					{
 						raw.set(box, boy, boz, Voxel(0, meshes.fluid, 0, 0));
 						//premC--;
@@ -302,43 +323,53 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
+		addGrassBlades(order, s, e, premC);
+		runSmoother(order);
+
 		postProcess(order, premC);
-		addGrassBlades(order, premC);
 		countAir(order);
 	}
 
-	private void addGrassBlades(NoiseGeneratorOrder order, ref int premC)
+	private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC)
 	{
 		import squareone.voxelcontent.vegetation;
 		import std.math : floor;
 
-		const int s = -order.chunk.overrun;
-		const int e = order.chunk.dimensionsProper + order.chunk.overrun;
 		foreach(x; s..e)
-		foreach_reverse(y; s..e)
+		foreach_reverse(y; s+1..e)
 		foreach(z; s..e)
 		{
-			if(y < 0) continue; 
+			mixin(loadChunkSkip!());
 
-			Voxel ny = order.chunk.get(x, y - order.chunk.blockskip, z);
-			Voxel v = order.chunk.get(x, y, z);
+			Voxel ny = raw.get(x, y - order.chunk.blockskip, z);
+			Voxel v = raw.get(x, y, z);
 
 			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid)
 			{
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
-				float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
-				if(a < 0.5f) continue;
+				//float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
+				//if(a < 0.5f) continue;
 
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 
 				GrassVoxel gv = GrassVoxel(Voxel(3, meshes.grassBlades, 0, 0));
 				gv.offset = offset;
 				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
+				Vector3f colour;
+				colour.x = 27 / 255f;
+				colour.y = 191 / 255f;
+				colour.z = 46 / 255f;
+				gv.colour = colour;
 
-				order.chunk.set(x, y, z, gv.v);
-				//premC--;
+				raw.set(x, y, z, gv.v);
+				premC--;
 			}
 		}
+	}
+
+	private void runSmoother(NoiseGeneratorOrder o)
+	{
+		smoother(raw.voxels, smootherOutput.voxels, o.chunk.overrun, o.chunk.dimensionsProper + o.chunk.overrun, overrunDimensions, smootherCfg);
 	}
 
 	private void postProcess(NoiseGeneratorOrder order, int premC)
@@ -354,7 +385,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(!order.loadChunk)
 					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
 						continue;
-				order.chunk.set(x, y, z, raw.get(x, y, z));
+				order.chunk.set(x, y, z, smootherOutput.get(x, y, z));
 			}
 		}
 		else
@@ -367,7 +398,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
 						continue;
 
-				order.chunk.set(x, y, z, raw.get(x, y, z));
+				order.chunk.set(x, y, z, smootherOutput.get(x, y, z));
 			}
 		}
 	}
@@ -399,10 +430,11 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	}
 
 	private VoxelBuffer raw;
+	private VoxelBuffer smootherOutput;
 
 	private struct VoxelBuffer
 	{
-		private Voxel[] voxels;
+		Voxel[] voxels;
 		const int dimensions, offset;
 
 		this(const int dimensions, const int offset)
@@ -470,6 +502,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		}
 	}
 	private Meshes meshes;
+	private SmootherConfig smootherCfg;
 }
 
 version(none)

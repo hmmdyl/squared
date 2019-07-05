@@ -5,6 +5,8 @@ import moxane.io;
 import moxane.graphics.renderer;
 import moxane.graphics.firstperson;
 import moxane.graphics.sprite;
+import moxane.graphics.postprocess;
+import moxane.graphics.postprocesses.fog;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
@@ -37,11 +39,17 @@ final class DebugGameScene : Scene
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
+	private Fog fog;
+
 	private FirstPersonCamera camera;
 	private SpriteFont font;
 
 	private void initialise()
 	{
+		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
+		moxane.services.get!Renderer().postProcesses.processes ~= fog;
+		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.04f, 3.5f);
+
 		resources = new Resources;
 		resources.add(new Invisible);
 		resources.add(new Air);
@@ -73,7 +81,7 @@ final class DebugGameScene : Scene
 		resources.add(new GrassBlade);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(6, 6, 6), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -138,12 +146,12 @@ final class DebugGameScene : Scene
 			camera.rotate(rotation);
 
 			Vector3f a = Vector3f(0f, 0f, 0f);
-			if(win.isKeyDown(Keys.w)) a.z += 10f;
-			if(win.isKeyDown(Keys.s)) a.z -= 10f;
-			if(win.isKeyDown(Keys.a)) a.x -= 10f;
-			if(win.isKeyDown(Keys.d)) a.x += 10f;
-			if(win.isKeyDown(Keys.q)) a.y -= 10f;
-			if(win.isKeyDown(Keys.e)) a.y += 10f;
+			if(win.isKeyDown(Keys.w)) a.z += 1f;
+			if(win.isKeyDown(Keys.s)) a.z -= 1f;
+			if(win.isKeyDown(Keys.a)) a.x -= 1f;
+			if(win.isKeyDown(Keys.d)) a.x += 1f;
+			if(win.isKeyDown(Keys.q)) a.y -= 1f;
+			if(win.isKeyDown(Keys.e)) a.y += 1f;
 
 			camera.moveOnAxes(a * moxane.deltaTime);
 		}
@@ -174,12 +182,7 @@ Chunks: %d",
 
 		Window win = moxane.services.get!Window;
 		import derelict.opengl3.gl3;
-		if(win.isKeyDown(Keys.x))
-		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		}
-		else
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		moxane.services.get!Renderer().wireframe = win.isKeyDown(Keys.x);
 	}
 
 	override void onRender()

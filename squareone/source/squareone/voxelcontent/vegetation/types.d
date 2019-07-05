@@ -192,7 +192,7 @@ interface IVegetationVoxelMaterial : IVoxelMaterial
 
 struct RenderData
 {
-	uint vertex, colour, texCoords;
+	uint vertex, colour, texCoords/+, normal+/;
 	ushort vertexCount;
 
 	void create()
@@ -201,6 +201,7 @@ struct RenderData
 		glGenBuffers(1, &vertex);
 		glGenBuffers(1, &colour);
 		glGenBuffers(1, &texCoords);
+		//glGenBuffers(1, &normal);
 		vertexCount = 0;
 	}
 
@@ -210,6 +211,7 @@ struct RenderData
 		glDeleteBuffers(1, &vertex);
 		glDeleteBuffers(1, &colour);
 		glDeleteBuffers(1, &texCoords);
+		//glDeleteBuffers(1, &normal);
 		vertexCount = 0;
 	}
 }
