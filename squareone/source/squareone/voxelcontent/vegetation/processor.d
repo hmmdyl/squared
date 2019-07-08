@@ -116,6 +116,7 @@ final class VegetationProcessor : IProcessor
 		effect.bind;
 		effect.findUniform("ModelViewProjection");
 		effect.findUniform("ModelView");
+		effect.findUniform("Model");
 		effect.findUniform("Textures");
 		effect.findUniform("Time");
 		effect.unbind;
@@ -226,6 +227,7 @@ final class VegetationProcessor : IProcessor
 
 		effect["ModelViewProjection"].set(&mvp);
 		effect["ModelView"].set(&mv);
+		effect["Model"].set(&nm);
 
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
