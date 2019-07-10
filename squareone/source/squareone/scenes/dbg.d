@@ -7,6 +7,8 @@ import moxane.graphics.firstperson;
 import moxane.graphics.sprite;
 import moxane.graphics.postprocess;
 import moxane.graphics.postprocesses.fog;
+import moxane.graphics.light;
+import moxane.graphics.imgui;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
@@ -46,9 +48,23 @@ final class DebugGameScene : Scene
 
 	private void initialise()
 	{
+		ImguiRenderer imgui = moxane.services.get!ImguiRenderer;
+		if(imgui !is null)
+			imgui.renderables ~= new SceneDebugAttachment(this);
+
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
-		moxane.services.get!Renderer().postProcesses.processes ~= fog;
-		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.04f, 3.5f);
+		Renderer renderer = moxane.services.get!Renderer();
+		renderer.postProcesses.processes ~= fog;
+		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
+		PointLight pl;
+		pl.ambientIntensity = 0f;
+		pl.diffuseIntensity = 10f;
+		pl.colour = Vector3f(0.1f, 0.7f, 1f);
+		pl.position = Vector3f(0f, 2f, 0f);
+		pl.constAtt = 0f;
+		pl.linAtt = 0.2f;
+		pl.expAtt = 0.9f;
+		renderer.lights.pointLights ~= pl;
 
 		resources = new Resources;
 		resources.add(new Invisible);
@@ -85,7 +101,7 @@ final class DebugGameScene : Scene
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
-		Renderer renderer = moxane.services.get!Renderer;
+		//Renderer renderer = moxane.services.get!Renderer;
 		renderer.addSceneRenderable(terrainRenderer);
 
 		Window win = moxane.services.get!Window;
@@ -130,7 +146,7 @@ final class DebugGameScene : Scene
 	{
 		Window win = moxane.services.get!Window;
 
-		if(win.isFocused)
+		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
 			Vector2d cursor = win.cursorPos;
 			Vector2d c = cursor - prevCursor;
@@ -158,10 +174,12 @@ final class DebugGameScene : Scene
 
 		camera.buildView;
 
+		fog.sceneView = camera.viewMatrix;
+
 		terrainManager.cameraPosition = camera.position;
 		terrainManager.update;
 
-		buffer[] = char.init;
+		/*buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 
 "Camera position: %0.3f %0.3f %0.3f
 Camera rotation: %0.3f %0.3f %0.3f
@@ -173,7 +191,7 @@ Chunks: %d",
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
 						terrainManager.numChunks);
-		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));
+		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));*/
 	}
 
 	override void onRenderBegin() @trusted
@@ -187,4 +205,50 @@ Chunks: %d",
 
 	override void onRender()
 	{}
+}
+
+private final class SceneDebugAttachment : IImguiRenderable
+{
+	DebugGameScene scene;
+	this(DebugGameScene scene) { this.scene = scene; }
+
+	void game()
+	{
+		import cimgui;
+
+		igBegin("Scene status");
+		scope(exit) igEnd();
+
+		if(igCollapsingHeader("Camera & Engine", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			igText("Position: %0.3f, %0.3f, %0.3f", scene.camera.position.x, scene.camera.position.y, scene.camera.position.z);
+			igText("Rotation: %0.3f, %0.3f, %0.3f", scene.camera.rotation.x, scene.camera.rotation.y, scene.camera.rotation.z);
+			igText("Delta: %0.3fms", scene.moxane.deltaTime * 1000f);
+			igText("Frames: %d", scene.moxane.frames);
+		}
+		if(igCollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			igText("Chunks: %d", scene.terrainManager.numChunks);
+		}
+	}
+
+	void fog()
+	{
+		import cimgui;
+		igBegin("Fog");
+
+		igSliderFloat("Density", &scene.fog.density, 0f, 0.1f, "%.6f");
+		igSliderFloat("Gradient", &scene.fog.gradient, 8f, 18f, "%.3f");
+
+		float[3] col = scene.fog.colour.arrayof;
+		igColorPicker3("Fog Colour", col);
+		scene.fog.colour.arrayof = col;
+		igEnd();
+	}
+
+	void renderUI(ImguiRenderer imgui, Renderer renderer, ref LocalContext lc)
+	{
+		game;
+		fog;
+	}
 }

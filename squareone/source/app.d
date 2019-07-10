@@ -6,6 +6,7 @@ import moxane.graphics.sprite;
 import moxane.io;
 import moxane.ui;
 import squareone.scenes.dbg;
+import moxane.graphics.imgui;
 
 import dlib.math;
 
@@ -34,6 +35,11 @@ void main()
 	SceneManager sceneManager = moxane.services.get!SceneManager;
 	moxane.services.register!SpriteRenderer(new SpriteRenderer(moxane, r));
 	r.uiRenderables ~= moxane.services.get!SpriteRenderer;
+
+	ImguiRenderer imguiRenderer = new ImguiRenderer(moxane);
+	imguiRenderer.renderables ~= new RendererDebugAttachment(r);
+	moxane.services.register!ImguiRenderer(imguiRenderer);
+	r.uiRenderables ~= imguiRenderer;
 
 	/*r.primaryCamera.perspective.fieldOfView = 90f;
 	r.primaryCamera.perspective.near = 0.1f;
