@@ -37,7 +37,7 @@ import dlib.math.vector : Vector2d, Vector3f;
 
 	override void execute()
 	{
-		assert(hasComponents!(Transform, HeadTransform)(entity));
+		/+assert(hasComponents!(Transform, HeadTransform)(entity));
 
 		Window win = moxane.services.get!Window;
 		
@@ -54,8 +54,8 @@ import dlib.math.vector : Vector2d, Vector3f;
 	
 			Transform* tr = entity.get!Transform;
 			tr.rotation.y += rot.y;
-			//if(tr.rotation.y > 360f) tr.rotation.y -= 360f;
-			//if(tf.rotation.y < 0f) tr.rotation.y += 360f;
+			if(tr.rotation.y > 360f) tr.rotation.y -= 360f;
+			if(tf.rotation.y < 0f) tr.rotation.y += 360f;
 
 
 
@@ -70,6 +70,6 @@ import dlib.math.vector : Vector2d, Vector3f;
 			if(win.isKeyDown(Keys.e)) a.y += 1f;
 
 			camera.moveOnAxes(a * moxane.deltaTime);
-		}
+		}+/
 	}
 }
