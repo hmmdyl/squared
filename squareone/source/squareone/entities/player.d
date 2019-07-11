@@ -37,7 +37,7 @@ import dlib.math.vector : Vector2d, Vector3f;
 
 	override void execute()
 	{
-		assert(hasComponents!(Transform, HeadTransform)(entity));
+		/+assert(hasComponents!(Transform, HeadTransform)(entity));
 
 		Window win = moxane.services.get!Window;
 		
@@ -70,6 +70,6 @@ import dlib.math.vector : Vector2d, Vector3f;
 			if(win.isKeyDown(Keys.e)) a.y += 1f;
 
 			camera.moveOnAxes(a * moxane.deltaTime);
-		}
+		}+/
 	}
 }
