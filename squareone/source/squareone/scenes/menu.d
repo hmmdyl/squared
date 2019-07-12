@@ -9,7 +9,7 @@ import moxane.io;
 
 import dlib.math.vector : Vector2i;
 
-final class MainMenu : Scene
+/+final class MainMenu : Scene
 {
 	Texture2D backgroundTexture;
 
@@ -25,5 +25,5 @@ final class MainMenu : Scene
 		mixin PropagateChildren!("onUpdate");
 	}
 
-	private void 
-}
+	//private void 
+}+/
