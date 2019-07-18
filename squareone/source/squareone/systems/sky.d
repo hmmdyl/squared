@@ -53,7 +53,7 @@ class SkySystem
 	}
 }
 
-alias SkyRenderer7R24D = SkyRenderer!(7, 24);
+alias SkyRenderer7R24D = SkyRenderer!(11, 24);
 
 class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 {
