@@ -8,6 +8,7 @@ import moxane.graphics.sprite;
 import moxane.graphics.postprocess;
 import moxane.graphics.postprocesses.fog;
 import moxane.graphics.light;
+import moxane.graphics.transformation;
 import moxane.graphics.imgui;
 
 import squareone.terrain.basic.manager;
@@ -15,6 +16,7 @@ import squareone.voxel;
 import squareone.voxelcontent.block;
 import squareone.voxelcontent.fluid.processor;
 import squareone.voxelcontent.vegetation;
+import squareone.systems.sky;
 
 import dlib.math;
 
@@ -41,6 +43,9 @@ final class DebugGameScene : Scene
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
+	private SkySystem skySystem;
+	private SkyRenderer7R24D skyRenderer;
+	private SkyRenderer7R24D.DebugAttachment skyAttachment;
 	private Fog fog;
 
 	private FirstPersonCamera camera;
@@ -54,17 +59,34 @@ final class DebugGameScene : Scene
 
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
 		Renderer renderer = moxane.services.get!Renderer();
+
 		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
 		PointLight pl;
 		pl.ambientIntensity = 0f;
-		pl.diffuseIntensity = 10f;
-		pl.colour = Vector3f(0.1f, 0.7f, 1f);
-		pl.position = Vector3f(0f, 2f, 0f);
+		pl.diffuseIntensity = 30f;
+		pl.colour = Vector3f(1f, 1f, 1f);
+		pl.position = Vector3f(0f, 5f, 0f);
 		pl.constAtt = 0f;
 		pl.linAtt = 0.2f;
 		pl.expAtt = 0.9f;
 		renderer.lights.pointLights ~= pl;
+
+		skySystem = new SkySystem(moxane);
+		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
+		renderer.addSceneRenderable(skyRenderer);
+		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer);
+		imgui.renderables ~= skyAttachment;
+
+		EntityManager em = moxane.services.get!EntityManager;
+
+		Entity skyEntity = new Entity(em);
+		SkyComponent* skyComp = skyEntity.createComponent!SkyComponent;
+		skyComp.scale = 55f;
+		Transform* skyTransform = skyEntity.createComponent!Transform;
+		*skyTransform = Transform.init;
+
+		em.add(skyEntity);
 
 		resources = new Resources;
 		resources.add(new Invisible);
@@ -123,13 +145,21 @@ final class DebugGameScene : Scene
 
 	private void setCamera(Vector2i size)
 	{
+		Renderer renderer = moxane.services.get!Renderer;
+
 		camera.width = cast(uint)size.x;
 		camera.height = cast(uint)size.y;
 		camera.perspective.fieldOfView = 75f;
 		camera.perspective.near = 0.1f;
 		camera.perspective.far = 100f;
 		camera.buildProjection;
-		moxane.services.get!Renderer().cameraUpdated;
+		
+		renderer.uiCamera.width = cast(uint)size.x;
+		renderer.uiCamera.height = cast(uint)size.y;
+		renderer.uiCamera.deduceOrtho;
+		renderer.uiCamera.buildProjection;
+
+		renderer.cameraUpdated;
 	}
 
 	override void setToCurrent(Scene overwrote) 
@@ -148,11 +178,13 @@ final class DebugGameScene : Scene
 
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
+			win.hideCursor = true;
+
 			Vector2d cursor = win.cursorPos;
 			Vector2d c = cursor - prevCursor;
 			
-			prevCursor = cast(Vector2d)win.size / 2.0;
-			win.cursorPos = prevCursor;
+			prevCursor = cursor;
+			//win.cursorPos = centre;
 
 			Vector3f rotation;
 			rotation.x = cast(float)c.y * cast(float)moxane.deltaTime * 10;
@@ -171,6 +203,7 @@ final class DebugGameScene : Scene
 
 			camera.moveOnAxes(a * moxane.deltaTime);
 		}
+		else win.hideCursor = false;
 
 		camera.buildView;
 

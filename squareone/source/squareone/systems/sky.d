@@ -2,8 +2,11 @@ module squareone.systems.sky;
 
 import moxane.core;
 import moxane.graphics.renderer;
-
-import squareone.util.cube;
+import moxane.graphics.assimp;
+import moxane.graphics.effect;
+import moxane.graphics.texture;
+import moxane.graphics.transformation;
+import moxane.graphics.imgui;
 
 import std.algorithm.searching : canFind;
 import derelict.opengl3.gl3;
@@ -11,6 +14,9 @@ import containers.unrolledlist;
 import dlib.math.vector : Vector3f;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.transformation;
+import std.experimental.allocator.gc_allocator;
+import std.file : readText;
+import cimgui;
 
 class SkySystem
 {
@@ -23,9 +29,9 @@ class SkySystem
 		em.onEntityRemove.addCallback(&entityRemoveCallback);
 	}
 
-	private void entityAddCallback(OnEntityAdd e)
+	private void entityAddCallback(ref OnEntityAdd e) @safe
 	{
-		if(e.entity.has!SkyComponent)
+		if(e.entity.has!SkyComponent && e.entity.has!Transform)
 		{
 			synchronized(this)
 			{
@@ -36,40 +42,67 @@ class SkySystem
 		}
 	}
 
-	private void entityRemoveCallback(OnEntityAdd e)
+	private void entityRemoveCallback(ref OnEntityAdd e) @trusted
 	{
-		synchronized(this)
-			if(skyBox == e.entity)
-				skyBox = null;
+		if(skyBox == e.entity)
+			synchronized(this)
+				if(skyBox == e.entity)
+					skyBox = null;
 	}
 }
 
-class SkyRenderer : IRenderable
+alias SkyRenderer7R24D = SkyRenderer!(7, 24);
+
+class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 {
 	SkySystem skySystem;
 
 	private uint vao;
-	private uint vertexBO, normalBO, texBO;
+	private uint vertexBO;
+	private uint vertexCount;
 
-	this()
+	private Effect skyEffect;
+	private Texture2D colourMap;
+
+	private ubyte[4][TimeDivisions][Rings] colours;
+
+	this(Moxane moxane, SkySystem skySystem)
+	in(moxane !is null)
+	in(skySystem !is null)
 	{
+		this.skySystem = skySystem;
+
 		glGenVertexArrays(1, &vao);
 
-		Vector3f[36] cubeVerts;
-		Vector3f[36] cubeNorms;
-		size_t i;
-		foreach(dir; 0 .. 6)
-		foreach(triag; 0 ..2)
-		foreach(vert; 0 .. 3)
-		{
-			cubeVerts[i] = cubeVertices[cubeIndices[dir][triag][vert]];
-			cubeNorms[i] = -cubeNormals[dir];
-			i++;
-		}
+		Vector3f[] verts;
+		loadMesh!(Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts);
+		scope(exit) GCAllocator.instance.deallocate(verts);
+
+		vertexCount = cast(uint)verts.length;
 
 		glGenBuffers(1, &vertexBO);
-		glGenBuffers(1, &normalBO);
-		glGenBuffers(1, &texBO);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
+		scope(exit) glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glBufferData(GL_ARRAY_BUFFER, verts.length * Vector3f.sizeof, verts.ptr, GL_STATIC_DRAW);
+
+		foreach(d; 0 .. TimeDivisions)
+			foreach(r; 0 .. Rings)
+				colours[r][d] = [0, 0, 0, 255];
+
+		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, Filter.linear, Filter.linear, false, true);
+
+		Log log = moxane.services.get!Log;
+		Shader vs = new Shader, fs = new Shader;
+		vs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/sky.vs.glsl")), GL_VERTEX_SHADER, log);
+		fs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/sky.fs.glsl")), GL_FRAGMENT_SHADER, log);
+		skyEffect = new Effect(moxane, SkyRenderer.stringof);
+		skyEffect.attachAndLink(vs, fs);
+		skyEffect.bind;
+		skyEffect.findUniform("MVP");
+		skyEffect.findUniform("Model");
+		skyEffect.findUniform("ColourMap");
+		skyEffect.unbind;
 	}
 
 	~this()
@@ -88,8 +121,78 @@ class SkyRenderer : IRenderable
 
 			SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
 			if(sky is null) return;
+			Transform* transform = skySystem.skyBox.get!Transform;
+			if(transform is null) return;
 
+			glBindVertexArray(vao);
+			scope(exit) glBindVertexArray(0);
+			glEnableVertexAttribArray(0);
+			scope(exit) glDisableVertexAttribArray(0);
 
+			skyEffect.bind;
+			scope(exit) skyEffect.unbind;
+			glActiveTexture(GL_TEXTURE0);
+			colourMap.bind;
+			scope(exit) colourMap.unbind;
+			skyEffect["ColourMap"].set(0);
+
+			Matrix4f m = lc.model * scaleMatrix(Vector3f(sky.scale, sky.scale*1.5f, sky.scale)) * transform.matrix;
+			Matrix4f mvp = lc.projection * lc.view * m;
+
+			skyEffect["Model"].set(&m);
+			skyEffect["MVP"].set(&mvp);
+
+			glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
+			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+			scope(exit) glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+			drawCalls += 1;
+			numVerts += 1;
+		}
+	}
+
+	static final class DebugAttachment : IImguiRenderable
+	{
+		SkyRenderer!(Rings, TimeDivisions) skyRenderer;
+
+		this(SkyRenderer!(Rings, TimeDivisions) sky) { this.skyRenderer = sky; }
+
+		private int timeSlider;
+		private int ringSlider;
+
+		void renderUI(ImguiRenderer imgui, Renderer renderer, ref LocalContext lc)
+		{
+			igBegin("Sky");
+			scope(exit) igEnd();
+
+			igSliderInt("Time", &timeSlider, 0, TimeDivisions - 1);
+			auto prevIdx = timeSlider - 1;
+			if(prevIdx < 0) prevIdx = TimeDivisions - 1;
+			auto currIdx = timeSlider;
+			auto nextIdx = timeSlider + 1;
+			if(nextIdx >= TimeDivisions) nextIdx = 0;
+
+			ubyte[4][Rings] prev, curr, next;
+			foreach(ring; 0 .. Rings)
+			{
+				prev[ring] = skyRenderer.colours[ring][prevIdx];
+				curr[ring] = skyRenderer.colours[ring][currIdx];
+				next[ring] = skyRenderer.colours[ring][nextIdx];
+			}
+				
+			igText("Ring: Prev  |  Curr  |  Next");
+			foreach(ring; 0 .. Rings)
+			{
+				igText("%d: %d %d %d  |  %d %d %d  |  %d %d %d", ring, prev[ring][2], prev[ring][1], prev[ring][0], curr[ring][2], curr[ring][1], curr[ring][0], next[ring][2], next[ring][1], next[ring][0]);
+			}
+
+			igSliderInt("Ring", &ringSlider, 0, Rings - 1);
+			float[3] col = [skyRenderer.colours[ringSlider][timeSlider][2] / 255f, skyRenderer.colours[ringSlider][timeSlider][1] / 255f, skyRenderer.colours[ringSlider][timeSlider][0] / 255f];
+			igColorPicker3("Colour", col);
+			skyRenderer.colours[ringSlider][timeSlider] = [cast(ubyte)(col[2] * 255), cast(ubyte)(col[1] * 255), cast(ubyte)(col[0] * 255), 255];
+			skyRenderer.colourMap.upload(skyRenderer.colours.ptr, TimeDivisions, Rings, Filter.linear, Filter.linear, false, true);
 		}
 	}
 }
