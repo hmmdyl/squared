@@ -1,5 +1,6 @@
 module squareone.systems.sky;
 
+import squareone.systems.gametime;
 import moxane.core;
 import moxane.graphics.renderer;
 import moxane.graphics.assimp;
@@ -7,6 +8,7 @@ import moxane.graphics.effect;
 import moxane.graphics.texture;
 import moxane.graphics.transformation;
 import moxane.graphics.imgui;
+import moxane.network.semantic;
 
 import std.algorithm.searching : canFind;
 import derelict.opengl3.gl3;
@@ -102,6 +104,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		skyEffect.findUniform("MVP");
 		skyEffect.findUniform("Model");
 		skyEffect.findUniform("ColourMap");
+		skyEffect.findUniform("Time");
 		skyEffect.unbind;
 	}
 
@@ -136,11 +139,13 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			scope(exit) colourMap.unbind;
 			skyEffect["ColourMap"].set(0);
 
-			Matrix4f m = lc.model * scaleMatrix(Vector3f(sky.scale, sky.scale*1.5f, sky.scale)) * transform.matrix;
+			Matrix4f m = lc.model * scaleMatrix(Vector3f(sky.horizScale, sky.vertScale, sky.horizScale)) * transform.matrix;
 			Matrix4f mvp = lc.projection * lc.view * m;
 
 			skyEffect["Model"].set(&m);
 			skyEffect["MVP"].set(&mvp);
+
+			skyEffect["Time"].set((sky.time.decimal + 0.5f) / VirtualTime.maxHour);
 
 			glBindBuffer(GL_ARRAY_BUFFER, vertexBO);
 			glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
@@ -153,11 +158,24 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		}
 	}
 
+	ubyte[] exportColourMap()
+	{
+		import cerealed;
+		return cerealize(colours);
+	}
+
+	void importColourMap(ubyte[] bytes)
+	{
+		import cerealed;
+		colours = decerealize!(ubyte[4][TimeDivisions][Rings])(bytes);
+	}
+
 	static final class DebugAttachment : IImguiRenderable
 	{
 		SkyRenderer!(Rings, TimeDivisions) skyRenderer;
+		Moxane moxane;
 
-		this(SkyRenderer!(Rings, TimeDivisions) sky) { this.skyRenderer = sky; }
+		this(SkyRenderer!(Rings, TimeDivisions) sky, Moxane moxane) { this.skyRenderer = sky; this.moxane = moxane; }
 
 		private int timeSlider;
 		private int ringSlider;
@@ -166,6 +184,28 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		{
 			igBegin("Sky");
 			scope(exit) igEnd();
+
+			if(igButton("Import"))
+			{
+				string dir = AssetManager.translateToAbsoluteDir("skyColourMap.txt");
+				import std.file;
+				if(exists(dir))
+				{
+					Log log = moxane.services.get!Log;
+					log.write(Log.Severity.info, "Loading SkyRenderer colour map...");
+					scope(success) log.write(Log.Severity.info, "Loaded");
+					ubyte[] bytes = cast(ubyte[])read(dir);
+					skyRenderer.importColourMap(bytes);
+				}
+			}
+			igSameLine();
+			if(igButton("Export"))
+			{
+				string dir = AssetManager.translateToAbsoluteDir("skyColourMap.txt");
+				import std.file;
+				ubyte[] bytes = skyRenderer.exportColourMap;
+				write(dir, bytes);
+			}
 
 			igSliderInt("Time", &timeSlider, 0, TimeDivisions - 1);
 			auto prevIdx = timeSlider - 1;
@@ -199,5 +239,28 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 struct SkyComponent
 {
-	float scale;
+	float horizScale;
+	float vertScale;
+	VirtualTime time;
+}
+
+Entity createSkyEntity(EntityManager em, Vector3f pos, float horizScale, float vertScale, VirtualTime time, bool semantic = false)
+{
+	Entity entity = new Entity(em);
+	SkyComponent* skyComp = entity.createComponent!SkyComponent;
+	skyComp.horizScale = horizScale;
+	skyComp.vertScale = vertScale;
+	skyComp.time = time;
+	Transform* transformComp = entity.createComponent!Transform;
+	transformComp.position = pos;
+	transformComp.rotation = Vector3f(0f, 0f, 0f);
+	transformComp.scale = Vector3f(1f, 1f, 1f);
+
+	if(semantic)
+	{
+		NetworkSemantic* networkSemantic = entity.createComponent!NetworkSemantic;
+		networkSemantic.syncLifetime = SyncLifetime.omnipresent;
+	}
+
+	return entity;
 }

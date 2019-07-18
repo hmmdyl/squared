@@ -17,6 +17,7 @@ import squareone.voxelcontent.block;
 import squareone.voxelcontent.fluid.processor;
 import squareone.voxelcontent.vegetation;
 import squareone.systems.sky;
+import squareone.systems.gametime;
 
 import dlib.math;
 
@@ -46,6 +47,7 @@ final class DebugGameScene : Scene
 	private SkySystem skySystem;
 	private SkyRenderer7R24D skyRenderer;
 	private SkyRenderer7R24D.DebugAttachment skyAttachment;
+	private Entity skyEntity;
 	private Fog fog;
 
 	private FirstPersonCamera camera;
@@ -75,17 +77,12 @@ final class DebugGameScene : Scene
 		skySystem = new SkySystem(moxane);
 		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
 		renderer.addSceneRenderable(skyRenderer);
-		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer);
+		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer, moxane);
 		imgui.renderables ~= skyAttachment;
 
 		EntityManager em = moxane.services.get!EntityManager;
 
-		Entity skyEntity = new Entity(em);
-		SkyComponent* skyComp = skyEntity.createComponent!SkyComponent;
-		skyComp.scale = 55f;
-		Transform* skyTransform = skyEntity.createComponent!Transform;
-		*skyTransform = Transform.init;
-
+		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 50, 80, VirtualTime.init);
 		em.add(skyEntity);
 
 		resources = new Resources;
@@ -262,6 +259,21 @@ private final class SceneDebugAttachment : IImguiRenderable
 		if(igCollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			igText("Chunks: %d", scene.terrainManager.numChunks);
+		}
+		if(igCollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			SkyComponent* sky = scene.skyEntity.get!SkyComponent;
+			igText("Time: %d:%d:%d, %f", sky.time.hour, sky.time.minute, sky.time.second, sky.time.decimal);
+			igText("Increment");
+			igSameLine();
+			if(igButton("HOUR", ImVec2(0, 0)))
+			   sky.time.incHour;
+			igSameLine();
+			if(igButton("MINUTE", ImVec2(0, 0)))
+				sky.time.incMinute;
+			igSameLine();
+			if(igButton("SECOND", ImVec2(0, 0)))
+				sky.time.incSecond;
 		}
 	}
 
