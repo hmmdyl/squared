@@ -1,8 +1,49 @@
 module squareone.systems.gametime;
 
+import moxane.core;
+
+import cerealed;
+
+class TimeSystem : System
+{
+	Moxane moxane;
+	EntityManager entityManager;
+
+	this(Moxane moxane, EntityManager entityManager) 
+	in { assert(moxane !is null); } out { assert(entityManager !is null); }
+	do { super(moxane, entityManager); }
+
+	override void update()
+	{
+		foreach(Entity entity; entityManager.entitiesWith!TimeComponent)
+		{
+			TimeComponent* tc = entity.get!TimeComponent;
+			if(tc is null) continue;
+
+			float n = tc.remainingTime + moxane.deltaTime;
+			float ts = n / tc.secondMap;
+			int ti = cast(int)ts;
+			if(ti > 0)
+			{
+				foreach(tic; 0 .. ti) tc.time.incSecond;
+				n -= (ti * tc.secondMap);
+			}
+			tc.remainingTime = n;
+		}
+	}
+}
+
+struct TimeComponent
+{
+	VirtualTime time;
+	@NoCereal float remainingTime;
+	float secondMap;
+}
+
 struct VirtualTime
 {
-	@nogc nothrow:
+	@safe @nogc nothrow:
+
 	int hour, minute, second;
 
 	enum maxHour = 24;

@@ -44,6 +44,7 @@ final class DebugGameScene : Scene
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
+	private TimeSystem timeSystem;
 	private SkySystem skySystem;
 	private SkyRenderer7R24D skyRenderer;
 	private SkyRenderer7R24D.DebugAttachment skyAttachment;
