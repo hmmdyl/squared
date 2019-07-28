@@ -18,6 +18,7 @@ import squareone.voxelcontent.fluid.processor;
 import squareone.voxelcontent.vegetation;
 import squareone.systems.sky;
 import squareone.systems.gametime;
+import squareone.entities.player;
 
 import dlib.math;
 
@@ -34,7 +35,6 @@ final class DebugGameScene : Scene
 
 	~this()
 	{
-
 	}
 
 	private Resources resources;
@@ -53,6 +53,8 @@ final class DebugGameScene : Scene
 
 	private FirstPersonCamera camera;
 	private SpriteFont font;
+	
+	private Entity playerEntity;
 
 	private void initialise()
 	{
@@ -139,6 +141,26 @@ final class DebugGameScene : Scene
 
 		SpriteRenderer spriteRenderer = moxane.services.get!SpriteRenderer;
 		font = spriteRenderer.createFont(AssetManager.translateToAbsoluteDir("content/moxane/font/MODES___.ttf"), 48);
+
+		InputManager im = moxane.services.get!InputManager;
+		im.setBinding("playerWalkForward", Keys.w);
+		im.setBinding("playerWalkBackward", Keys.s);
+		im.setBinding("playerStrafeLeft", Keys.a);
+		im.setBinding("playerStrafeRight", Keys.d);
+		im.setBinding("debugUp", Keys.e);
+		im.setBinding("debugDown", Keys.q);
+
+		string[] playerKeyBindings = new string[](PlayerBindingName.length);
+		playerKeyBindings[PlayerBindingName.walkForward] = "playerWalkForward";
+		playerKeyBindings[PlayerBindingName.walkBackward] = "playerWalkBackward";
+		playerKeyBindings[PlayerBindingName.strafeLeft] = "playerStrafeLeft";
+		playerKeyBindings[PlayerBindingName.strafeRight] = "playerStrafeRight";
+		playerKeyBindings[PlayerBindingName.debugUp] = "debugUp";
+		playerKeyBindings[PlayerBindingName.debugDown] = "debugDown";
+		playerEntity = createPlayer(em, 1f, 90f, -90f, 10f, playerKeyBindings);
+		PlayerComponent* pc = playerEntity.get!PlayerComponent;
+		pc.camera = camera;
+		pc.allowInput = true;
 	}
 
 	private void setCamera(Vector2i size)
@@ -177,33 +199,8 @@ final class DebugGameScene : Scene
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
 			win.hideCursor = true;
-
-			Vector2d cursor = win.cursorPos;
-			Vector2d c = cursor - prevCursor;
-			
-			prevCursor = cursor;
-			//win.cursorPos = centre;
-
-			Vector3f rotation;
-			rotation.x = cast(float)c.y * cast(float)moxane.deltaTime * 10;
-			rotation.y = cast(float)c.x * cast(float)moxane.deltaTime * 10;
-			rotation.z = 0f;
-
-			camera.rotate(rotation);
-
-			Vector3f a = Vector3f(0f, 0f, 0f);
-			if(win.isKeyDown(Keys.w)) a.z += 1f;
-			if(win.isKeyDown(Keys.s)) a.z -= 1f;
-			if(win.isKeyDown(Keys.a)) a.x -= 1f;
-			if(win.isKeyDown(Keys.d)) a.x += 1f;
-			if(win.isKeyDown(Keys.q)) a.y -= 1f;
-			if(win.isKeyDown(Keys.e)) a.y += 1f;
-
-			camera.moveOnAxes(a * moxane.deltaTime);
 		}
 		else win.hideCursor = false;
-
-		camera.buildView;
 
 		fog.sceneView = camera.viewMatrix;
 
