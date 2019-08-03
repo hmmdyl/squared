@@ -104,7 +104,7 @@ final class DebugGameScene : Scene
 
 		blockProcessor = new BlockProcessor(moxane, bvts);
 		resources.add(blockProcessor);
-		fluidProcessor = new FluidProcessor(moxane);
+		fluidProcessor = new FluidProcessor(moxane, [resources.getMesh(0)]);
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
 		resources.add(veggieProcessor);
@@ -210,6 +210,8 @@ final class DebugGameScene : Scene
 
 			import squareone.voxelutils.picker;
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, 0);
+			import std.stdio;
+			writeln("Voxel: ", pr.voxel);
 			if(pr.voxel.material != 0) 
 				terrainManager.voxel.set(Voxel(), pr.blockPosition);
 		}

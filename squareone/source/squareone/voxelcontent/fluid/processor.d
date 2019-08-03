@@ -47,13 +47,16 @@ final class FluidProcessor : IProcessor
 	private float[8] waveSpeeds;
 	private Vector2f[8] waveDirections;
 
-	this(Moxane moxane)
-	in(moxane !is null)
+	private IVoxelMesh[] meshOn;
+
+	this(Moxane moxane, IVoxelMesh[] meshOn)
+	in(moxane !is null) in(meshOn !is null)
 	do {
 		this.moxane = moxane;
 		meshResults = new Channel!MeshResult;
 		meshBufferPool = Pool!(MeshBuffer)(() => new MeshBuffer(), 24, false);
 		renderDataPool = Pool!(RenderData*)(() => new RenderData(), 64);
+		this.meshOn = meshOn;
 	}
 
 	void finaliseResources(Resources res)
@@ -336,6 +339,8 @@ private class Mesher
 	Channel!MeshResult results;
 	ushort fluidID;
 
+	ushort[] meshOn;
+
 	Channel!MeshOrder orders;
 	private bool terminate;
 
@@ -351,6 +356,8 @@ private class Mesher
 		this.results = results;
 		this.fluidID = fluidID;
 		orders = new Channel!MeshOrder;
+		foreach(IVoxelMesh mesh; processor.meshOn)
+			meshOn ~= mesh.id;
 
 		thread = new Thread(&worker);
 		thread.name = FluidProcessor.stringof ~ " " ~ Mesher.stringof;
@@ -417,12 +424,20 @@ private class Mesher
 				SideSolidTable[6] isSideSolid;
 				Vector3f vbias = Vector3f(x, y, z);
 
-				isSideSolid[VoxelSide.nx] = neighbours[VoxelSide.nx].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
-				isSideSolid[VoxelSide.px] = neighbours[VoxelSide.px].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
-				isSideSolid[VoxelSide.ny] = neighbours[VoxelSide.ny].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
-				isSideSolid[VoxelSide.py] = neighbours[VoxelSide.py].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
-				isSideSolid[VoxelSide.nz] = neighbours[VoxelSide.nz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
-				isSideSolid[VoxelSide.pz] = neighbours[VoxelSide.pz].mesh == fluidID ? SideSolidTable.solid : processor.resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
+				SideSolidTable doMeshSide(int side)
+				{
+					foreach(m; meshOn)
+						if(neighbours[side].mesh == m)
+							return SideSolidTable.notSolid;
+					return SideSolidTable.solid;
+				}
+
+				isSideSolid[VoxelSide.nx] = neighbours[VoxelSide.nx].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.nx); //: processor.resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
+				isSideSolid[VoxelSide.px] = neighbours[VoxelSide.px].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.px);//: processor.resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
+				isSideSolid[VoxelSide.ny] = neighbours[VoxelSide.ny].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.ny);//: processor.resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
+				isSideSolid[VoxelSide.py] = neighbours[VoxelSide.py].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.py);//: processor.resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
+				isSideSolid[VoxelSide.nz] = neighbours[VoxelSide.nz].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.nz);//: processor.resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
+				isSideSolid[VoxelSide.pz] = neighbours[VoxelSide.pz].mesh == fluidID ? SideSolidTable.solid : doMeshSide(VoxelSide.pz);//: processor.resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
 
 				void addTriangle(ushort[3] indices, int dir)
 				{

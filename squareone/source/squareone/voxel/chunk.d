@@ -489,9 +489,10 @@ struct ChunkPosition
 
 	static void blockPosToChunkPositionAndOffset(Vector!(long, 3) block, out ChunkPosition chunk, out Vector3i offset)
 	{
-		chunk.x = cast(int)(block.x / ChunkData.chunkDimensions);
-		chunk.y = cast(int)(block.y / ChunkData.chunkDimensions);
-		chunk.z = cast(int)(block.z / ChunkData.chunkDimensions);
+		import std.math : floor;
+		chunk.x = cast(int)floor(block.x / cast(real)ChunkData.chunkDimensions);
+		chunk.y = cast(int)floor(block.y / cast(real)ChunkData.chunkDimensions);
+		chunk.z = cast(int)floor(block.z / cast(real)ChunkData.chunkDimensions);
 		long snapX = chunk.x * ChunkData.chunkDimensions;
 		long snapY = chunk.y * ChunkData.chunkDimensions;
 		long snapZ = chunk.z * ChunkData.chunkDimensions;
