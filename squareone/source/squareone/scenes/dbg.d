@@ -19,6 +19,7 @@ import squareone.voxelcontent.vegetation;
 import squareone.systems.sky;
 import squareone.systems.gametime;
 import squareone.entities.player;
+import squareone.systems.inventory;
 
 import dlib.math;
 
@@ -50,6 +51,8 @@ final class DebugGameScene : Scene
 	private SkyRenderer7R24D.DebugAttachment skyAttachment;
 	private Entity skyEntity;
 	private Fog fog;
+
+	//private PlayerInventorySystem playerInventory;
 
 	private FirstPersonCamera camera;
 	private SpriteFont font;
@@ -199,6 +202,16 @@ final class DebugGameScene : Scene
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
 			win.hideCursor = true;
+		}
+		else if(win.isFocused && win.isKeyDown(Keys.tab) && win.isMouseButtonDown(MouseButton.left))
+		{
+			PlayerComponent* pc = playerEntity.get!PlayerComponent;
+			//if(pc is null) break;
+
+			import squareone.voxelutils.picker;
+			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, 0);
+			if(pr.voxel.material != 0) 
+				terrainManager.voxel.set(Voxel(), pr.blockPosition);
 		}
 		else win.hideCursor = false;
 

@@ -38,8 +38,13 @@ PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, cons
 		voxelPos = ChunkPosition.realCoordToBlockPos(curr);
 
 		Optional!Voxel vox;
-		do vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
-		while(vox == none);
+		import std.stdio;
+		writeln("Before m.voxel.get(...)");
+		writeln("m.voxel ", m.voxel);
+		writeln("m", m);
+		vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
+		if(vox == none) return PickResult();
+		writeln("After m.voxel.get(...)");
 
 		if((*unwrap(vox)).material != materialIgnore)
 			break;
@@ -50,8 +55,8 @@ PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, cons
 	result.blockPosition = voxelPos;
 
 	Optional!Voxel vox;
-	do vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
-	while(vox == none);
+	/*do*/ vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
+	if(vox == none) return PickResult();
 
 	BlockPosition voxelPrev = ChunkPosition.realCoordToBlockPos(prev);
 

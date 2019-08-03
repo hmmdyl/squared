@@ -254,6 +254,7 @@ final class BasicTerrainManager
 				chunkStates[position] = ChunkState.active;
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
+				chunk.hasData = true;
 			}
 
 			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
@@ -403,6 +404,8 @@ final class BasicTerrainManager
 
 		Optional!Voxel get(long x, long y, long z)
 		{
+			import std.stdio;
+			writeln("get(x, y, z)");
 			ChunkPosition cp;
 			BlockOffset offset;
 			ChunkPosition.blockPosToChunkPositionAndOffset(Vector!(long, 3)(x, y, z), cp, offset);
@@ -411,11 +414,19 @@ final class BasicTerrainManager
 
 		Optional!Voxel get(ChunkPosition chunkPosition, BlockOffset cp)
 		{
+			import std.stdio;
+			writeln("get(CP, BO)");
 			ChunkState* state = chunkPosition in manager.chunkStates;
-			if(state is null || *state != ChunkState.active)
-				return no!Voxel;
+			writeln("Got state");
+			if(state is null) return no!Voxel;
+			if(*state != ChunkState.active) return no!Voxel;
+			writeln("State: ", state, *state);
 
-			return Optional!Voxel(manager.chunksTerrain[chunkPosition].chunk.get(cp.x, cp.y, cp.z));
+			BasicChunk* bc = chunkPosition in manager.chunksTerrain;
+			if(bc is null) return no!Voxel;
+			if(!bc.chunk.hasData) return no!Voxel;
+
+			return Optional!Voxel(bc.chunk.get(cp.x, cp.y, cp.z));
 		}
 
 		void set(Voxel voxel, BlockPosition blockPosition, bool forceLoad = false)

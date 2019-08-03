@@ -5,19 +5,16 @@ import moxane.network.semantic;
 import moxane.graphics.renderer;
 import moxane.graphics.texture;
 import moxane.graphics.gl;
+import moxane.graphics.sprite;
 
 import derelict.opengl3.gl3;
 import std.exception : enforce;
 import std.conv : to;
+import dlib.math.vector : Vector2i, Vector3f;
 
 interface IItemType
 {
-	void renderTile();
-}
-
-interface IItemRenderGroup
-{
-
+	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);
 }
 
 struct ItemInstance
@@ -57,6 +54,10 @@ class PlayerInventorySystem : IRenderable
 	@property IItemType[] itemTypes() { return itemTypes; }
 	private Texture2D[] renderedItems;
 
+	private PiRenderTexture canvas;
+
+	Vector2i slotRenderSize;
+
 	this(Moxane moxane, Renderer renderer, IItemType[] itemTypesIn)
 	{
 		assert(moxane !is null && renderer !is null);
@@ -64,7 +65,7 @@ class PlayerInventorySystem : IRenderable
 		this.renderer = renderer;
 		this.itemTypes_ = itemTypesIn;
 
-		this.renderer.passHook.addCallback(&renderHookCallback);
+		//this.renderer.passHook.addCallback(&renderHookCallback);
 	}
 
 	Entity target;
@@ -72,6 +73,7 @@ class PlayerInventorySystem : IRenderable
 	private void renderHookCallback(ref RendererHook hook) @safe
 	{
 		if(hook.pass != RendererHookPass.beginningGlobal) return;
+		if(target is null) return;
 	}
 
 	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv)
@@ -83,7 +85,32 @@ class PlayerInventorySystem : IRenderable
 		PlayerInventoryLocal* pil = target.get!PlayerInventoryLocal;
 		if(pil is null) return;
 
-		
+		SpriteRenderer sprite = moxane.services.get!SpriteRenderer;
+		uint w = lc.camera.width;
+		uint h = lc.camera.height;
+
+		if(pil.isOpen)
+		{
+			// render inventory
+			{
+				// background
+				int startX = lc.camera.width / 5;
+				int startY = lc.camera.height / 5;
+				int endX = lc.camera.width - startX;
+				int endY = lc.camera.height - startY;
+				sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
+			}
+		}
+
+		// render hotbar
+		{
+			// background
+			int startX = lc.camera.width / 3;
+			int startY = lc.camera.height / 3;
+			int endX = lc.camera.width - startX;
+			int endY = lc.camera.height - startY;
+			sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
+		}
 	}
 }
 
@@ -180,8 +207,20 @@ private final class PiRenderTexture
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
-	void bindAsTexture(uint[3] textureUnits)
+	void bindAsTexture(uint[2] textureUnits)
 	{
+		glActiveTexture(GL_TEXTURE0 + textureUnits[0]);
+		glBindTexture(GL_TEXTURE_2D, depth);
+		glActiveTexture(GL_TEXTURE0 + textureUnits[1]);
+		glBindTexture(GL_TEXTURE_2D, diffuse);
+	}
 
+	void unbindTextures(uint[2] textureUnits)
+	{
+		foreach(uint tu; textureUnits)
+		{
+			glActiveTexture(GL_TEXTURE0 + tu);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 	}
 }
