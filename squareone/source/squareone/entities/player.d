@@ -11,7 +11,7 @@ import std.math : cos, sin;
 import dlib.math.vector : Vector2d, Vector3f;
 import dlib.math.utils : degtorad;
 
-@safe Entity createPlayer(EntityManager em, float walkSpeed, float headRotXMax, float headRotXMin, float headMovementSpeed, string[] bindings)
+@safe Entity createPlayer(EntityManager em, float walkSpeed, float headRotXMax, float headRotXMin, float headMovementSpeed, string[] bindings, Camera camera = null)
 {
 	Entity e = new Entity(em);
 	em.add(e);
@@ -26,6 +26,7 @@ import dlib.math.utils : degtorad;
 	pc.headRotXMin = headRotXMin;
 	pc.headMovementSpeed = headMovementSpeed;
 	pc.bindings = bindings;
+	pc.camera = null;
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
