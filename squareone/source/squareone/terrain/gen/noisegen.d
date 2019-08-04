@@ -311,7 +311,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				{
 					if(realPos1.y <= 0)
 					{
-						raw.set(box, boy, boz, Voxel(0, meshes.fluid, 0, 0));
+						raw.set(box, boy, boz, Voxel(1, meshes.fluid, 0, 0));
 						//premC--;
 					}
 					else

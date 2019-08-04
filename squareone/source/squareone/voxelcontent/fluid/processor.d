@@ -411,6 +411,7 @@ private class Mesher
 		{
 			Voxel v = c.get(x, y, z);
 			Voxel[6] neighbours;
+			Voxel[4] diagNeighbours;
 
 			neighbours[VoxelSide.nx] = c.get(x - blockskip, y, z);
 			neighbours[VoxelSide.px] = c.get(x + blockskip, y, z);
@@ -419,13 +420,24 @@ private class Mesher
 			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip);
 			neighbours[VoxelSide.pz] = c.get(x, y, z + blockskip);
 
-			void addVoxel()
+			diagNeighbours[0] = c.get(x - blockskip, y, z - blockskip);
+			diagNeighbours[1] = c.get(x - blockskip, y, z + blockskip);
+			diagNeighbours[2] = c.get(x + blockskip, y, z - blockskip);
+			diagNeighbours[3] = c.get(x + blockskip, y, z + blockskip);
+
+			void addVoxel(bool isOverrun)
 			{
 				SideSolidTable[6] isSideSolid;
 				Vector3f vbias = Vector3f(x, y, z);
 
 				SideSolidTable doMeshSide(int side)
 				{
+					if(isOverrun)
+					{
+						if(side == VoxelSide.py) return SideSolidTable.notSolid;
+						else return SideSolidTable.solid;
+					}
+
 					foreach(m; meshOn)
 						if(neighbours[side].mesh == m)
 							return SideSolidTable.notSolid;
@@ -461,8 +473,12 @@ private class Mesher
 
 			//if(v.mesh != fluidID) continue;
 
-			if(v.mesh == fluidID || (v.mesh != fluidID && v.mesh != 0 && any!((Voxel v) => v.mesh == fluidID)(neighbours[])))
-				addVoxel();
+			if(v.mesh == fluidID)
+				addVoxel(false);
+			if(v.mesh != fluidID && v.mesh != 0 && 
+			   (any!((Voxel v) => v.mesh == fluidID)(neighbours[]) || 
+				(count!((Voxel v) => v.mesh == fluidID)(diagNeighbours[]) > 1)))
+				addVoxel(true);
 		}
 
 		if(buffer.vertexCount == 0)

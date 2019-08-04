@@ -96,8 +96,8 @@ class PlayerInventorySystem : IRenderable
 				// background
 				int startX = lc.camera.width / 5;
 				int startY = lc.camera.height / 5;
-				int endX = lc.camera.width - startX;
-				int endY = lc.camera.height - startY;
+				int endX = lc.camera.width / 5;
+				int endY = lc.camera.height / 5;
 				sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 			}
 		}
@@ -105,10 +105,10 @@ class PlayerInventorySystem : IRenderable
 		// render hotbar
 		{
 			// background
-			int startX = lc.camera.width / 3;
-			int startY = lc.camera.height / 3;
-			int endX = lc.camera.width - startX;
-			int endY = lc.camera.height - startY;
+			int startX = lc.camera.width / 5;
+			int startY = lc.camera.height - (lc.camera.height / 14);
+			int endX = lc.camera.width / 5 * 3;
+			int endY = lc.camera.height / 15;
 			sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 		}
 	}

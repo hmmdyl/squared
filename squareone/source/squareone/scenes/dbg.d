@@ -52,7 +52,7 @@ final class DebugGameScene : Scene
 	private Entity skyEntity;
 	private Fog fog;
 
-	//private PlayerInventorySystem playerInventory;
+	private PlayerInventorySystem playerInventory;
 
 	private FirstPersonCamera camera;
 	private SpriteFont font;
@@ -164,6 +164,13 @@ final class DebugGameScene : Scene
 		PlayerComponent* pc = playerEntity.get!PlayerComponent;
 		pc.camera = camera;
 		pc.allowInput = true;
+
+		playerInventory = new PlayerInventorySystem(moxane, renderer, null);
+		PlayerInventory* pi = playerEntity.createComponent!PlayerInventory;
+		PlayerInventoryLocal* pil = playerEntity.createComponent!PlayerInventoryLocal;
+		pil.isOpen = false;
+		renderer.uiRenderables ~= playerInventory;
+		playerInventory.target = playerEntity;
 	}
 
 	private void setCamera(Vector2i size)
@@ -210,9 +217,7 @@ final class DebugGameScene : Scene
 
 			import squareone.voxelutils.picker;
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, 0);
-			import std.stdio;
-			writeln("Voxel: ", pr.voxel);
-			if(pr.voxel.material != 0) 
+			if(pr.voxel.mesh != 0) 
 				terrainManager.voxel.set(Voxel(), pr.blockPosition);
 		}
 		else win.hideCursor = false;

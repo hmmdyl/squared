@@ -404,8 +404,6 @@ final class BasicTerrainManager
 
 		Optional!Voxel get(long x, long y, long z)
 		{
-			import std.stdio;
-			writeln("get(x, y, z)");
 			ChunkPosition cp;
 			BlockOffset offset;
 			ChunkPosition.blockPosToChunkPositionAndOffset(Vector!(long, 3)(x, y, z), cp, offset);
@@ -414,13 +412,9 @@ final class BasicTerrainManager
 
 		Optional!Voxel get(ChunkPosition chunkPosition, BlockOffset cp)
 		{
-			import std.stdio;
-			writeln("get(CP, BO)");
 			ChunkState* state = chunkPosition in manager.chunkStates;
-			writeln("Got state");
 			if(state is null) return no!Voxel;
 			if(*state != ChunkState.active) return no!Voxel;
-			writeln("State: ", state, *state);
 
 			BasicChunk* bc = chunkPosition in manager.chunksTerrain;
 			if(bc is null) return no!Voxel;
@@ -432,7 +426,7 @@ final class BasicTerrainManager
 		void set(Voxel voxel, BlockPosition blockPosition, bool forceLoad = false)
 		{
 			VoxelSetCommand comm = {
-				voxel : voxel,
+ 				voxel : voxel,
 				blockPosition : blockPosition,
 				forceLoadChunk : forceLoad
 			};
@@ -459,7 +453,7 @@ final class BasicTerrainManager
 
 	private void executeSetVoxels()
 	{
-		void executeSetVoxel(VoxelSetCommand c)
+		bool executeSetVoxel(VoxelSetCommand c)
 		{
 			BlockOffset blockOffset;
 			ChunkPosition chunkPos;
@@ -476,23 +470,34 @@ final class BasicTerrainManager
 				}
 				else
 					onSetFailure.emit(VoxelSetFailure(c.voxel, null, c.blockPosition));
-				return;
+				return false;
 			}
 
-			Optional!BasicChunk bc;
-			mixin(ForceBorrowScope!("chunkPos"));
+			Optional!BasicChunk bc = chunkSys.borrow(chunkPos);
+			if(bc == none) return false;
+			scope(exit) chunkSys.give(*unwrap(bc));
+			//mixin(ForceBorrowScope!("chunkPos"));
 
-			setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, *bc.unwrap);
+			//setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, *bc.unwrap);
 
 			bc.dispatch.chunk.set(blockOffset.x, blockOffset.y, blockOffset.z, c.voxel);
 			bc.dispatch.chunk.needsMesh = true;
+
+			return true;
 		}
 
 		const size_t l = setBlockCommands.length;
 		foreach(i; 0 .. l)
 		{
-			executeSetVoxel(setBlockCommands.front);
-			setBlockCommands.removeFront;
+			bool succeed = executeSetVoxel(setBlockCommands.front);
+			if(succeed)
+				setBlockCommands.removeFront;
+			else
+			{
+				VoxelSetCommand comm = setBlockCommands.front;
+				setBlockCommands.removeFront;
+				setBlockCommands.insert(comm);
+			}
 		}		
 	}
 
