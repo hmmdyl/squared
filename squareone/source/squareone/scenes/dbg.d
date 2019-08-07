@@ -71,11 +71,11 @@ final class DebugGameScene : Scene
 		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
 		PointLight pl;
-		pl.ambientIntensity = 0f;
-		pl.diffuseIntensity = 30f;
+		pl.ambientIntensity = 1f;
+		pl.diffuseIntensity = 300f;
 		pl.colour = Vector3f(1f, 1f, 1f);
-		pl.position = Vector3f(0f, 5f, 0f);
-		pl.constAtt = 0f;
+		pl.position = Vector3f(0f, 15f, 0f);
+		pl.constAtt = 1f;
 		pl.linAtt = 0.2f;
 		pl.expAtt = 0.9f;
 		renderer.lights.pointLights ~= pl;

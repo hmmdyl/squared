@@ -90,16 +90,32 @@ final class FluidProcessor : IProcessor
 		effect.findUniform("Wavelengths");
 		effect.findUniform("Speed");
 		effect.findUniform("Direction");
+		effect.findUniform("RefractionDiffuse");
+		effect.findUniform("RefractionNormal");
+		effect.findUniform("RefractionWorldPos");
+		effect.findUniform("RefractionDepth");
+		effect.findUniform("CameraPosition");
+		effect.findUniform("NearPlane");
+		effect.findUniform("FarPlane");
 		effect.unbind;
 
-		foreach(ref float amplitude; waveAmplitudes)
+		/*foreach(ref float amplitude; waveAmplitudes)
 			amplitude = uniform01!float() * 0.075f;
 		foreach(ref float wavelength; waveWavelengths)
 			wavelength = uniform01!float() * 10f;
 		foreach(ref float speed; waveSpeeds)
 			speed = uniform01!float() * 0.5f;
 		foreach(ref Vector2f direction; waveDirections)
-			direction = Vector2f(((uniform01!float() - 0.5f) * 2f), ((uniform01!float() - 0.5f) * 2f));
+			direction = Vector2f(((uniform01!float() - 0.5f) * 2f), ((uniform01!float() - 0.5f) * 2f));*/
+	
+		waveAmplitudes[] = 0f;
+		waveAmplitudes[0] = 0.05f;
+		waveWavelengths[] = 0f;
+		waveWavelengths[0] = 3f;
+		waveSpeeds[] = 0f;
+		waveSpeeds[0] = 0.25f;
+		waveDirections[] = Vector2f(0f, 0f);
+		waveDirections[0] = Vector2f(1f, 0f);
 	}
 
 	~this()
@@ -222,10 +238,31 @@ final class FluidProcessor : IProcessor
 		effect["Wavelengths"].set(waveWavelengths.ptr, 8);
 		effect["Speed"].set(waveSpeeds.ptr, 8);
 		effect["Direction"].set(waveDirections.ptr, 8);
+
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, renderer.refractionWithLighting.diffuse);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, renderer.refraction.normal);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, renderer.refraction.worldPos);
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, renderer.refraction.depthTexture.depth);
+
+		effect["RefractionDiffuse"].set(0);
+		effect["RefractionNormal"].set(1);
+		effect["RefractionWorldPos"].set(2);
+		effect["RefractionDepth"].set(3);
+
+		effect["CameraPosition"].set(renderer.primaryCamera.position);
+		effect["NearPlane"].set(renderer.primaryCamera.perspective.near);
+		effect["FarPlane"].set(renderer.primaryCamera.perspective.far);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
+		if(lc.type == PassType.waterRefraction) return;
+
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;
 
@@ -252,7 +289,17 @@ final class FluidProcessor : IProcessor
 
 	void endRender()
 	{
-		import derelict.opengl3.gl3 : glDisableVertexAttribArray, glBindVertexArray;
+		import derelict.opengl3.gl3;
+
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
 		foreach(x; 0 .. 2)
 			glDisableVertexAttribArray(x);
 
