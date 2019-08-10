@@ -10,7 +10,8 @@ import dlib.math;
 
 final class Air : IBlockVoxelMaterial 
 {
-	mixin(VoxelContentQuick!("squareOne:voxel:blockMaterial:air", "Air", appName, dylanGrahamName));
+	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:air";
+	mixin(VoxelContentQuick!(technicalStatic, "Air", appName, dylanGrahamName));
 
 	private ushort id_;
 	@property ushort id() { return id_; }
@@ -39,6 +40,25 @@ final class Dirt : IBlockVoxelMaterial
 
 	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
 	{ ids[] = dirtTextureID; }
+}
+
+final class Sand : IBlockVoxelMaterial
+{
+	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:sand";
+	mixin(VoxelContentQuick!(technicalStatic, "Sand", appName, dylanGrahamName));
+
+	private ushort id_;
+	@property ushort id() { return id_; }
+	@property void id(ushort nid) { id_ = nid; }
+
+	ushort sandTextureID;
+
+	void loadTextures(scope BlockProcessor bp) {
+		sandTextureID = bp.getTexture(SandTexture.technicalStatic).id;
+	}
+
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
+	{ ids[] = sandTextureID; }
 }
 
 final class Grass : IBlockVoxelMaterial 
@@ -77,4 +97,23 @@ final class Grass : IBlockVoxelMaterial
 			}
 		}
 	}
+}
+
+final class Stone : IBlockVoxelMaterial
+{
+	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:stone";
+	mixin(VoxelContentQuick!(technicalStatic, "Stone", appName, dylanGrahamName));
+
+	private ushort id_;
+	@property ushort id() { return id_; }
+	@property void id(ushort nid) { id_ = nid; }
+
+	ushort stoneTextureID;
+
+	void loadTextures(scope BlockProcessor bp) {
+		stoneTextureID = bp.getTexture(StoneTexture.technicalStatic).id;
+	}
+
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
+	{ ids[] = stoneTextureID; }
 }

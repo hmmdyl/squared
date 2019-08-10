@@ -61,8 +61,8 @@ class NoiseGeneratorManager
 			NoiseGenerator generator = generators.front;
 			generators.removeFront;
 			generator.terminate = true;
-			//destroy(generator);
-			delete generator;
+			destroy(generator);
+			//delete generator;
 		}
 	}
 
@@ -234,6 +234,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		assert(thread is null);
 
 		meshes = Meshes.get(resources);
+		materials = Materials.get(resources);
 		smootherCfg.root = meshes.cube;
 		smootherCfg.inv = meshes.invisible;
 		smootherCfg.cube = meshes.cube;
@@ -299,6 +300,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
 			float height = simplex.eval(realPos.x / 16f, realPos.z / 16f) * 8f;
 
+			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
+			if(outcropping)
+				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 8f;
+
 			foreach(int boy; s .. e)
 			{
 				if(!order.loadChunk)
@@ -306,12 +311,12 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box, boy, boz, Voxel(1, meshes.cube, 0, 0));
+					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : materials.stone, meshes.cube, 0, 0));
 				else
 				{
 					if(realPos1.y <= 0)
 					{
-						raw.set(box, boy, boz, Voxel(1, meshes.fluid, 0, 0));
+						raw.set(box, boy, boz, Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;
 					}
 					else
@@ -323,7 +328,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		addGrassBlades(order, s, e, premC);
+		//addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);
@@ -352,7 +357,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 
-				GrassVoxel gv = GrassVoxel(Voxel(3, meshes.grassBlades, 0, 0));
+				GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
 				gv.offset = offset;
 				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
 				Vector3f colour;
@@ -502,6 +507,35 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		}
 	}
 	private Meshes meshes;
+	private struct Materials
+	{
+		ushort air,
+			dirt,
+			grass,
+			sand,
+			water,
+			grassBlade,
+			stone;
+
+		static Materials get(Resources resources)
+		{
+			import squareone.voxelcontent.block.materials;
+			import squareone.voxelcontent.fluid.processor;
+			import squareone.voxelcontent.vegetation.materials;
+
+			Materials m;
+			m.air =			resources.getMaterial(Air.technicalStatic).id;
+			m.dirt =		resources.getMaterial(Dirt.technicalStatic).id;
+			m.grass =		resources.getMaterial(Grass.technicalStatic).id;
+			m.sand =		resources.getMaterial(Sand.technicalStatic).id;
+			m.water =		0;
+			m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
+			m.stone	=		resources.getMaterial(Stone.technicalStatic).id;
+
+			return m;
+		}
+	}
+	private Materials materials;
 	private SmootherConfig smootherCfg;
 }
 

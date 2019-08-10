@@ -46,6 +46,10 @@ final class FluidProcessor : IProcessor
 	private float[8] waveWavelengths;
 	private float[8] waveSpeeds;
 	private Vector2f[8] waveDirections;
+	float fresnelReflectiveFactor;
+	float murkDepth;
+	float minimumMurkStrength, maximumMurkStrength;
+	Vector3f waterColour;
 
 	private IVoxelMesh[] meshOn;
 
@@ -97,7 +101,18 @@ final class FluidProcessor : IProcessor
 		effect.findUniform("CameraPosition");
 		effect.findUniform("NearPlane");
 		effect.findUniform("FarPlane");
+		effect.findUniform("FresnelReflectiveFactor");
+		effect.findUniform("MurkDepth");
+		effect.findUniform("MinimumMurkStrength");
+		effect.findUniform("MaximumMurkStrength");
+		effect.findUniform("DebugColour");
 		effect.unbind;
+
+		fresnelReflectiveFactor = 0.9f;
+		murkDepth = 4f;
+		minimumMurkStrength = 0.1f;
+		maximumMurkStrength = 0.7f;
+		waterColour = Vector3f(0.1f, 0.75f, 0.9f);
 
 		/*foreach(ref float amplitude; waveAmplitudes)
 			amplitude = uniform01!float() * 0.075f;
@@ -257,6 +272,12 @@ final class FluidProcessor : IProcessor
 		effect["CameraPosition"].set(renderer.primaryCamera.position);
 		effect["NearPlane"].set(renderer.primaryCamera.perspective.near);
 		effect["FarPlane"].set(renderer.primaryCamera.perspective.far);
+	
+		effect["FresnelReflectiveFactor"].set(fresnelReflectiveFactor);
+		effect["MurkDepth"].set(murkDepth);
+		effect["MinimumMurkStrength"].set(minimumMurkStrength);
+		effect["MaximumMurkStrength"].set(maximumMurkStrength);
+		effect["DebugColour"].set(waterColour);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
@@ -458,7 +479,7 @@ private class Mesher
 		{
 			Voxel v = c.get(x, y, z);
 			Voxel[6] neighbours;
-			Voxel[4] diagNeighbours;
+			Voxel[4] diagNeighbours, diagNeighboursUpper;
 
 			neighbours[VoxelSide.nx] = c.get(x - blockskip, y, z);
 			neighbours[VoxelSide.px] = c.get(x + blockskip, y, z);
@@ -471,6 +492,11 @@ private class Mesher
 			diagNeighbours[1] = c.get(x - blockskip, y, z + blockskip);
 			diagNeighbours[2] = c.get(x + blockskip, y, z - blockskip);
 			diagNeighbours[3] = c.get(x + blockskip, y, z + blockskip);
+
+			diagNeighboursUpper[0] = c.get(x - blockskip, y + blockskip, z - blockskip);
+			diagNeighboursUpper[1] = c.get(x - blockskip, y + blockskip, z + blockskip);
+			diagNeighboursUpper[2] = c.get(x + blockskip, y + blockskip, z - blockskip);
+			diagNeighboursUpper[3] = c.get(x + blockskip, y + blockskip, z + blockskip);
 
 			void addVoxel(bool isOverrun)
 			{
@@ -500,9 +526,9 @@ private class Mesher
 
 				void addTriangle(ushort[3] indices, int dir)
 				{
-					buffer.add((cubeVertices[indices[0]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
-					buffer.add((cubeVertices[indices[1]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
-					buffer.add((cubeVertices[indices[2]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir]);
+					buffer.add((cubeVertices[indices[0]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir], [0,0,0,0]);
+					buffer.add((cubeVertices[indices[1]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir], [0,0,0,0]);
+					buffer.add((cubeVertices[indices[2]] * blockskip + vbias) * c.voxelScale, cubeNormals[dir], [0,0,0,0]);
 				}
 				void addSide(int dir)
 				{
@@ -522,10 +548,17 @@ private class Mesher
 
 			if(v.mesh == fluidID)
 				addVoxel(false);
-			if(v.mesh != fluidID && v.mesh != 0 && 
+			if(v.mesh != fluidID && v.mesh != 0)
+			{
+				if(any!((Voxel v) => v.mesh == fluidID)(neighbours[]))
+					addVoxel(true);
+				if(count!((Voxel v) => v.mesh == fluidID)(diagNeighbours[]) > 0 && count!((Voxel v) => v.mesh == fluidID)(diagNeighboursUpper[]) == 0)
+					addVoxel(true);
+			}
+			/+if(v.mesh != fluidID && v.mesh != 0 && 
 			   (any!((Voxel v) => v.mesh == fluidID)(neighbours[]) || 
 				(count!((Voxel v) => v.mesh == fluidID)(diagNeighbours[]) > 1)))
-				addVoxel(true);
+				addVoxel(true);+/
 		}
 
 		if(buffer.vertexCount == 0)
@@ -556,20 +589,52 @@ private class MeshBuffer
 
 	Vector3f[] vertices;
 	Vector3f[] normals;
+	ubyte[] colours;
 	int vertexCount;
 
 	this()
 	{
 		vertices = new Vector3f[](elements);
 		normals = new Vector3f[](elements);
+		colours = new ubyte[](elements);
 	}
 
-	void add(Vector3f vertex, Vector3f normal)
+	void add(Vector3f vertex, Vector3f normal, ubyte[4] colour)
 	{
 		vertices[vertexCount] = vertex;
 		normals[vertexCount] = normal;
+		colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour[];
 		vertexCount++;
 	}
 
 	void reset() { vertexCount = 0; }
+}
+
+import cimgui;
+import moxane.graphics.imgui;
+
+final class FluidProcessorDebugAttachment : IImguiRenderable
+{
+	FluidProcessor processor;
+
+	this(FluidProcessor processor)
+	in(processor !is null)
+	{this.processor = processor;}
+
+	void renderUI(ImguiRenderer r, Renderer rr, ref LocalContext lc)
+	{
+		igBegin("Fluid Processor");
+		scope(exit) igEnd();
+
+		igSliderFloat("Fresnel reflectivity", &processor.fresnelReflectiveFactor, 0, 3);
+		igSliderFloat("Murk depth", &processor.murkDepth, 0.25f, 20f);
+		igSliderFloat("Min murk strength", &processor.minimumMurkStrength, 0f, 1f);
+		igSliderFloat("Max murk strength", &processor.maximumMurkStrength, 0f, 1f);
+	
+		//float[3] colour = [processor.waterColour.x / 255f, processor.waterColour.y / 255f, processor.waterColour.z / 255f];
+		igColorPicker3("Water colour", processor.waterColour.arrayof);
+		//processor.waterColour.x = colour[0] / 255f;
+		//processor.waterColour.y = colour[1] / 255f;
+		//processor.waterColour.z = colour[2] / 255f;
+	}
 }

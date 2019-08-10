@@ -95,19 +95,24 @@ final class DebugGameScene : Scene
 		resources.add(new Invisible);
 		resources.add(new Air);
 
-		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](2);
+		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](4);
 		bvts[0] = new DirtTexture;
 		bvts[1] = new GrassTexture;
+		bvts[2] = new SandTexture;
+		bvts[3] = new StoneTexture;
 
 		IVegetationVoxelTexture[] vvts;
 		vvts ~= new GrassBladeTexture;
 
 		blockProcessor = new BlockProcessor(moxane, bvts);
 		resources.add(blockProcessor);
-		fluidProcessor = new FluidProcessor(moxane, [resources.getMesh(0)]);
+		fluidProcessor = new FluidProcessor(moxane, [resources.getMesh(Invisible.technicalStatic)]);
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
 		resources.add(veggieProcessor);
+
+		FluidProcessorDebugAttachment fluidDA = new FluidProcessorDebugAttachment(fluidProcessor);
+		imgui.renderables ~= fluidDA;
 
 		resources.add(new Cube);
 		resources.add(new Slope);
@@ -120,6 +125,8 @@ final class DebugGameScene : Scene
 		resources.add(new Dirt);
 		resources.add(new Grass);
 		resources.add(new GrassBlade);
+		resources.add(new Sand);
+		resources.add(new Stone);
 
 		resources.finaliseResources;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);

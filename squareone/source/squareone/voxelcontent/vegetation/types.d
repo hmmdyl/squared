@@ -102,22 +102,6 @@ float offsetToHeight(immutable ubyte offset) pure
 	}
 }
 
-/*ubyte heightToOffset(immutable float height) pure
-{
-	switch(height)
-	{
-		case height >= -0.025f && height < 0.025f: return 0;
-		case /+0.05f+/ height >= 0.025f && height < 0.075f: return 1;
-		case /+0.1f+/ height >= 0.075f && height < 0.125f: return 2;
-		case /+0.15f+/ height >= 0.125f && height < 0.175f: return 3;
-		case /+0.2f+/: return 4;
-		case -0.05f: return 5;
-		case -0.125f: return 6;
-		case -0.5f: return 7;
-		default: return 255;
-	}
-}*/
-
 struct GrassVoxel
 {
 	Voxel v;
@@ -188,6 +172,18 @@ interface IVegetationVoxelMaterial : IVoxelMaterial
 	@property ubyte flowerStorkTexture() const;
 	@property ubyte flowerHeadTexture() const;
 	@property ubyte flowerLeafTexture() const;
+}
+
+struct LeafVoxel
+{
+	Voxel v;
+	alias v this;
+	this(Voxel v) { this.v = v; }
+
+	@property Vector3f colour() const { return extractColour(v); }
+	@property void colour(Vector3f c) { insertColour(c, &v); }
+	@property FlowerRotation rotation() const { return getFlowerRotation(v); }
+	@property void rotation(FlowerRotation f) { setFlowerRotation(f, &v); }
 }
 
 struct RenderData
