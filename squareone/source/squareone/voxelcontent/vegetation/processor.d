@@ -1,7 +1,9 @@
 module squareone.voxelcontent.vegetation.processor;
 
-import squareone.voxel;
+import squareone.voxelcontent.vegetation.precalc;
 import squareone.voxelcontent.vegetation.types;
+
+import squareone.voxel;
 import squareone.util.spec;
 import squareone.terrain.gen.simplex;
 
@@ -382,6 +384,28 @@ private final class Mesher
 					buffer.add(vertex, colourBytes, texCoord);
 				}
 			}
+			else if(mesh.meshType == MeshType.leaf)
+			{
+				LeafVoxel lv = LeafVoxel(voxel);
+
+				Matrix4f rotMat =
+					rotationMatrix(Axis.y, degtorad(lv.rotation * (360f / 8f))) *
+					rotationMatrix(Axis.x, degtorad(lv.up ? 0 : 90f)) *
+					translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
+				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
+
+				foreach(size_t vid, immutable Vector3f v; leafPlane)
+				{
+					size_t texCoordID = vid % leafPlaneTexCoords.length;
+					Vector2f texCoord = Vector2f(leafPlaneTexCoords[texCoordID]);
+					Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
+
+					vertex = vertex * order.chunk.blockskip + Vector3f(x, y, z);
+					vertex *= order.chunk.voxelScale;
+
+					buffer.add(vertex, colourBytes, texCoord);
+				}
+			}
 		}
 
 		if(buffer.vertexCount == 0)
@@ -405,89 +429,6 @@ private final class Mesher
 		}
 	}
 }
-
-private immutable Vector3f[] grassPlane = [
-	Vector3f(0, 0, 0.5),
-	Vector3f(1, 0, 0.5),
-	Vector3f(1, 1, 0.5),  
-	Vector3f(1, 1, 0.5),
-	Vector3f(0, 1, 0.5),
-	Vector3f(0, 0, 0.5)
-];
-
-private immutable Vector3f[] grassPlaneSlanted = [
-	Vector3f(-0.5, 0, 0.35),
-	Vector3f(1.5, 0, 0.35),
-	Vector3f(1.5, 1, 0.9),  
-	Vector3f(1.5, 1, 0.9),
-	Vector3f(-0.5, 1, 0.9),
-	Vector3f(-0.5, 0, 0.35)
-];
-
-/+private immutable Vector3f[] grassPlane = [
-	Vector3f(-0.2f, 0, 0.5),
-	Vector3f(1.2f, 0, 0.5),
-	Vector3f(1.2f, 1, 0.5),
-	Vector3f(1.2f, 1, 0.5),
-	Vector3f(-0.2f, 1, 0.5),
-	Vector3f(-0.2f, 0, 0.5)
-];+/
-
-/+private immutable Vector3f[] grassPlane = [
-	Vector3f(-0.2f, 0, 0.15),
-	Vector3f(1.2f, 0, 0.15),
-	Vector3f(1.2f, 1, 0.95),
-	Vector3f(1.2f, 1, 0.95),
-	Vector3f(-0.2f, 1, 0.95),
-	Vector3f(-0.2f, 0, 0.15)
-];+/
-
-private Vector3f[] calculateGrassBundle(immutable Vector3f[] grassSinglePlane, uint numPlanes)
-in(numPlanes > 0 && numPlanes <= 10)
-do {
-	Vector3f[] result = new Vector3f[](grassSinglePlane.length * numPlanes);
-	size_t resultI;
-
-	const float segment = 180f / numPlanes;
-	foreach(planeNum; 0 .. numPlanes)
-	{
-		float rotation = segment * planeNum;
-		Matrix4f rotMat = rotationMatrix(Axis.y, degtorad(rotation)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
-
-		foreach(size_t vid, immutable Vector3f v; grassSinglePlane)
-		{
-			Vector3f vT = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * translationMatrix(Vector3f(0.5f, 0.5f, 0.5f))).xyz;
-			result[resultI++] = vT;
-		}
-	}
-
-	return result;
-}
-
-private __gshared static Vector3f[] grassBundle3;
-private __gshared static Vector3f[] grassBundle2;
-
-shared static this() 
-{ 
-	grassBundle3 = calculateGrassBundle(grassPlane, 3);
-	grassBundle2 = calculateGrassBundle(grassPlaneSlanted, 2);
-	import std.stdio; writeln(grassBundle3); 
-}
-
-private immutable Vector2f[] grassPlaneTexCoords = [
-	/+Vector2f(0.25, 0),
-	Vector2f(0.75, 0),
-	Vector2f(0.75, 1),
-	Vector2f(0.75, 1),
-	Vector2f(0.25, 1),
-	Vector2f(0.25, 0),+/
-	Vector2f(0, 0),
-	Vector2f(1, 0),
-	Vector2f(1, 1),
-	Vector2f(1, 1),
-	Vector2f(0, 1),
-	Vector2f(0, 0),
-];
 
 private enum bufferMaxVertices = 80_192;
 

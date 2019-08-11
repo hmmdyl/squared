@@ -59,6 +59,8 @@ final class DebugGameScene : Scene
 	
 	private Entity playerEntity;
 
+	PointLight pl;
+
 	private void initialise()
 	{
 		ImguiRenderer imgui = moxane.services.get!ImguiRenderer;
@@ -70,14 +72,14 @@ final class DebugGameScene : Scene
 
 		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
-		PointLight pl;
+		pl = new PointLight;
 		pl.ambientIntensity = 1f;
-		pl.diffuseIntensity = 300f;
+		pl.diffuseIntensity = 3f;
 		pl.colour = Vector3f(1f, 1f, 1f);
-		pl.position = Vector3f(0f, 15f, 0f);
-		pl.constAtt = 1f;
-		pl.linAtt = 0.2f;
-		pl.expAtt = 0.9f;
+		pl.position = Vector3f(4f, 0f, 0f);
+		pl.constAtt = 0f;
+		pl.linAtt = 0.7f;
+		pl.expAtt = 0.3f;
 		renderer.lights.pointLights ~= pl;
 
 		skySystem = new SkySystem(moxane);
@@ -121,6 +123,7 @@ final class DebugGameScene : Scene
 		resources.add(new HorizontalSlope);
 		resources.add(new FluidMesh);
 		resources.add(new GrassMesh);
+		resources.add(new LeafMesh);
 
 		resources.add(new Dirt);
 		resources.add(new Grass);
@@ -209,25 +212,38 @@ final class DebugGameScene : Scene
 
 	private char[1024] buffer;
 
+	private bool clickPrev = false;
+
 	override void onUpdate() @trusted
 	{
 		Window win = moxane.services.get!Window;
 
+		Transform* t = playerEntity.get!Transform;
+		pl.position = t.position;
+
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
 			win.hideCursor = true;
+			clickPrev = false;
 		}
-		else if(win.isFocused && win.isKeyDown(Keys.tab) && win.isMouseButtonDown(MouseButton.left))
+		else if(win.isFocused && win.isKeyDown(Keys.tab) && win.isMouseButtonDown(MouseButton.left) && !clickPrev)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
 
 			import squareone.voxelutils.picker;
-			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, 0);
-			if(pr.voxel.mesh != 0) 
-				terrainManager.voxel.set(Voxel(), pr.blockPosition);
+			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
+			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
+			if(pr.got) 
+				terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition);
+
+			clickPrev = true;
 		}
-		else win.hideCursor = false;
+		else 
+		{
+			win.hideCursor = false;
+			clickPrev = false;
+		}
 
 		fog.sceneView = camera.viewMatrix;
 

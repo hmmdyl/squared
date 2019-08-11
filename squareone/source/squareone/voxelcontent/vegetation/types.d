@@ -12,6 +12,7 @@ enum MeshType
 	grass,
 	flowerShort,
 	flower,
+	leaf
 }
 
 enum flowerShortHeight = 1; // block
@@ -184,6 +185,12 @@ struct LeafVoxel
 	@property void colour(Vector3f c) { insertColour(c, &v); }
 	@property FlowerRotation rotation() const { return getFlowerRotation(v); }
 	@property void rotation(FlowerRotation f) { setFlowerRotation(f, &v); }
+
+	static bool isUpFacing(immutable Voxel v) { return cast(bool)((v.meshData >> 18) & 0x1); }
+	static void setIsUpFacing(ref Voxel v, bool up) { v.meshData = v.meshData & ~(0x1 << 18); v.meshData = v.meshData | ((cast(int)up & 0x1) << 18); }
+
+	@property bool up() const { return isUpFacing(v); }
+	@property void up(bool u) { setIsUpFacing(v, u); }
 }
 
 struct RenderData

@@ -5,6 +5,7 @@ import squareone.terrain.gen.noisegen;
 import squareone.voxel;
 import moxane.core;
 import moxane.graphics.renderer;
+import moxane.utils.maybe;
 
 import dlib.math;
 import std.datetime.stopwatch;
@@ -41,16 +42,16 @@ struct BasicTMSettings
 	Resources resources;
 }
 
+enum ChunkState
+{
+	deallocated,
+	/// memory is assigned, but no voxel data.
+	notLoaded,
+	active
+}
+
 final class BasicTerrainManager
 {
-	enum ChunkState
-	{
-		deallocated,
-		/// memory is assigned, but no voxel data.
-		notLoaded,
-		active
-	}
-
 	Resources resources;
 	Moxane moxane;
 
@@ -64,14 +65,20 @@ final class BasicTerrainManager
 	Vector3f cameraPosition;
 	NoiseGeneratorManager noiseGeneratorManager;
 
+	VoxelInteraction voxelInteraction;
+	ChunkInteraction chunkInteraction;
+
 	this(Moxane moxane, BasicTMSettings settings)
 	{
 		this.moxane = moxane;
 		this.settings = settings;
 		resources = settings.resources;
 
-		chunkSys = new ChunkInteraction(this);
-		voxel = new VoxelInteraction(this);
+		//chunkSys = new ChunkInteraction(this);
+		//voxel = new VoxelInteraction(this);
+
+		voxelInteraction = new VoxelInteraction(this);
+		chunkInteraction = new ChunkInteraction(this);
 
 		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
@@ -89,7 +96,9 @@ final class BasicTerrainManager
 
 		addChunksLocal(cp);
 		addChunksExtension(cp);
-		executeSetVoxels;
+
+		voxelInteraction.run;
+
 		noiseGeneratorManager.pumpCompletedQueue;
 		foreach(ref BasicChunk bc; chunksTerrain)
 		{
@@ -326,7 +335,14 @@ final class BasicTerrainManager
 		noiseGeneratorManager.generate(noiseOrder);
 	}
 
-	struct ChunkInteraction
+	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
+	{
+		return position.x >= camera.x - settings.removeRange.x && position.x < camera.x + settings.removeRange.x &&
+			position.y >= camera.y - settings.removeRange.y && position.y < camera.y + settings.removeRange.y &&
+			position.z >= camera.z - settings.removeRange.z && position.z < camera.z + settings.removeRange.z;
+	}
+
+	/+struct ChunkInteraction
 	{
 		private BasicTerrainManager m;
 		invariant { assert(m !is null); }
@@ -334,7 +350,9 @@ final class BasicTerrainManager
 		@property bool isPresent(ChunkPosition pos) const
 		{
 			const ChunkState* state = pos in m.chunkStates;
-			if(state is null || *state == ChunkState.deallocated || *state == ChunkState.notLoaded)
+			if(state is null)
+				return false;
+			else if(*state == ChunkState.deallocated || *state == ChunkState.notLoaded)
 				return false;
 			else return true;
 		}
@@ -382,13 +400,6 @@ final class BasicTerrainManager
 	}
 	ChunkInteraction* chunkSys;
 
-	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
-	{
-		return position.x >= camera.x - settings.removeRange.x && position.x < camera.x + settings.removeRange.x &&
-			position.y >= camera.y - settings.removeRange.y && position.y < camera.y + settings.removeRange.y &&
-			position.z >= camera.z - settings.removeRange.z && position.z < camera.z + settings.removeRange.z;
-	}
-
 	struct VoxelInteraction
 	{
 		private BasicTerrainManager manager;
@@ -435,6 +446,35 @@ final class BasicTerrainManager
 	}
 	VoxelInteraction* voxel;
 
+	// OVERRUN QUEUE
+
+	private struct OverrunSetCommand
+	{
+		ChunkPosition cp;
+		BlockOffset position;
+		Voxel voxel;
+	}
+	private DynamicArray!OverrunSetCommand setOverrunCommands;
+
+	private void executeSetOverruns()
+	{
+		size_t originalLength = setOverrunCommands.length;
+		size_t index;
+		foreach(size_t i; 0 .. originalLength)
+		{
+			OverrunSetCommand comm = setOverrunCommands[index];
+
+			if(!chunkSys.isPresent(comm))
+				setOverrunCommands.remove(index);
+			else
+			{
+
+			}
+		}
+	}
+
+	// VOXEL SET QUEUE
+
 	private struct VoxelSetCommand
 	{
 		Voxel voxel;
@@ -476,7 +516,6 @@ final class BasicTerrainManager
 			Optional!BasicChunk bc = chunkSys.borrow(chunkPos);
 			if(bc == none) return false;
 			scope(exit) chunkSys.give(*unwrap(bc));
-			//mixin(ForceBorrowScope!("chunkPos"));
 
 			//setBlockOtherChunkOverruns(c.voxel, blockOffset.x, blockOffset.y, blockOffset.z, *bc.unwrap);
 
@@ -671,11 +710,425 @@ final class BasicTerrainManager
 
 		if(!chunkSys.isPresent(cp)) return;
 
+		ChunkState* state = cp in chunkStates;
+		if(*state == ChunkState.deallocated) return;
+
 		Optional!BasicChunk bc;
-		mixin(ForceBorrowScope!("cp"));
+		
+		//mixin(ForceBorrowScope!("cp"));
 
 		bc.dispatch.chunk.set(newX, newY, newZ, voxel);
 		bc.dispatch.chunk.needsMesh = true;
+	}+/
+}
+
+/// Allows external entities to interact with the voxel field on a per-voxel basis.
+final class VoxelInteraction
+{
+	private BasicTerrainManager manager;
+
+	this(BasicTerrainManager manager)
+	in(manager !is null)
+	{ this.manager = manager; }
+
+	/// Get a voxel at BlockPosition pos.
+	Maybe!Voxel get(BlockPosition pos)
+	{
+		ChunkPosition cp;
+		BlockOffset off;
+		ChunkPosition.blockPosToChunkPositionAndOffset(pos, cp, off);
+
+		return get(cp, off);
+	}
+
+	/// Get a chunk at ChunkPosition cp, and a voxel inside it at BlockOffset off.
+	Maybe!Voxel get(ChunkPosition cp, BlockOffset off)
+	{
+		ChunkState* state = cp in manager.chunkStates;
+		if(state is null) 
+			return Maybe!Voxel();
+		if(*state == ChunkState.deallocated || *state == ChunkState.notLoaded) 
+			return Maybe!Voxel();
+
+		BasicChunk* bc = cp in manager.chunksTerrain;
+		if(bc is null)
+			return Maybe!Voxel();
+		if(!bc.chunk.hasData) 
+			return Maybe!Voxel();
+
+		// does not collide with readonly refs, meshers
+		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
+		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed)
+			return Maybe!Voxel();
+
+		return Maybe!Voxel(bc.chunk.get(off.x, off.y, off.z));
+	}
+
+	/// Set a voxel at BlockPosition position
+	void set(Voxel voxel, BlockPosition position)
+	{
+		ChunkPosition cp;
+		BlockOffset offset;
+		ChunkPosition.blockPosToChunkPositionAndOffset(position, cp, offset);
+
+		return set(voxel, cp, offset);
+	}
+
+	/// Set a voxel at ChunkPosition, BlockOffset
+	void set(Voxel voxel, ChunkPosition cp, BlockOffset offset)
+	{ voxelSetCommands.insertBack(VoxelSetOrder(cp, offset, voxel)); }
+
+	private struct VoxelSetOrder
+	{
+		ChunkPosition chunkPosition;
+		BlockOffset offset;
+		Voxel voxel;
+		this(ChunkPosition chunkPosition, BlockOffset offset, Voxel voxel) { this.chunkPosition = chunkPosition; this.offset = offset; this.voxel = voxel; }
+	}
+
+	private CyclicBuffer!VoxelSetOrder voxelSetCommands;
+	private CyclicBuffer!VoxelSetOrder overrunSetCommands; // if chunk is busy, add to queue and run after
+
+	/// handle all interactions
+	void run()
+	{
+		executeSetVoxel;
+		executeDeferredOverruns;
+	}
+
+	/// handle direct voxel sets
+	private void executeSetVoxel()
+	{
+		size_t length = voxelSetCommands.length;
+		foreach(size_t commID; 0 .. length)
+		{
+			VoxelSetOrder order = voxelSetCommands.front;
+			voxelSetCommands.popFront;
+
+			// continue = discard
+
+			ChunkState* state = order.chunkPosition in manager.chunkStates;
+			if(state is null) 
+				continue; // discard
+			if(*state == ChunkState.notLoaded || *state == ChunkState.deallocated) 
+				continue;
+
+			BasicChunk* bc = order.chunkPosition in manager.chunksTerrain;
+			if(bc is null)
+				continue;
+
+			if(!bc.chunk.hasData)
+			{
+				voxelSetCommands.insertBack(order);
+				continue;
+			}
+
+			if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
+			   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
+			   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
+			   bc.chunk.isAnyMeshBlocking)
+			{
+				voxelSetCommands.insertBack(order);
+				continue;
+			}
+
+			bc.chunk.dataLoadBlocking = true;
+			bc.chunk.set(order.offset.x, order.offset.y, order.offset.z, order.voxel);
+			bc.chunk.needsMesh = true;
+			bc.chunk.dataLoadBlocking = false;
+
+			distributeOverruns(*bc, order.offset, order.voxel);
+		}
+	}
+
+	/// update voxels in neighbouring chunks
+	private void distributeOverruns(BasicChunk host, BlockOffset blockPos, Voxel voxel)
+	in {
+		assert(blockPos.x >= 0 && blockPos.x < ChunkData.chunkDimensions);
+		assert(blockPos.y >= 0 && blockPos.y < ChunkData.chunkDimensions);
+		assert(blockPos.z >= 0 && blockPos.z < ChunkData.chunkDimensions);
+	}
+	do {
+		if(blockPos.x == 0) {
+			if(blockPos.y == 0) {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[0])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[1])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[2])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+			else if(blockPos.y == ChunkData.chunkDimensions - 1) {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[3])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[4])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[5])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+			else {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[6])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[7]) 
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[8])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+		}
+		else if(blockPos.x == ChunkData.chunkDimensions - 1) {
+			if(blockPos.y == 0) {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[9])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[10])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[11])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+			else if(blockPos.y == ChunkData.chunkDimensions - 1) {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[12])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[13])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[14])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+			else {
+				if(blockPos.z == 0) {
+					foreach(Vector3i off; chunkOffsets[15])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+					foreach(Vector3i off; chunkOffsets[16]) 
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+				else {
+					foreach(Vector3i off; chunkOffsets[17])
+						setOverrunChunk(host, off, blockPos, voxel);
+					return;
+				}
+			}
+		}
+
+		if(blockPos.y == 0) {
+			if(blockPos.z == 0) {
+				foreach(Vector3i off; chunkOffsets[18])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+			else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+				foreach(Vector3i off; chunkOffsets[19])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+			else {
+				foreach(Vector3i off; chunkOffsets[20])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+		}
+		else if(blockPos.y == ChunkData.chunkDimensions - 1) {
+			if(blockPos.z == 0) {
+				foreach(Vector3i off; chunkOffsets[21])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+			else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+				foreach(Vector3i off; chunkOffsets[22])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+			else {
+				foreach(Vector3i off; chunkOffsets[23])
+					setOverrunChunk(host, off, blockPos, voxel);
+				return;
+			}
+		}
+
+		if(blockPos.z == 0) {
+			foreach(Vector3i off; chunkOffsets[24])
+				setOverrunChunk(host, off, blockPos, voxel);
+			return;
+		}
+		else if(blockPos.z == ChunkData.chunkDimensions - 1) {
+			foreach(Vector3i off; chunkOffsets[25])
+				setOverrunChunk(host, off, blockPos, voxel);
+			return;
+		}
+	}
+
+	/// wrapper that generates proper coordinates for handleChunkOverrun
+	private void setOverrunChunk(BasicChunk bc, BlockOffset offset, BlockOffset blockPosLocal, Voxel voxel)
+	{
+		ChunkPosition newCP = ChunkPosition(bc.position.x + offset.x, bc.position.y + offset.y, bc.position.z + offset.z);
+		BlockOffset newP = blockPosLocal + (-offset * ChunkData.chunkDimensions);
+		handleChunkOverrun(newCP, newP, voxel);
+	}
+
+	/// if chunk is available, set its overrun, otherwise this will defer the command to next frame.
+	private bool handleChunkOverrun(ChunkPosition cp, BlockOffset pos, Voxel voxel)
+	{
+		bool deferComm()
+		{
+			VoxelSetOrder o;
+			o.chunkPosition = cp;
+			o.offset = pos;
+			o.voxel = voxel;
+			overrunSetCommands.insertBack(o);
+			return false;
+		}
+
+		ChunkState* state = cp in manager.chunkStates;
+		if(state is null)
+			return false;
+		if(*state == ChunkState.notLoaded || *state == ChunkState.deallocated)
+			return false;
+
+		BasicChunk* bc = cp in manager.chunksTerrain;
+		if(bc is null) 
+			return false;
+		if(!bc.chunk.hasData)
+			return deferComm;
+
+		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
+		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
+		   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
+		   bc.chunk.isAnyMeshBlocking)
+			return deferComm;
+
+		bc.chunk.dataLoadBlocking = true;
+		bc.chunk.set(pos.x, pos.y, pos.z, voxel);
+		bc.chunk.needsMesh = true;
+		bc.chunk.dataLoadBlocking = false;
+
+		return true;
+	}
+
+	/// handle all deferred voxel sets
+	private void executeDeferredOverruns()
+	{
+		size_t length = overrunSetCommands.length;
+		foreach(size_t commID; 0 .. length)
+		{
+			VoxelSetOrder o = overrunSetCommands.front;
+			overrunSetCommands.popFront;
+
+			handleChunkOverrun(o.chunkPosition, o.offset, o.voxel);
+		}
+	}
+}
+
+final class ChunkInteraction
+{
+	BasicTerrainManager manager;
+
+	this(BasicTerrainManager manager)
+	in(manager !is null)
+	{
+		this.manager = manager;
+	}
+
+	Maybe!BasicChunk borrow(ChunkPosition cp)
+	{
+		ChunkState* state = cp in manager.chunkStates;
+		if(state is null)
+			return Maybe!BasicChunk();
+		if(*state == ChunkState.notLoaded || *state == ChunkState.deallocated)
+			return Maybe!BasicChunk();
+
+		BasicChunk* bc = cp in manager.chunksTerrain;
+		if(bc is null)
+			return Maybe!BasicChunk();
+		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
+		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
+		   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
+		   bc.chunk.isAnyMeshBlocking)
+			return Maybe!BasicChunk();
+
+		bc.chunk.dataLoadBlocking = true;
+
+		return Maybe!BasicChunk(*bc);
+	}
+
+	Maybe!BasicChunkReadonly borrowReadonly(ChunkPosition cp)
+	{
+		ChunkState* state = cp in manager.chunkStates;
+		if(state is null)
+			return Maybe!BasicChunkReadonly();
+		if(*state == ChunkState.notLoaded || *state == ChunkState.deallocated)
+			return Maybe!BasicChunkReadonly();
+
+		BasicChunk* bc = cp in manager.chunksTerrain;
+		if(bc is null)
+			return Maybe!BasicChunkReadonly();
+		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
+		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed)
+			return Maybe!BasicChunkReadonly();
+
+		BasicChunkReadonly ro = BasicChunkReadonly(bc.chunk, bc.position, manager);
+		bc.chunk.incrementReadonlyRef;
+
+		return Maybe!BasicChunkReadonly(ro);
+	}
+
+	void give(BasicChunk bc)
+	{
+		if(bc.chunk.dataLoadBlocking)
+		{
+			bc.chunk.dataLoadBlocking = false;
+			bc.chunk.dataLoadCompleted = true;
+		}
+	}
+
+	void give(BasicChunkReadonly bcr)
+	{
+		bcr.chunk.decrementReadonlyRef;
 	}
 }
 

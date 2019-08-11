@@ -40,10 +40,10 @@ struct BasicChunkReadonly
 		this.manager = manager;
 	}
 
-	~this()
+	/+~this()
 	{
 		manager.chunkSys.giveReadonly(this);
-	}
+	}+/
 
 	@property int dimensionsProper() { return chunk.dimensionsProper; }
 	@property int dimensionsTotal() { return chunk.dimensionsTotal; }

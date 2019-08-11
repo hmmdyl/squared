@@ -311,7 +311,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : materials.stone, meshes.cube, 0, 0));
+					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (outcropping ? materials.stone : materials.grass), meshes.cube, 0, 0));
 				else
 				{
 					if(realPos1.y <= 0)
@@ -328,7 +328,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		//addGrassBlades(order, s, e, premC);
+		addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);
@@ -349,7 +349,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			Voxel ny = raw.get(x, y - order.chunk.blockskip, z);
 			Voxel v = raw.get(x, y, z);
 
-			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid)
+			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid && ny.material == materials.grass)
 			{
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
 				//float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
@@ -367,6 +367,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				gv.colour = colour;
 
 				raw.set(x, y, z, gv.v);
+
+				/+LeafVoxel lv = LeafVoxel(Voxel(materials.grassBlade, meshes.leaf, 0, 0));
+				lv.up = false;
+				lv.rotation = cast(FlowerRotation)offset;
+				Vector3f colour;
+				colour.x = 230 / 255f;
+				colour.y = 180 / 255f;
+				colour.z = 26 / 255f;
+				lv.colour = colour;
+				raw.set(x, y, z, lv.v);+/
+
 				premC--;
 			}
 		}
@@ -486,7 +497,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			antiTetrahedron,
 			horizontalSlope,
 			fluid,
-			grassBlades;
+			grassBlades,
+			leaf;
 
 		static Meshes get(Resources resources)
 		{
@@ -503,6 +515,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
 			meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
 			meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
+			meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
 			return meshes;
 		}
 	}

@@ -4,18 +4,32 @@ import squareone.terrain.basic.chunk;
 import squareone.terrain.basic.manager;
 import squareone.voxel;
 import dlib.math;
-import std.math;
-import optional;
+import std.math : sin, cos;
+import std.typecons : Tuple, tuple;
+import moxane.utils.maybe : Maybe;
 
 struct PickResult
 {
+	bool got;
 	Voxel voxel;
 	BlockPosition blockPosition;
 	Vector3f realPosition;
 	VoxelSide side;
+
+	this(bool got) { this.got = got; }
 }
 
-PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, const int maxDistance, const ushort materialIgnore)
+struct PickerIgnore
+{
+	MaterialID[] materials;
+	MeshID[] meshes;
+	Tuple!(MaterialID, MeshID)[] combinations;
+
+	this(MaterialID[] materials, MeshID[] meshes, Tuple!(MaterialID, MeshID)[] combinations = null)
+	{ this.materials = materials; this.meshes = meshes; this.combinations = combinations; }
+}
+
+PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, const int maxDistance, const PickerIgnore ignore)
 {
 	originRot.x = degtorad(originRot.x);
 	originRot.y = degtorad(originRot.y);
@@ -30,39 +44,59 @@ PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, cons
 
 	BlockPosition voxelPos;
 
+	bool isIgnore(Voxel v)
+	{
+		if(ignore.materials !is null)
+			foreach(MaterialID material; ignore.materials)
+				if(v.material == material)
+					return true;
+		if(ignore.meshes !is null)
+			foreach(MeshID mesh; ignore.meshes)
+				if(v.mesh == mesh)
+					return true;
+		if(ignore.combinations !is null)
+			foreach(Tuple!(MaterialID, MeshID) combination; ignore.combinations)
+				if(v.material == combination[0] && v.mesh == combination[1])
+					return true;
+
+		return false;
+	}
+
 	foreach(i; 0 .. maxDistance * 10)
 	{
 		prev = curr;
 		curr += (-dir * 0.1f);
 
 		voxelPos = ChunkPosition.realCoordToBlockPos(curr);
+		ChunkPosition chunkPos;
+		BlockOffset blockOffset;
+		ChunkPosition.blockPosToChunkPositionAndOffset(voxelPos, chunkPos, blockOffset);
 
-		Optional!Voxel vox;
-		vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
-		if(vox == none) return PickResult();
+		Maybe!Voxel currentVoxel = m.voxelInteraction.get(chunkPos, blockOffset);
 
-		if((*unwrap(vox)).material != materialIgnore)
+		if(currentVoxel.isNull)
+			continue;
+		if(!isIgnore(*currentVoxel.unwrap))
 			break;
 	}
 
+	Maybe!Voxel voxel = m.voxelInteraction.get(voxelPos);
+	if(voxel.isNull)
+		return PickResult(false);
+
 	PickResult result;
+	result.got = true;
 	result.realPosition = curr;
 	result.blockPosition = voxelPos;
+	result.voxel = *voxel.unwrap;
 
-	Optional!Voxel vox;
-	/*do*/ vox = m.voxel.get(voxelPos.x, voxelPos.y, voxelPos.z);
-	if(vox == none) return PickResult();
-
-	BlockPosition voxelPrev = ChunkPosition.realCoordToBlockPos(prev);
-
-	if(voxelPrev.x > voxelPos.x) result.side = VoxelSide.px;
-	else if(voxelPrev.x < voxelPos.x) result.side = VoxelSide.nx;
-	else if(voxelPrev.y > voxelPos.y) result.side = VoxelSide.py;
-	else if(voxelPrev.y < voxelPos.y) result.side = VoxelSide.ny;
-	else if(voxelPrev.z > voxelPos.z) result.side = VoxelSide.pz;
-	else if(voxelPrev.z < voxelPos.z) result.side = VoxelSide.nz;
-
-	result.voxel = *unwrap(vox);
+	BlockPosition voxelPrevious = ChunkPosition.realCoordToBlockPos(prev);
+	if(voxelPrevious.x > voxelPos.x) result.side = VoxelSide.px;
+	else if(voxelPrevious.x < voxelPos.x) result.side = VoxelSide.nx;
+	else if(voxelPrevious.y > voxelPos.y) result.side = VoxelSide.py;
+	else if(voxelPrevious.y < voxelPos.y) result.side = VoxelSide.ny;
+	else if(voxelPrevious.z > voxelPos.z) result.side = VoxelSide.pz;
+	else if(voxelPrevious.z < voxelPos.z) result.side = VoxelSide.nz;
 
 	return result;
 }

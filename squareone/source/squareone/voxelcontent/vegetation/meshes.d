@@ -20,3 +20,19 @@ final class GrassMesh : IVegetationVoxelMesh
 
 	void generateOtherMesh() {}
 }
+
+final class LeafMesh : IVegetationVoxelMesh
+{
+	static immutable string technicalStatic = "squareOne:voxel:vegetationMesh:leaf";
+	mixin(VoxelContentQuick!(technicalStatic, "Leaf", appName, dylanGrahamName));
+
+	private ushort id_;
+	@property ushort id() { return id_; }
+	@property void id(ushort nid) { id_ = nid; }
+
+	SideSolidTable isSideSolid(Voxel v, VoxelSide side) { return SideSolidTable.notSolid; }
+
+	@property MeshType meshType() const { return MeshType.leaf; }
+
+	void generateOtherMesh() {}
+}
