@@ -328,7 +328,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		addGrassBlades(order, s, e, premC);
+		//addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);

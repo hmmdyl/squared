@@ -596,7 +596,7 @@ private class MeshBuffer
 	{
 		vertices = new Vector3f[](elements);
 		normals = new Vector3f[](elements);
-		colours = new ubyte[](elements);
+		colours = new ubyte[](elements*4);
 	}
 
 	void add(Vector3f vertex, Vector3f normal, ubyte[4] colour)

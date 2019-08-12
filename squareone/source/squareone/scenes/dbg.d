@@ -78,8 +78,8 @@ final class DebugGameScene : Scene
 		pl.colour = Vector3f(1f, 1f, 1f);
 		pl.position = Vector3f(4f, 0f, 0f);
 		pl.constAtt = 0f;
-		pl.linAtt = 0.7f;
-		pl.expAtt = 0.3f;
+		pl.linAtt = 0.9f;
+		pl.expAtt = 0.1f;
 		renderer.lights.pointLights ~= pl;
 
 		skySystem = new SkySystem(moxane);
