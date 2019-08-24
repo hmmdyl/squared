@@ -16,6 +16,7 @@ import squareone.voxel;
 import squareone.voxelcontent.block;
 import squareone.voxelcontent.fluid.processor;
 import squareone.voxelcontent.vegetation;
+import squareone.voxelcontent.glass;
 import squareone.systems.sky;
 import squareone.systems.gametime;
 import squareone.entities.player;
@@ -42,6 +43,7 @@ final class DebugGameScene : Scene
 	private BlockProcessor blockProcessor;
 	private FluidProcessor fluidProcessor;
 	private VegetationProcessor veggieProcessor;
+	private GlassProcessor glassProcessor;
 	private BasicTerrainRenderer terrainRenderer;
 	private BasicTerrainManager terrainManager;
 
@@ -97,11 +99,12 @@ final class DebugGameScene : Scene
 		resources.add(new Invisible);
 		resources.add(new Air);
 
-		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](4);
+		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](5);
 		bvts[0] = new DirtTexture;
 		bvts[1] = new GrassTexture;
 		bvts[2] = new SandTexture;
 		bvts[3] = new StoneTexture;
+		bvts[4] = new GlassTexture;
 
 		IVegetationVoxelTexture[] vvts;
 		vvts ~= new GrassBladeTexture;
@@ -112,6 +115,8 @@ final class DebugGameScene : Scene
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
 		resources.add(veggieProcessor);
+		glassProcessor = new GlassProcessor(moxane);
+		resources.add(glassProcessor);
 
 		FluidProcessorDebugAttachment fluidDA = new FluidProcessorDebugAttachment(fluidProcessor);
 		imgui.renderables ~= fluidDA;
@@ -124,12 +129,14 @@ final class DebugGameScene : Scene
 		resources.add(new FluidMesh);
 		resources.add(new GrassMesh);
 		resources.add(new LeafMesh);
+		resources.add(new GlassMesh);
 
 		resources.add(new Dirt);
 		resources.add(new Grass);
 		resources.add(new GrassBlade);
 		resources.add(new Sand);
 		resources.add(new Stone);
+		resources.add(new GlassMaterial);
 
 		resources.finaliseResources;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);

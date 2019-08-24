@@ -117,3 +117,22 @@ final class Stone : IBlockVoxelMaterial
 	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
 	{ ids[] = stoneTextureID; }
 }
+
+/+final class GlassMaterial : IBlockVoxelMaterial
+{
+	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:glass";
+	mixin(VoxelContentQuick!(technicalStatic, "Glass", appName, dylanGrahamName));
+
+	private ushort id_;
+	@property ushort id() { return id_; }
+	@property void id(ushort nid) { id_ = nid; }
+
+	ushort glassTextureID;
+
+	void loadTextures(scope BlockProcessor bp) {
+		glassTextureID = bp.getTexture(GlassTexture.technicalStatic).id;
+	}
+
+	void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
+	{ ids[] = glassTextureID; }
+}+/

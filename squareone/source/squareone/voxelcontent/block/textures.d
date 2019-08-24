@@ -62,3 +62,8 @@ final class StoneTexture : IBlockVoxelTexture
 {
 	mixin(TextureImpl!("squareone:voxel:blockTexture:stone", "Stone (texture)", "stone.png"));
 }
+
+final class GlassTexture : IBlockVoxelTexture
+{
+	mixin(TextureImpl!("squareOne:voxel:blockTexture:glass", "Glass (texture)", "glassDebug.png"));
+}

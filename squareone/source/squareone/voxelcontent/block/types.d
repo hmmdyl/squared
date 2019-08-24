@@ -7,6 +7,7 @@ import dlib.math.vector;
 
 interface IBlockVoxelMesh  : IVoxelMesh 
 {
+	void finalise(BlockProcessor bp);
 	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neigbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount);
 }
 

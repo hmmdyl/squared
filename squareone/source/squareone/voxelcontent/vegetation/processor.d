@@ -12,13 +12,13 @@ import moxane.utils.pool;
 import moxane.graphics.texture;
 import moxane.graphics.effect;
 import moxane.graphics.renderer;
+import moxane.utils.maybe;
 
 import dlib.math.vector;
 import dlib.math.matrix;
 import dlib.math.transformation;
 import dlib.math.utils;
 import core.thread;
-import optional : Optional, unwrap, none;
 
 final class VegetationProcessor : IProcessor
 {
@@ -121,6 +121,9 @@ final class VegetationProcessor : IProcessor
 		effect.findUniform("Model");
 		effect.findUniform("Textures");
 		effect.findUniform("Time");
+		effect.findUniform("CompChunkMax");
+		effect.findUniform("CompFit10B");
+		effect.findUniform("CompOffset");
 		effect.unbind;
 	}
 
@@ -147,14 +150,17 @@ final class VegetationProcessor : IProcessor
 	void updateFromManager()
 	{}
 
+	private uint[] vertexCompressionBuffer = new uint[](bufferMaxVertices);
+	private uint[] texCoordCompressionBuffer = new uint[](bufferMaxVertices);
+
 	void performUploads()
 	{
 		while(!meshResults.empty)
 		{
-			Optional!MeshResult meshResult = meshResults.tryGet;
-			if(meshResult == none) return;
+			Maybe!MeshResult meshResult = meshResults.tryGet;
+			if(meshResult.isNull) return;
 
-			MeshResult result = *unwrap(meshResult);
+			MeshResult result = *meshResult.unwrap();
 
 			if(result.buffer is null)
 			{
@@ -177,19 +183,56 @@ final class VegetationProcessor : IProcessor
 			rd.vertexCount = result.buffer.vertexCount;
 
 			import derelict.opengl3.gl3;
+
+			vertexCompressionBuffer[] = 0;
+			texCoordCompressionBuffer[] = 0;
+
+			rd.chunkMax = result.order.chunk.dimensionsTotal * result.order.chunk.voxelScale;
+			float invCM = 1f / rd.chunkMax;
+			rd.offset = result.order.chunk.voxelScale;
+			rd.fit10BitScale = 1023f * invCM;
+
+			foreach(i; 0 .. result.buffer.vertexCount)
+			{
+				const Vector3f vertex = result.buffer.vertices[i] + rd.offset;
+
+				float vx = clamp(vertex.x, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vxU = cast(uint)vx & 1023;
+
+				float vy = clamp(vertex.y, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vyU = cast(uint)vy & 1023;
+				vyU <<= 10;
+
+				float vz = clamp(vertex.z, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vzU = cast(uint)vz & 1023;
+				vzU <<= 20;
+
+				vertexCompressionBuffer[i] = vxU | vyU | vzU;
+
+				const Vector2f texCoord = result.buffer.texCoords[i];
+
+				enum texCoordFit = ushort.max;
+
+				float tx = clamp(texCoord.x, 0f, 1f) * texCoordFit;
+				uint txU = cast(uint)tx & 0xFFFF;
+				float ty = clamp(texCoord.y, 0f, 1f) * texCoordFit;
+				uint tyU = cast(uint)ty & 0xFFFF;
+				tyU <<= 16;
+
+				texCoordCompressionBuffer[i] = txU | tyU;
+			}
 			
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, result.buffer.vertices.ptr, GL_STATIC_DRAW);
+			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, result.buffer.vertices.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, vertexCompressionBuffer.ptr, GL_STATIC_DRAW);
 			
 			glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, result.buffer.colours.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.texCoords.ptr, GL_STATIC_DRAW);
+			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.texCoords.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, texCoordCompressionBuffer.ptr, GL_STATIC_DRAW);
 			
-			//glBindBuffer(GL_ARRAY_BUFFER, rd.normal);
-			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.normals.ptr, GL_STATIC_DRAW);
-
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 			result.order.chunk.meshBlocking(false, id_);
@@ -231,15 +274,20 @@ final class VegetationProcessor : IProcessor
 		effect["ModelView"].set(&mv);
 		effect["Model"].set(&nm);
 
+		effect["CompChunkMax"].set(rd.chunkMax);
+		effect["CompFit10B"].set(rd.fit10BitScale);
+		effect["CompOffset"].set(rd.offset);
+
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
-		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		//glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
 		glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
-		glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
-		//glBindBuffer(GL_ARRAY_BUFFER, rd.normals);
-		//glVertexAttribPointer(3, 3, GL_FLOAT, false, 0, null);
+		//glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
+		//glVertexAttribPointer(2, 2, GL_UNSIGNED_SHORT, false, 0, null);
+		glVertexAttribIPointer(2, 2, GL_UNSIGNED_SHORT, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
@@ -309,7 +357,7 @@ private final class Mesher
 		{
 			while(!terminate)
 			{
-				Optional!MeshOrder order = orders.await;
+				Maybe!MeshOrder order = orders.await;
 				if(MeshOrder* o = order.unwrap)
 					execute(*o);
 				else return;

@@ -198,6 +198,11 @@ struct RenderData
 	uint vertex, colour, texCoords/+, normal+/;
 	ushort vertexCount;
 
+	// compression
+	float chunkMax;
+	float fit10BitScale;
+	float offset;
+
 	void create()
 	{
 		import derelict.opengl3.gl3 : glGenBuffers;

@@ -78,6 +78,9 @@ interface IVoxelMesh : IVoxelContent {
 	SideSolidTable isSideSolid(Voxel voxel, VoxelSide side);
 }
 
+enum meshBitLength = 12;
+enum meshBits = 0xFFF;
+
 class Resources {
 	enum int maxProcessors = 256;
 	enum int maxMaterials = 4096;

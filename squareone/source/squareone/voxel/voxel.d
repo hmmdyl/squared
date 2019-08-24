@@ -2,6 +2,8 @@ module squareone.voxel.voxel;
 
 import std.bitmanip;
 
+@safe:
+
 struct Voxel {
 	mixin(bitfields!(
 					 ushort, "material", 12,

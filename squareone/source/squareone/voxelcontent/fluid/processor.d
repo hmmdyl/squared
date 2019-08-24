@@ -8,8 +8,8 @@ import moxane.graphics.renderer;
 import moxane.utils.pool;
 import moxane.graphics.effect;
 import moxane.graphics.log;
+import moxane.utils.maybe;
 
-import optional : Optional, unwrap, none;
 import core.thread : Thread;
 import dlib.math.matrix;
 import dlib.math.vector;
@@ -176,10 +176,10 @@ final class FluidProcessor : IProcessor
 		import derelict.opengl3.gl3;
 		while(!meshResults.empty)
 		{
-			Optional!MeshResult meshResult = meshResults.tryGet;
-			if(meshResult == none) return;
+			Maybe!MeshResult meshResult = meshResults.tryGet;
+			if(meshResult.isNull) return;
 
-			MeshResult result = *unwrap(meshResult);
+			MeshResult result = *meshResult.unwrap;
 
 			if(result.buffer is null)
 			{
@@ -449,9 +449,9 @@ private class Mesher
 		{
 			while(!terminate)
 			{
-				Optional!MeshOrder order = orders.await;
-				if(MeshOrder* o = order.unwrap)
-					execute(*o);
+				Maybe!MeshOrder order = orders.await;
+				if(!order.isNull)
+					execute(*order.unwrap);
 				else return;
 			}
 		}

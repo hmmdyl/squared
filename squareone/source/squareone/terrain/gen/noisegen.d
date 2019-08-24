@@ -1,6 +1,7 @@
 module squareone.terrain.gen.noisegen;
 
 import moxane.core : Moxane, Log, Channel;
+import moxane.utils.maybe;
 import squareone.voxel;
 import squareone.terrain.gen.simplex;
 import squareone.voxelutils.smoother;
@@ -10,7 +11,6 @@ import dlib.math.vector;
 import core.thread;
 import core.sync.condition;
 import core.atomic;
-import optional : Optional, unwrap;
 
 struct NoiseGeneratorOrder
 {
@@ -260,11 +260,11 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			{
 				import std.datetime.stopwatch;
 				import std.stdio;
-				Optional!NoiseGeneratorOrder order = orders.await;
-				if(auto o = order.unwrap)
+				Maybe!NoiseGeneratorOrder order = orders.await;
+				if(!order.isNull)
 				{
 					StopWatch sw = StopWatch(AutoStart.yes);
-					execute(*o);
+					execute(*order.unwrap);
 					sw.stop;
 					//writeln(sw.peek.total!"nsecs" / 1_000_000f, "msecs");
 				}
@@ -311,7 +311,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (outcropping ? materials.stone : materials.grass), meshes.cube, 0, 0));
+					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (outcropping ? materials.glass : materials.grass), outcropping ? meshes.glass : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
@@ -385,7 +385,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void runSmoother(NoiseGeneratorOrder o)
 	{
-		smoother(raw.voxels, smootherOutput.voxels, o.chunk.overrun, o.chunk.dimensionsProper + o.chunk.overrun, overrunDimensions, smootherCfg);
+		if(false)
+			smoother(raw.voxels, smootherOutput.voxels, o.chunk.overrun, o.chunk.dimensionsProper + o.chunk.overrun, overrunDimensions, smootherCfg);
+		else
+			smootherOutput.dupFrom(raw);
 	}
 
 	private void postProcess(NoiseGeneratorOrder order, int premC)
@@ -498,13 +501,15 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			horizontalSlope,
 			fluid,
 			grassBlades,
-			leaf;
+			leaf,
+			glass;
 
 		static Meshes get(Resources resources)
 		{
 			import squareone.voxelcontent.block.meshes;
 			import squareone.voxelcontent.fluid.processor;
 			import squareone.voxelcontent.vegetation;
+			import squareone.voxelcontent.glass;
 
 			Meshes meshes;
 			meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
@@ -516,6 +521,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
 			meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
 			meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
+			meshes.glass = resources.getMesh(GlassMesh.technicalStatic).id;
 			return meshes;
 		}
 	}
@@ -528,13 +534,15 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			sand,
 			water,
 			grassBlade,
-			stone;
+			stone,
+			glass;
 
 		static Materials get(Resources resources)
 		{
 			import squareone.voxelcontent.block.materials;
 			import squareone.voxelcontent.fluid.processor;
 			import squareone.voxelcontent.vegetation.materials;
+			import squareone.voxelcontent.glass;
 
 			Materials m;
 			m.air =			resources.getMaterial(Air.technicalStatic).id;
@@ -544,6 +552,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			m.water =		0;
 			m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
 			m.stone	=		resources.getMaterial(Stone.technicalStatic).id;
+			m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;
 
 			return m;
 		}

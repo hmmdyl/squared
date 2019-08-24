@@ -18,6 +18,8 @@ final class Invisible : IBlockVoxelMesh
 
 	SideSolidTable isSideSolid(Voxel voxel, VoxelSide side) { return SideSolidTable.notSolid; }
 
+	void finalise(BlockProcessor bp) {}
+
 	void generateMesh(Voxel target, int voxelSkip, ref Voxel[6] neighbours, ref SideSolidTable[6] sidesSolid, Vector3i coord, ref Vector3f[64] verts, ref Vector3f[64] normals, out int vertCount) 
 	{ vertCount = 0; }
 }

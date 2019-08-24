@@ -65,15 +65,22 @@ class PlayerInventorySystem : IRenderable
 		this.renderer = renderer;
 		this.itemTypes_ = itemTypesIn;
 
+		enforce(renderer.uiCamera !is null);
+		canvas = new PiRenderTexture(renderer.uiCamera.width, renderer.uiCamera.height, renderer.gl);
+
 		//this.renderer.passHook.addCallback(&renderHookCallback);
 	}
 
 	Entity target;
 
-	private void renderHookCallback(ref RendererHook hook) @safe
+	private void renderHookCallback(ref RendererHook hook) @trusted
 	{
 		if(hook.pass != RendererHookPass.beginningGlobal) return;
 		if(target is null) return;
+
+		if(renderer.uiCamera.height != canvas.height || renderer.uiCamera.width != canvas.width)
+			canvas.createTextures(renderer.uiCamera.width, renderer.uiCamera.height);
+		
 	}
 
 	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv)

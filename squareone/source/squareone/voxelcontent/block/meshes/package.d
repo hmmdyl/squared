@@ -6,3 +6,4 @@ public import squareone.voxelcontent.block.meshes.horizslope;
 public import squareone.voxelcontent.block.meshes.invisible;
 public import squareone.voxelcontent.block.meshes.slope;
 public import squareone.voxelcontent.block.meshes.tetrahedron;
+public import squareone.voxelcontent.block.meshes.glass;

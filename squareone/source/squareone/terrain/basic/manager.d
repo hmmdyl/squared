@@ -8,6 +8,7 @@ import moxane.graphics.renderer;
 import moxane.utils.maybe;
 
 import dlib.math;
+import dlib.geometry : Frustum, Sphere;
 import std.datetime.stopwatch;
 import std.parallelism;
 import optional;
@@ -24,14 +25,47 @@ final class BasicTerrainRenderer : IRenderable
 
 	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
 	{
+		Matrix4f vp = lc.projection * lc.view;
+		Frustum frustum = Frustum(vp);
+
+		const Vector3i min = btm.cameraPositionChunk.toVec3i - btm.settings.removeRange;
+		const Vector3i max = btm.cameraPositionChunk.toVec3i + (btm.settings.removeRange + 1);
+
 		foreach(proc; 0 .. btm.resources.processorCount)
 		{
 			IProcessor p = btm.resources.getProcessor(proc);
 			p.prepareRender(renderer);
 			scope(exit) p.endRender;
 
-			foreach(ref BasicChunk chunk; btm.chunksTerrain)
-				p.render(chunk.chunk, lc, drawCalls, numVerts);
+			/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
+				p.render(chunk.chunk, lc, drawCalls, numVerts);+/
+
+			enum skipSize = 4;
+			enum skipSizeHalf = skipSize / 2;
+
+			for(int cx = min.x; cx < max.x; cx += skipSize)
+			for(int cy = min.y; cy < max.y; cy += skipSize)
+			for(int cz = min.z; cz < max.z; cz += skipSize)
+			{
+				Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
+				Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
+				enum float radius = 8;
+				Sphere s = Sphere(centreReal, radius);
+
+				if(!frustum.intersectsSphere(s))
+					continue;
+
+				foreach(int cix; cx .. cx + skipSize)
+				foreach(int ciy; cy .. cy + skipSize)
+				foreach(int ciz; cz .. cz + skipSize)
+				{
+					BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunksTerrain;
+					if(chunk is null)
+						continue;
+
+					p.render(chunk.chunk, lc, drawCalls, numVerts);
+				}
+			}
 		}
 	}
 }
@@ -63,6 +97,7 @@ final class BasicTerrainManager
 	const BasicTMSettings settings;
 
 	Vector3f cameraPosition;
+	ChunkPosition cameraPositionChunk;
 	NoiseGeneratorManager noiseGeneratorManager;
 
 	VoxelInteraction voxelInteraction;
@@ -93,6 +128,7 @@ final class BasicTerrainManager
 	void update()
 	{
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
+		cameraPositionChunk = cp;
 
 		addChunksLocal(cp);
 		addChunksExtension(cp);

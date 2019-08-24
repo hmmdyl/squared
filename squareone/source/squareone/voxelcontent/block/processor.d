@@ -51,7 +51,7 @@ final class BlockProcessor : IProcessor
 		this.moxane = moxane;
 		this.textures = textures;
 
-		foreach(ushort id, IBlockVoxelTexture t; this.textures) t.id = id;
+		foreach(id, IBlockVoxelTexture t; this.textures) t.id = cast(ushort)id;
 
 		meshBufferHost = new MeshBufferHost;
 		uploadSyncObj = new Object;
@@ -70,6 +70,9 @@ final class BlockProcessor : IProcessor
 
 			blockMeshes[x] = bm;
 		}
+
+		foreach(IBlockVoxelMesh bm; blockMeshes.values)
+			bm.finalise(this);
 
 		blockMeshes.rehash();
 
@@ -208,28 +211,28 @@ final class BlockProcessor : IProcessor
 			float invCM = 1f / rd.chunkMax;
 			rd.fit10BitScale = 1023f * invCM;
 
-			/*foreach(int i; 0 .. upItem.bmb.vertexCount) {
-			vec3f v = upItem.bmb.vertices[i];
+			foreach(int i; 0 .. upItem.buffer.vertexCount) {
+				Vector3f v = upItem.buffer.vertices[i];
 
-			float vx = clamp(v.x, 0f, rd.chunkMax) * rd.fit10bScale;
-			uint vxU = cast(uint)vx & 1023;
+				float vx = clamp(v.x, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vxU = cast(uint)vx & 1023;
 
-			float vy = clamp(v.y, 0f, rd.chunkMax) * rd.fit10bScale;
-			uint vyU = cast(uint)vy & 1023;
-			vyU <<= 10;
+				float vy = clamp(v.y, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vyU = cast(uint)vy & 1023;
+				vyU <<= 10;
 
-			float vz = clamp(v.z, 0f, rd.chunkMax) * rd.fit10bScale;
-			uint vzU = cast(uint)vz & 1023;
-			vzU <<= 20;
+				float vz = clamp(v.z, 0f, rd.chunkMax) * rd.fit10BitScale;
+				uint vzU = cast(uint)vz & 1023;
+				vzU <<= 20;
 
-			compressionBuffer[i] = vxU | vyU | vzU;
+				compressionBuffer[i] = vxU | vyU | vzU;
 			}
 
-			glBindBuffer(GL_ARRAY_BUFFER, rd.vbo);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);*/
-
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vertexBO);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, upItem.buffer.vertices.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);
+
+			//glBindBuffer(GL_ARRAY_BUFFER, rd.vertexBO);
+			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, upItem.buffer.vertices.ptr, GL_STATIC_DRAW);
 
 			foreach(int i; 0 .. upItem.buffer.vertexCount) {
 				Vector3f n = upItem.buffer.normals[i];
@@ -303,7 +306,8 @@ final class BlockProcessor : IProcessor
 
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertexBO);
-		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		//glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.normalBO);
 		glVertexAttribPointer(1, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.metaBO);
@@ -334,6 +338,8 @@ final class BlockProcessor : IProcessor
 		import std.range : takeOne;
 		return textures.find!(a => a.technical == technical)[0];
 	}
+
+	IBlockVoxelMesh getMesh(MeshID id) { return blockMeshes[id]; }
 }
 
 private class Mesher

@@ -392,6 +392,13 @@ struct ChunkPosition
 		this.z = z;
 	}
 
+	this(Vector3i v)
+	{
+		this.x = v.x;
+		this.y = v.y;
+		this.z = v.z;
+	}
+
 	size_t toHash() const @safe pure nothrow 
 	{
 		size_t hash = 17;
