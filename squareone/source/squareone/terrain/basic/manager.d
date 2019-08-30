@@ -9,6 +9,7 @@ import moxane.utils.maybe;
 
 import dlib.math;
 import dlib.geometry : Frustum, Sphere;
+import std.math : sqrt;
 import std.datetime.stopwatch;
 import std.parallelism;
 import optional;
@@ -49,7 +50,7 @@ final class BasicTerrainRenderer : IRenderable
 			{
 				Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
 				Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
-				enum float radius = 8;
+				enum float radius = sqrt(128f);
 				Sphere s = Sphere(centreReal, radius);
 
 				if(!frustum.intersectsSphere(s))

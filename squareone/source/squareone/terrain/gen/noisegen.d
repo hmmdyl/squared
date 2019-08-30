@@ -8,6 +8,7 @@ import squareone.voxelutils.smoother;
 
 import containers.cyclicbuffer;
 import dlib.math.vector;
+import std.math;
 import core.thread;
 import core.sync.condition;
 import core.atomic;
@@ -297,8 +298,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(box >= 1 && boz >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1)
 					continue;
 
+			float getTerraced(float val, float n, float power)
+			{
+				float dval = val * n;
+				float i = floor(dval);
+				float f = dval - i;
+				return (i + pow(f, power)) / n;
+			}
+
 			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
 			float height = simplex.eval(realPos.x / 16f, realPos.z / 16f) * 8f;
+			height = getTerraced(height, 2, 2);
 
 			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
@@ -311,7 +321,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (outcropping ? materials.glass : materials.grass), (outcropping && realPos1.y >= 0.5) ? meshes.glass : meshes.cube, meshes.cube, 0));
+					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (outcropping ? materials.stone : materials.grass), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
@@ -328,7 +338,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		//addGrassBlades(order, s, e, premC);
+		addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);
@@ -385,7 +395,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void runSmoother(NoiseGeneratorOrder o)
 	{
-		if(false)
+		if(true)
 			smoother(raw.voxels, smootherOutput.voxels, o.chunk.overrun, o.chunk.dimensionsProper + o.chunk.overrun, overrunDimensions, smootherCfg);
 		else
 			smootherOutput.dupFrom(raw);

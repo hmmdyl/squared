@@ -75,11 +75,11 @@ final class DebugGameScene : Scene
 		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
 		pl = new PointLight;
-		pl.ambientIntensity = 1f;
+		pl.ambientIntensity = 3f;
 		pl.diffuseIntensity = 3f;
 		pl.colour = Vector3f(1f, 1f, 1f);
-		pl.position = Vector3f(4f, 0f, 0f);
-		pl.constAtt = 0f;
+		pl.position = Vector3f(-2f, 4f, 0f);
+		pl.constAtt = 1f;
 		pl.linAtt = 0.9f;
 		pl.expAtt = 0.1f;
 		renderer.lights.pointLights ~= pl;
@@ -177,7 +177,7 @@ final class DebugGameScene : Scene
 		playerKeyBindings[PlayerBindingName.strafeRight] = "playerStrafeRight";
 		playerKeyBindings[PlayerBindingName.debugUp] = "debugUp";
 		playerKeyBindings[PlayerBindingName.debugDown] = "debugDown";
-		playerEntity = createPlayer(em, 1f, 90f, -90f, 10f, playerKeyBindings);
+		playerEntity = createPlayer(em, 2f, 90f, -90f, 10f, playerKeyBindings);
 		PlayerComponent* pc = playerEntity.get!PlayerComponent;
 		pc.camera = camera;
 		pc.allowInput = true;
@@ -227,6 +227,7 @@ final class DebugGameScene : Scene
 
 		Transform* t = playerEntity.get!Transform;
 		pl.position = t.position;
+		pl.position.y += 3f;
 
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
