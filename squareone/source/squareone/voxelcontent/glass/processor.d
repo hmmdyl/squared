@@ -2,6 +2,7 @@ module squareone.voxelcontent.glass.processor;
 
 import squareone.voxelcontent.glass.types;
 import squareone.voxelcontent.glass.mesher;
+import squareone.voxelcontent.block.processor;
 import squareone.voxel;
 import squareone.util.spec;
 
@@ -21,6 +22,7 @@ final class GlassProcessor : IProcessor
 {
 	GlassMesh glassMesh;
 
+	BlockProcessor blockProcessor;
 	Resources resources;
 	Moxane moxane;
 
@@ -37,10 +39,11 @@ final class GlassProcessor : IProcessor
 	private GLuint vertexArrayObject;
 	private Effect effect;
 
-	this(Moxane moxane)
-	in(moxane !is null)
+	this(Moxane moxane, BlockProcessor bp)
+	in(moxane !is null) in(bp !is null)
 	do {
 		this.moxane = moxane;
+		this.blockProcessor = bp;
 
 		meshResults = new Channel!MeshResult;
 
@@ -80,6 +83,7 @@ final class GlassProcessor : IProcessor
 			log.write(Log.Severity.error, errorStr);
 			throw new Exception(errorStr);
 		}
+		glassMesh.bp = blockProcessor;
 
 		glGenVertexArrays(1, &vertexArrayObject);
 

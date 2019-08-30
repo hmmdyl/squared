@@ -115,7 +115,7 @@ final class DebugGameScene : Scene
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
 		resources.add(veggieProcessor);
-		glassProcessor = new GlassProcessor(moxane);
+		glassProcessor = new GlassProcessor(moxane, blockProcessor);
 		resources.add(glassProcessor);
 
 		FluidProcessorDebugAttachment fluidDA = new FluidProcessorDebugAttachment(fluidProcessor);
