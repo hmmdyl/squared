@@ -5,6 +5,7 @@ import moxane.utils.maybe;
 import squareone.voxel;
 import squareone.terrain.gen.simplex;
 import squareone.voxelutils.smoother;
+import squareone.util.procgen;
 
 import containers.cyclicbuffer;
 import dlib.math.vector;
@@ -298,17 +299,19 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(box >= 1 && boz >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1)
 					continue;
 
-			float getTerraced(float val, float n, float power)
-			{
-				float dval = val * n;
-				float i = floor(dval);
-				float f = dval - i;
-				return (i + pow(f, power)) / n;
-			}
-
 			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
-			float height = simplex.eval(realPos.x / 16f, realPos.z / 16f) * 8f;
-			height = getTerraced(height, 2, 2);
+			float height = multiNoise(simplex, realPos.x, realPos.z, 64f, 16) * 8f;
+			
+			// nice terrain
+			//float height = multiNoise(simplex, realPos.x, realPos.z, 64f, 16) * 8f;
+
+			//float height = (redistributeNoise(multiNoise(simplex, realPos.x, realPos.z, 16f, 16) - 0.5f, 4f) - 0.5f) * 8f;
+			
+			// icicyles
+			//float height = redistributeNoise(multiNoise(simplex, realPos.x, realPos.z, 16f, 16), 8f) * 8f;
+
+			// SWAMP
+			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
 			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
@@ -338,7 +341,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		addGrassBlades(order, s, e, premC);
+		//addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);

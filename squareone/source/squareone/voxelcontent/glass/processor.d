@@ -105,6 +105,7 @@ final class GlassProcessor : IProcessor
 
 	void meshChunk(MeshOrder mo) 
 	{
+		mo.chunk.meshBlocking(true, id_);
 		meshers[meshBarrel].orders.send(mo);
 		meshBarrel++;
 		if(meshBarrel >= mesherCount) meshBarrel = 0;

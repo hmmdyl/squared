@@ -192,7 +192,7 @@ final class BasicTerrainManager
 		if(!isChunkInBounds(camera, chunk.position))
 		{
 			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted ||
-			   chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking)
+			   chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking || chunk.chunk.readonlyRefs > 0)
 				chunk.chunk.pendingRemove = true;
 			else
 			{

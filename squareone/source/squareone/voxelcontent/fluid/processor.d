@@ -148,6 +148,7 @@ final class FluidProcessor : IProcessor
 
 	void meshChunk(MeshOrder c)
 	{
+		c.chunk.meshBlocking(true, id_);
 		meshers[meshBarrel].orders.send(c);
 		meshBarrel++;
 		if(meshBarrel >= mesherCount) meshBarrel = 0;
@@ -467,7 +468,7 @@ private class Mesher
 	private void execute(MeshOrder o)
 	{
 		IMeshableVoxelBuffer c = o.chunk;
-		auto blockskip = c.blockskip;
+		immutable int blockskip = c.blockskip;
 
 		MeshBuffer buffer;
 		do buffer = meshBufferPool.get;
@@ -485,7 +486,7 @@ private class Mesher
 			neighbours[VoxelSide.px] = c.get(x + blockskip, y, z);
 			neighbours[VoxelSide.ny] = c.get(x, y - blockskip, z);
 			neighbours[VoxelSide.py] = c.get(x, y + blockskip, z);
-			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip);
+			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip); // caaused crash, related to glass
 			neighbours[VoxelSide.pz] = c.get(x, y, z + blockskip);
 
 			diagNeighbours[0] = c.get(x - blockskip, y, z - blockskip);

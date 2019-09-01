@@ -102,7 +102,7 @@ package class GlassMesher
 		for(int y = 0; y < c.dimensionsProper; y += blockskip)
 		for(int z = 0; z < c.dimensionsProper; z += blockskip)
 		{
-			Voxel voxel = c.get(x, y, z);
+			Voxel voxel = c.get(x, y, z); // caused a crash, check fluid notes
 			if(voxel.mesh != processor.glassMesh.id)
 				continue;
 

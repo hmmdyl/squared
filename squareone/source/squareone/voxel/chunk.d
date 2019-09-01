@@ -124,6 +124,19 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
         dataLoadBlocking = false;
         dataLoadCompleted = false;
         needsMesh = false;
+		hasData = false;
+
+		lod = -1;
+		blockskip = 0;
+
+		solidCount = 0;
+		airCount = 0;
+		fluidCount = 0;
+
+		foreach(ref void* rd; _renderData)
+			rd = null;
+
+		_readonlyRefCount = 0;
 
         if(voxelData !is null)
             deallocateVoxelData();
@@ -142,23 +155,42 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
             deallocateVoxelData();
         if(_compressedData !is null)
             deallocateCompressedData();
+
+		blockskip = 0;
+		lod = -1;
+		solidCount = 0;
+		fluidCount = 0;
+		airCount = 0;
     }
 
     Voxel get(int x, int y, int z) 
     in { assert(voxelData !is null); }
-    body {
+	in { assert(voxelData.length == dimensionsTotal ^^ 3); }
+    do {
+		debug assert(voxelData !is null);
+		debug assert(voxelData.length == dimensionsTotal ^^ 3);
+
         x += blockskip * overrun;
         y += blockskip * overrun;
         z += blockskip * overrun;
         x = x >> _lod;
         y = y >> _lod;
         z = z >> _lod;
-        return voxelData[flattenIndex(x, y, z)];
+		try
+			return voxelData[flattenIndex(x, y, z)];
+		catch(Error e)
+		{
+			import std.stdio : writeln;
+			writeln("x: ", x, " y: ", y, " z: ", z, " lod: ", _lod, " index: ", flattenIndex(x, y, z));
+			throw e;
+			//return Voxel();
+		}
     }
 
     Voxel getRaw(int x, int y, int z) 
     in { assert(voxelData !is null); }
-    body {
+	in { assert(voxelData.length == dimensionsTotal ^^ 3); }
+    do {
         x += overrun;
         y += overrun;
         z += overrun;
@@ -167,7 +199,8 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
 
     void set(int x, int y, int z, Voxel voxel) 
     in { assert(voxelData !is null); }
-    body {
+	in { assert(voxelData.length == dimensionsTotal ^^ 3); }
+    do {
         x += blockskip * overrun;
         y += blockskip * overrun;
         z += blockskip * overrun;
@@ -179,7 +212,8 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
 
     void setRaw(int x, int y, int z, Voxel voxel) 
     in { assert(voxelData !is null); }
-    body {
+	in { assert(voxelData.length == dimensionsTotal ^^ 3); }
+    do {
         x += overrun;
         y += overrun;
         z += overrun;

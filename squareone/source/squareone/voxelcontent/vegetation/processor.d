@@ -132,6 +132,7 @@ final class VegetationProcessor : IProcessor
 
 	void meshChunk(MeshOrder o)
 	{
+		o.chunk.meshBlocking(true, id_);
 		meshers[meshBarrel++].orders.send(o);
 		if(meshBarrel >= mesherCount) meshBarrel = 0;
 	}
