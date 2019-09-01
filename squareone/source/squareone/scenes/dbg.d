@@ -75,8 +75,8 @@ final class DebugGameScene : Scene
 		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(0.9f, 0.9f, 0.95f), 0.029455f, 10f, Matrix4f.identity);
 		pl = new PointLight;
-		pl.ambientIntensity = 3f;
-		pl.diffuseIntensity = 3f;
+		pl.ambientIntensity = 0f;
+		pl.diffuseIntensity = 30f;
 		pl.colour = Vector3f(1f, 1f, 1f);
 		pl.position = Vector3f(-2f, 4f, 0f);
 		pl.constAtt = 1f;
@@ -227,7 +227,7 @@ final class DebugGameScene : Scene
 
 		Transform* t = playerEntity.get!Transform;
 		pl.position = t.position;
-		pl.position.y += 3f;
+		pl.position.y += 30f;
 
 		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
