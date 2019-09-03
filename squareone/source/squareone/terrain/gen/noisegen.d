@@ -6,6 +6,7 @@ import squareone.voxel;
 import squareone.terrain.gen.simplex;
 import squareone.voxelutils.smoother;
 import squareone.util.procgen;
+import squareone.util.voronoi;
 
 import containers.cyclicbuffer;
 import dlib.math.vector;
@@ -300,7 +301,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					continue;
 
 			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
-			float height = multiNoise(simplex, realPos.x, realPos.z, 64f, 16) * 8f;
+			//float height = voronoi(Vector2f(realPos.xz) / 16f, simplex).x * 8f;
+			//height = height > 0f ? height : 0f;
+			//float height = voronoi2D(Vector2f(realPos.xz) / 8f) * 8f;
 			
 			// nice terrain
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 64f, 16) * 8f;
@@ -313,9 +316,9 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			// SWAMP
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
-			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
+			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
-				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 8f;
+				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 1f;
 
 			foreach(int boy; s .. e)
 			{
@@ -341,7 +344,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		//addGrassBlades(order, s, e, premC);
+		addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);
@@ -367,6 +370,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
 				//float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
 				//if(a < 0.5f) continue;
+
+				if(voronoi(cast(Vector2f)realPos.xz / 4f, simplex).x < 0.5f) continue;
 
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 

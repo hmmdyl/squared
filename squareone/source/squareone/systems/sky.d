@@ -139,7 +139,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			scope(exit) colourMap.unbind;
 			skyEffect["ColourMap"].set(0);
 
-			Matrix4f m = lc.model * scaleMatrix(Vector3f(sky.horizScale, sky.vertScale, sky.horizScale)) * transform.matrix;
+			Matrix4f m = lc.model * transform.matrix * scaleMatrix(Vector3f(sky.horizScale, sky.vertScale, sky.horizScale));
 			Matrix4f mvp = lc.projection * lc.view * m;
 
 			skyEffect["Model"].set(&m);
