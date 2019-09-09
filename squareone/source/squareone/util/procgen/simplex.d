@@ -1,4 +1,4 @@
-module squareone.terrain.gen.simplex;
+module squareone.util.procgen.simplex;
 
 /*
 * OpenSimplex (Simplectic) Noise in Java.

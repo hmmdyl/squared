@@ -111,7 +111,7 @@ final class FluidProcessor : IProcessor
 		fresnelReflectiveFactor = 0.9f;
 		murkDepth = 1.751f;
 		minimumMurkStrength = 0.447f;
-		maximumMurkStrength = 1f;
+		maximumMurkStrength = 0.634f;
 		waterColour = Vector3f(0.1f, 0.75f, 0.9f);
 
 		/*foreach(ref float amplitude; waveAmplitudes)

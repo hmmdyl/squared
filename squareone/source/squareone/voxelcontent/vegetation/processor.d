@@ -5,7 +5,7 @@ import squareone.voxelcontent.vegetation.types;
 
 import squareone.voxel;
 import squareone.util.spec;
-import squareone.terrain.gen.simplex;
+import squareone.util.procgen.simplex;
 
 import moxane.core;
 import moxane.utils.pool;

@@ -1,26 +1,25 @@
-module squareone.util.procgen;
+module squareone.util.procgen.compose;
 
-import squareone.terrain.gen.simplex;
 import std.math;
 
 /++
 + Provides octaves for simplex noise.
 + Params:
-+	func = the simplex noise object
++	src = noise source
 +	x = x coord
 +	y = y coord
 +	frequency = start frequency, frequency *= multiplier with every octave
 +	numOctaves = number of octaves
 +	multiplier = for each octave, multiple height and freq by this value
 +/
-float multiNoise(OpenSimplexNoise!float func, float x, float y, float frequency, int numOctaves, float multiplier = 0.5f)
+float multiNoise(float delegate(float, float) src, float x, float y, float frequency, int numOctaves, float multiplier = 0.5f)
 {
 	float total = 0f;
 	float heightMultiplier = 1f;
 
 	foreach(octave; 0 .. numOctaves)
 	{
-		total += heightMultiplier * func.eval(x / frequency, y / frequency); // for swamp, x * freq
+		total += heightMultiplier * src(x / frequency, y / frequency); // for swamp, x * freq
 		heightMultiplier *= multiplier;
 		frequency *= multiplier; // for swamp, /= mul
 	}

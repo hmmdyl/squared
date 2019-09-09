@@ -3,10 +3,10 @@ module squareone.terrain.gen.noisegen;
 import moxane.core : Moxane, Log, Channel;
 import moxane.utils.maybe;
 import squareone.voxel;
-import squareone.terrain.gen.simplex;
+import squareone.util.procgen.simplex;
 import squareone.voxelutils.smoother;
-import squareone.util.procgen;
-import squareone.util.voronoi;
+import squareone.util.procgen.voronoi;
+import squareone.util.procgen.compose;
 
 import containers.cyclicbuffer;
 import dlib.math.vector;
@@ -318,15 +318,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			float swamp()
 			{
-				float h = multiNoise(simplex, realPos.x, realPos.z, 16f, 4);
+				auto src = (float x, float y) => simplex.eval(x, y);
+
+				float h = multiNoise(src, realPos.x, realPos.z, 16f, 4);
 				if(h > 0) 
 				{
-					float h1 = multiNoise(simplex, realPos.x, realPos.z, 16f, 16) * 2;
+					float h1 = multiNoise(src, realPos.x, realPos.z, 16f, 16) * 2;
 					h1 = redistributeNoise(h1, 2f);
 					return h + h1;
 				}
 
-				float h1 = multiNoise(simplex, realPos.x, realPos.z, 4f, 2);// * 0.5f + 0.5f;
+				float h1 = multiNoise(src, realPos.x, realPos.z, 4f, 2);// * 0.5f + 0.5f;
 				//h1 *= 0.5f;
 				h1 = redistributeNoise(h1, 4f);
 				return h + h1;
@@ -389,7 +391,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				//float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
 				//if(a < 0.5f) continue;
 
-				if(voronoi(cast(Vector2f)realPos.xz / 4f, simplex).x < 0.5f) continue;
+				auto vsrc = (float x, float y) => simplex.eval(x, y);
+				if(voronoi(cast(Vector2f)realPos.xz / 4f, vsrc).x < 0.5f) continue;
 
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 
