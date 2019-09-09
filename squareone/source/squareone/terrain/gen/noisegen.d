@@ -316,6 +316,24 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			// SWAMP
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
+			float swamp()
+			{
+				float h = multiNoise(simplex, realPos.x, realPos.z, 16f, 4);
+				if(h > 0) 
+				{
+					float h1 = multiNoise(simplex, realPos.x, realPos.z, 16f, 16) * 2;
+					h1 = redistributeNoise(h1, 2f);
+					return h + h1;
+				}
+
+				float h1 = multiNoise(simplex, realPos.x, realPos.z, 4f, 2);// * 0.5f + 0.5f;
+				//h1 *= 0.5f;
+				h1 = redistributeNoise(h1, 4f);
+				return h + h1;
+			}
+
+			float height = swamp();
+
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
 				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 1f;

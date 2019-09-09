@@ -109,9 +109,9 @@ final class FluidProcessor : IProcessor
 		effect.unbind;
 
 		fresnelReflectiveFactor = 0.9f;
-		murkDepth = 4f;
-		minimumMurkStrength = 0.1f;
-		maximumMurkStrength = 0.7f;
+		murkDepth = 1.751f;
+		minimumMurkStrength = 0.447f;
+		maximumMurkStrength = 1f;
 		waterColour = Vector3f(0.1f, 0.75f, 0.9f);
 
 		/*foreach(ref float amplitude; waveAmplitudes)
@@ -124,13 +124,24 @@ final class FluidProcessor : IProcessor
 			direction = Vector2f(((uniform01!float() - 0.5f) * 2f), ((uniform01!float() - 0.5f) * 2f));*/
 	
 		waveAmplitudes[] = 0f;
-		waveAmplitudes[0] = 0.05f;
 		waveWavelengths[] = 0f;
-		waveWavelengths[0] = 3f;
 		waveSpeeds[] = 0f;
-		waveSpeeds[0] = 0.25f;
 		waveDirections[] = Vector2f(0f, 0f);
+
+		waveAmplitudes[0] = 0.05f;
+		waveWavelengths[0] = 3f;
+		waveSpeeds[0] = 0.25f;
 		waveDirections[0] = Vector2f(1f, 0f);
+
+		waveAmplitudes[1] = 0.04f;
+		waveWavelengths[1] = 2f;
+		waveSpeeds[1] = 0.2f;
+		waveDirections[1] = Vector2f(0.1f, 9f);
+
+		waveAmplitudes[2] = 0.025f;
+		waveWavelengths[2] = 0.5f;
+		waveSpeeds[2] = 0.35f;
+		waveDirections[2] = Vector2f(0.9f, 0.4f);
 	}
 
 	~this()

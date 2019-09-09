@@ -226,7 +226,7 @@ class Chunk : IVoxelBuffer, ILoadableVoxelBuffer, IRenderableVoxelBuffer, IMesha
     @property int dimensionsTotal() { return ChunkData.chunkDimensions + ChunkData.voxelOffset * 2; }
     //pragma(inline, true)
     @property int overrun() { return ChunkData.voxelOffset; }
-	pragma(inline, true)
+	//pragma(inline, true)
 		@property float voxelScale() { return ChunkData.voxelScale; }
 
     private shared(bool) _hasData;

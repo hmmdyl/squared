@@ -90,7 +90,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 		foreach(d; 0 .. TimeDivisions)
 			foreach(r; 0 .. Rings)
-				colours[r][d] = [0, 0, 0, 255];
+				colours[r][d] = [255, 255, 255, 255];
 
 		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, Filter.linear, Filter.linear, false, true);
 
