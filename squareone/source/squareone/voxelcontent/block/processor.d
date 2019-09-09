@@ -80,7 +80,7 @@ final class BlockProcessor : IProcessor
 		foreach(size_t x, IBlockVoxelTexture texture; textures)
 			textureFiles[x] = texture.file;
 
-		textureArray = new Texture2DArray(textureFiles, true, Filter.nearestMipMapLinear, Filter.nearest, true);
+		textureArray = new Texture2DArray(textureFiles, true, Filter.nearest, Filter.nearest, true);
 
 		foreach(int x; 0 .. res.materialCount) 
 		{

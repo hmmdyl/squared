@@ -227,7 +227,7 @@ final class DebugGameScene : Scene
 
 	private char[1024] buffer;
 
-	private bool clickPrev = false;
+	private bool clickPrev = false, placePrev = false;
 
 	override void onUpdate() @trusted
 	{
@@ -243,12 +243,36 @@ final class DebugGameScene : Scene
 			sk.position = t.position;
 		}
 
-		if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
+		/+if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
 		{
 			win.hideCursor = true;
-			clickPrev = false;
+			//clickPrev = false;
 		}
 		else if(win.isFocused && win.isKeyDown(Keys.tab) && win.isMouseButtonDown(MouseButton.left) && !clickPrev)
+		{
+			clickPrev = true;
+			PlayerComponent* pc = playerEntity.get!PlayerComponent;
+			//if(pc is null) break;
+
+			import squareone.voxelutils.picker;
+			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
+			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
+			if(pr.got) 
+				terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition);
+		}
+		else 
+		{
+			win.hideCursor = false;
+			clickPrev = false;
+		}+/
+
+		win.hideCursor = true;
+		bool shouldBreak = win.isMouseButtonDown(MouseButton.right) && !clickPrev;
+		clickPrev = win.isMouseButtonDown(MouseButton.right);
+		bool shouldPlace = win.isMouseButtonDown(MouseButton.left) && !placePrev;
+		placePrev = win.isMouseButtonDown(MouseButton.left);
+
+		if(shouldBreak)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -258,13 +282,26 @@ final class DebugGameScene : Scene
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 				terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition);
-
-			clickPrev = true;
 		}
-		else 
+		if(shouldPlace)
 		{
-			win.hideCursor = false;
-			clickPrev = false;
+			PlayerComponent* pc = playerEntity.get!PlayerComponent;
+			//if(pc is null) break;
+
+			import squareone.voxelutils.picker;
+			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
+			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
+			if(pr.got) 
+			{
+				if(pr.side == VoxelSide.nx) pr.blockPosition.x -= 1;
+				if(pr.side == VoxelSide.px) pr.blockPosition.x += 1;
+				if(pr.side == VoxelSide.ny) pr.blockPosition.y -= 1;
+				if(pr.side == VoxelSide.py) pr.blockPosition.y += 1;
+				if(pr.side == VoxelSide.nz) pr.blockPosition.z -= 1;
+				if(pr.side == VoxelSide.pz) pr.blockPosition.z += 1;
+
+				terrainManager.voxelInteraction.set(Voxel(1, 1, 0, 0), pr.blockPosition);
+			}
 		}
 
 		fog.sceneView = camera.viewMatrix;

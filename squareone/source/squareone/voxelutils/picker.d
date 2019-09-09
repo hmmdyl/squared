@@ -62,10 +62,10 @@ PickResult pick(Vector3f origin, Vector3f originRot, BasicTerrainManager m, cons
 		return false;
 	}
 
-	foreach(i; 0 .. maxDistance * 10)
+	foreach(i; 0 .. maxDistance * 100)
 	{
 		prev = curr;
-		curr += (-dir * 0.1f);
+		curr += (-dir * 0.01f);
 
 		voxelPos = ChunkPosition.realCoordToBlockPos(curr);
 		ChunkPosition chunkPos;
