@@ -62,6 +62,7 @@ final class DebugGameScene : Scene
 	private Entity playerEntity;
 
 	PointLight pl;
+	DirectionalLight dl;
 
 	private void initialise()
 	{
@@ -76,13 +77,20 @@ final class DebugGameScene : Scene
 		fog.update(Vector3f(1f, 1f, 1f), 0.029455f, 10f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
-		pl.diffuseIntensity = 180f;
+		pl.diffuseIntensity = 1f;
 		pl.colour = Vector3f(1f, 1f, 1f);
 		pl.position = Vector3f(-2f, 4f, 0f);
 		pl.constAtt = 1f;
 		pl.linAtt = 0.9f;
 		pl.expAtt = 0.1f;
 		renderer.lights.pointLights ~= pl;
+
+		DirectionalLight dl = new DirectionalLight;
+		dl.ambientIntensity = 0f;
+		dl.diffuseIntensity = 0.5f;
+		dl.colour = Vector3f(1, 1, 1);
+		dl.direction = Vector3f(0, 1, 0);
+		renderer.lights.directionalLights ~= dl;
 
 		skySystem = new SkySystem(moxane);
 		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
@@ -227,9 +235,9 @@ final class DebugGameScene : Scene
 
 		Transform* t = playerEntity.get!Transform;
 		pl.position = t.position;
-		pl.position.y += 30f;
-		pl.position.x -= 3f;
-		pl.position.z -= 3f;
+		//pl.position.y += 30f;
+		//pl.position.x -= 3f;
+		//pl.position.z -= 3f;
 		{
 			Transform* sk = skyEntity.get!Transform;
 			sk.position = t.position;
