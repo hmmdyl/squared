@@ -8,3 +8,5 @@ enum Tuple!(int, int, int) gameVersion = Tuple!(int, int, int)(0, 0, 2);
 
 string resourceName(string item, string area, string mod = appName) pure @safe
 { return mod ~ ":" ~ area ~ ":" ~ item; }
+
+enum string jamesGaywoodName = "James Gaywood (42PercentHuman)";

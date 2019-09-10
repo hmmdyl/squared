@@ -107,12 +107,13 @@ final class DebugGameScene : Scene
 		resources.add(new Invisible);
 		resources.add(new Air);
 
-		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](5);
+		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](6);
 		bvts[0] = new DirtTexture;
 		bvts[1] = new GrassTexture;
 		bvts[2] = new SandTexture;
 		bvts[3] = new StoneTexture;
 		bvts[4] = new GlassTexture;
+		bvts[5] = new WoodBarkTexture;
 
 		IVegetationVoxelTexture[] vvts;
 		vvts ~= new GrassBladeTexture;
