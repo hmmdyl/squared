@@ -151,7 +151,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(16, 10, 16), Vector3i(17, 12, 17), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 

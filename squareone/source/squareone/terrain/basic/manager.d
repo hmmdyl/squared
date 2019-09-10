@@ -116,7 +116,7 @@ final class BasicTerrainManager
 		voxelInteraction = new VoxelInteraction(this);
 		chunkInteraction = new ChunkInteraction(this);
 
-		noiseGeneratorManager = new NoiseGeneratorManager(resources, 1, () => new DefaultNoiseGenerator(moxane), 0);
+		noiseGeneratorManager = new NoiseGeneratorManager(resources, 4, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
 	}
