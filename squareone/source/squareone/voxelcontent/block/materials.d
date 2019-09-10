@@ -8,6 +8,25 @@ import squareone.voxelcontent.block.textures;
 
 import dlib.math;
 
+template MaterialBasicImpl(string technical, string display, string textureTechnicalStatic, string author)
+{
+	const char[] MaterialBasicImpl = "static immutable string technicalStatic = \"" ~ technical ~ "\";
+		mixin(VoxelContentQuick!(technicalStatic, \"" ~ display ~ "\", appName, \"" ~ author ~ "\"));
+
+		private ushort id_;
+		@property ushort id() { return id_; }
+		@property void id(ushort nid) { id_ = nid; }
+
+		ushort texID;
+
+		void loadTextures(scope BlockProcessor bp) {
+		texID = bp.getTexture(\"" ~ textureTechnicalStatic ~ "\").id;
+		}
+
+		void generateTextureIDs(int vlength, ref Vector3f[64] vertices, ref Vector3f[64] normals, ref ushort[64] ids) 
+		{ ids[] = texID; }";
+}
+
 final class Air : IBlockVoxelMaterial 
 {
 	static immutable string technicalStatic = "squareOne:voxel:blockMaterial:air";
