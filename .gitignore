@@ -14,6 +14,7 @@ squareone_dlang-test-*
 *.obj
 *.lst
 *.suo
+*.sln
 .vs/
 .idea/
 .vscode/
