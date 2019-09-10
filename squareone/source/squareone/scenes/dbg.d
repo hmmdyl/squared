@@ -73,7 +73,7 @@ final class DebugGameScene : Scene
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
 		Renderer renderer = moxane.services.get!Renderer();
 
-		renderer.postProcesses.processes ~= fog;
+		//renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(1f, 1f, 1f), 0.029455f, 10f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
@@ -100,7 +100,7 @@ final class DebugGameScene : Scene
 
 		EntityManager em = moxane.services.get!EntityManager;
 
-		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 50, 80, VirtualTime.init);
+		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 180, 80, VirtualTime.init);
 		em.add(skyEntity);
 
 		resources = new Resources;
@@ -151,7 +151,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(16, 10, 16), Vector3i(17, 12, 17), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(24, 10, 24), Vector3i(26, 12, 26), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -209,8 +209,8 @@ final class DebugGameScene : Scene
 		camera.width = cast(uint)size.x;
 		camera.height = cast(uint)size.y;
 		camera.perspective.fieldOfView = 75f;
-		camera.perspective.near = 0.1f;
-		camera.perspective.far = 100f;
+		camera.perspective.near = 0.01f;
+		camera.perspective.far = 200f;
 		camera.buildProjection;
 		
 		renderer.uiCamera.width = cast(uint)size.x;
