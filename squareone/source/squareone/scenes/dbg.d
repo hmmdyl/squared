@@ -107,13 +107,14 @@ final class DebugGameScene : Scene
 		resources.add(new Invisible);
 		resources.add(new Air);
 
-		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](6);
+		IBlockVoxelTexture[] bvts = new IBlockVoxelTexture[](7);
 		bvts[0] = new DirtTexture;
 		bvts[1] = new GrassTexture;
 		bvts[2] = new SandTexture;
 		bvts[3] = new StoneTexture;
 		bvts[4] = new GlassTexture;
 		bvts[5] = new WoodBarkTexture;
+		bvts[6] = new WoodCoreTexture;
 
 		IVegetationVoxelTexture[] vvts;
 		vvts ~= new GrassBladeTexture;
@@ -146,6 +147,8 @@ final class DebugGameScene : Scene
 		resources.add(new Sand);
 		resources.add(new Stone);
 		resources.add(new GlassMaterial);
+		resources.add(new WoodBark);
+		resources.add(new WoodCore);
 
 		resources.finaliseResources;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(10, 10, 10), Vector3i(12, 12, 12), resources);

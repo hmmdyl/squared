@@ -72,3 +72,8 @@ final class WoodBarkTexture : IBlockVoxelTexture
 {
 	mixin(TextureImpl!("squareOne:voxel:blockTexture:woodBark", "Wood Bark (texture)", "woodBark.png"));
 }
+
+final class WoodCoreTexture : IBlockVoxelTexture
+{
+	mixin(TextureImpl!("squareOne:voxel:blockTexture:woodCore", "Wood Core (texture)", "woodCore.png"));
+}
