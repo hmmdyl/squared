@@ -304,7 +304,7 @@ final class DebugGameScene : Scene
 				if(pr.side == VoxelSide.nz) pr.blockPosition.z -= 1;
 				if(pr.side == VoxelSide.pz) pr.blockPosition.z += 1;
 
-				terrainManager.voxelInteraction.set(Voxel(1, 1, 0, 0), pr.blockPosition);
+				terrainManager.voxelInteraction.set(Voxel(8, 1, 0, 0), pr.blockPosition);
 			}
 		}
 
