@@ -504,11 +504,13 @@ private class Mesher
 		Vector3f[64] verts, normals;
 		ushort[64] textureIDs;
 
-		for(int x = 0; x < ChunkData.chunkDimensions; x += chunk.blockskip) 
+		const int blkskp = chunk.blockskip;
+
+		for(int x = 0; x < ChunkData.chunkDimensions; x += blkskp) 
 		{
-			for(int y = 0; y < ChunkData.chunkDimensions; y += chunk.blockskip)  
+			for(int y = 0; y < ChunkData.chunkDimensions; y += blkskp)  
 			{
-				for(int z = 0; z < ChunkData.chunkDimensions; z += chunk.blockskip)  
+				for(int z = 0; z < ChunkData.chunkDimensions; z += blkskp)  
 				{
 					Voxel v = chunk.get(x, y, z);
 
@@ -518,12 +520,12 @@ private class Mesher
 					Voxel[6] neighbours;
 					SideSolidTable[6] isSidesSolid;
 
-					neighbours[VoxelSide.nx] = chunk.get(x - 1, y, z);
-					neighbours[VoxelSide.px] = chunk.get(x + 1, y, z);
-					neighbours[VoxelSide.ny] = chunk.get(x, y - 1, z);
-					neighbours[VoxelSide.py] = chunk.get(x, y + 1, z);
-					neighbours[VoxelSide.nz] = chunk.get(x, y, z - 1);
-					neighbours[VoxelSide.pz] = chunk.get(x, y, z + 1);
+					neighbours[VoxelSide.nx] = chunk.get(x - blkskp, y, z);
+					neighbours[VoxelSide.px] = chunk.get(x + blkskp, y, z);
+					neighbours[VoxelSide.ny] = chunk.get(x, y - blkskp, z);
+					neighbours[VoxelSide.py] = chunk.get(x, y + blkskp, z);
+					neighbours[VoxelSide.nz] = chunk.get(x, y, z - blkskp);
+					neighbours[VoxelSide.pz] = chunk.get(x, y, z + blkskp);
 
 					isSidesSolid[VoxelSide.nx] = resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
 					isSidesSolid[VoxelSide.px] = resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);

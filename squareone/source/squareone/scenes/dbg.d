@@ -151,7 +151,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(24, 10, 24), Vector3i(26, 12, 26), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(24, 10, 24), Vector3i(25, 12, 25), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -320,12 +320,16 @@ Camera rotation: %0.3f %0.3f %0.3f
 						
 Delta: %0.6fs
 						
-Chunks: %d", 
+Chunks: %d
+						
+Render Time: %0.6fs
+True: %0.6fs", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
-						terrainManager.numChunks);
-		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));
+						terrainManager.numChunks,
+						terrainRenderer.renderTime, terrainRenderer.trueRenderTime);
+		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 	}
 
 	override void onRenderBegin() @trusted
