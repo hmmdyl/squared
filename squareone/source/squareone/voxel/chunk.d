@@ -15,8 +15,8 @@ alias BlockPosition = Vector!(long, 3);
 
 struct ChunkData
 {
-	enum int chunkDimensions = 16;
-	enum int chunkOverrunDimensions = 18;
+	enum int chunkDimensions = 32;
+	enum int chunkOverrunDimensions = 34;
 	enum int voxelOffset = 1;
 
 	enum int chunkDimensionsCubed = chunkDimensions ^^ 3;
