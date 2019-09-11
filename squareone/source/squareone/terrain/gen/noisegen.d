@@ -300,6 +300,18 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(box >= 1 && boz >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1)
 					continue;
 
+			/+for(int boy = s; boy < e; boy += order.chunk.blockskip)
+			{
+				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
+				if(realPos1.y <= 0)
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.dirt, meshes.cube, 0, 0));
+				else
+				{
+						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(0, meshes.invisible, 0, 0));
+						premC++;
+				}
+			}+/
+
 			Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(box, 0, boz));
 			//float height = voronoi(Vector2f(realPos.xz) / 16f, simplex).x * 8f;
 			//height = height > 0f ? height : 0f;
@@ -320,7 +332,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			float swamp()
 			{
 				//float h = multiNoise(simplexSrc, realPos.x, realPos.z, 128f, 4);
-				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 256f, 16) * 32f;
+				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 1024f, 16) * 128f;
 				return h;//redistributeNoise(h, 2f);
 				/+if(h > 0) 
 				{
@@ -337,13 +349,16 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			float height = swamp();
 
-			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
+			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
-				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 1f;
+				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 32f;
 
 			MaterialID upperMat;
 			float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
-			upperMat = mdet > 0.5f ? materials.stone : materials.grass;
+			//upperMat = mdet > 0.5f ? materials.stone : materials.dirt;
+			if(mdet < 0.333f) upperMat = materials.dirt;
+			else if(mdet >= 0.333f && mdet < 0.666f) upperMat = materials.grass;
+			else if(mdet > 0.666f) upperMat = materials.stone;
 			upperMat = outcropping ? materials.stone : upperMat;
 
 			for(int boy = s; boy < e; boy += order.chunk.blockskip)
@@ -353,7 +368,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
@@ -370,8 +385,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 		}
 
-		//addGrassBlades(order, s, e, premC);
 		runSmoother(order);
+		addGrassBlades(order, s, e, premC);
 
 		postProcess(order, premC);
 		countAir(order);
@@ -388,26 +403,29 @@ final class DefaultNoiseGenerator : NoiseGenerator
 		{
 			mixin(loadChunkSkip!());
 
-			Voxel ny = raw.get(x, y - order.chunk.blockskip, z);
-			Voxel v = raw.get(x, y, z);
+			Voxel ny = smootherOutput.get(x, y - 1, z);
+			Voxel v = smootherOutput.get(x, y, z);
 
 			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid && ny.material == materials.grass)
 			{
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 
-				/+GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
+				GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
 				gv.offset = offset;
 				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
 				Vector3f colour;
-				colour.x = 27 / 255f;
+				/+colour.x = 27 / 255f;
 				colour.y = 191 / 255f;
-				colour.z = 46 / 255f;
+				colour.z = 46 / 255f;+/
+				colour.x = 230 / 255f;
+				colour.y = 180 / 255f;
+				colour.z = 26 / 255f;
 				gv.colour = colour;
 
-				raw.set(x, y, z, gv.v);+/
+				smootherOutput.set(x, y, z, gv.v);
 
-				LeafVoxel lv = LeafVoxel(Voxel(materials.grassBlade, meshes.leaf, 0, 0));
+				/+LeafVoxel lv = LeafVoxel(Voxel(materials.grassBlade, meshes.leaf, 0, 0));
 				lv.up = false;
 				lv.rotation = cast(FlowerRotation)offset;
 				Vector3f colour;
@@ -415,7 +433,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				colour.y = 180 / 255f;
 				colour.z = 26 / 255f;
 				lv.colour = colour;
-				raw.set(x, y, z, lv.v);
+				smootherOutput.set(x, y, z, lv.v);+/
 
 				premC--;
 			}

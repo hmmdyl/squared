@@ -113,7 +113,8 @@ final class FluidProcessor : IProcessor
 		murkDepth = 1.751f;
 		minimumMurkStrength = 0.447f;
 		maximumMurkStrength = 0.634f;
-		waterColour = Vector3f(0.1f, 0.75f, 0.9f);
+		//waterColour = Vector3f(0.1f, 0.75f, 0.9f);
+		waterColour = Vector3f(54f / 255f, 0f, 1f);
 
 		/*foreach(ref float amplitude; waveAmplitudes)
 			amplitude = uniform01!float() * 0.075f;
@@ -603,7 +604,7 @@ private class Mesher
 
 private class MeshBuffer
 {
-	enum elements = 8192;
+	enum elements = 80192;
 
 	Vector3f[] vertices;
 	Vector3f[] normals;

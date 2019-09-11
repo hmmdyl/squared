@@ -74,8 +74,8 @@ final class DebugGameScene : Scene
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
 		Renderer renderer = moxane.services.get!Renderer();
 
-		//renderer.postProcesses.processes ~= fog;
-		fog.update(Vector3f(1f, 1f, 1f), 0.029455f, 10f, Matrix4f.identity);
+		renderer.postProcesses.processes ~= fog;
+		fog.update(Vector3f(1f, 1f, 1f), 0.010241f, 2.819f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
 		pl.diffuseIntensity = 1f;
@@ -87,7 +87,7 @@ final class DebugGameScene : Scene
 		renderer.lights.pointLights ~= pl;
 
 		DirectionalLight dl = new DirectionalLight;
-		dl.ambientIntensity = 0f;
+		dl.ambientIntensity = 0.1f;
 		dl.diffuseIntensity = 0.5f;
 		dl.colour = Vector3f(1, 1, 1);
 		dl.direction = Vector3f(0, 1, 0);
@@ -101,7 +101,7 @@ final class DebugGameScene : Scene
 
 		EntityManager em = moxane.services.get!EntityManager;
 
-		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 180, 80, VirtualTime.init);
+		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 24 * 8, 80, VirtualTime.init);
 		em.add(skyEntity);
 
 		resources = new Resources;
@@ -152,7 +152,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(24, 8, 24), Vector3i(30, 12, 30), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(22, 8, 22), Vector3i(23, 12, 23), Vector3i(2, 2, 2), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -233,6 +233,7 @@ final class DebugGameScene : Scene
 	private char[1024] buffer;
 
 	private bool clickPrev = false, placePrev = false;
+	private bool keyCapture = false, f1Prev = false;
 
 	override void onUpdate() @trusted
 	{
@@ -245,7 +246,14 @@ final class DebugGameScene : Scene
 			sk.position = t.position;
 		}
 
-		win.hideCursor = true;
+		bool changeCapture = win.isKeyDown(Keys.f1) && !f1Prev;
+		f1Prev = win.isKeyDown(Keys.f1);
+		if(changeCapture)
+		{
+			keyCapture = !keyCapture;
+		}
+		win.hideCursor = keyCapture;
+
 		bool shouldBreak = win.isMouseButtonDown(MouseButton.right) && !clickPrev;
 		clickPrev = win.isMouseButtonDown(MouseButton.right);
 		bool shouldPlace = win.isMouseButtonDown(MouseButton.left) && !placePrev;
@@ -260,7 +268,12 @@ final class DebugGameScene : Scene
 			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
-				terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition);
+			{
+				foreach(x; -2 .. 2)
+					foreach(y; -2 .. 2)
+						foreach(z; -2 .. 2)
+							terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition + BlockPosition(x, y, z));
+			}
 		}
 		if(shouldPlace)
 		{
@@ -286,8 +299,8 @@ final class DebugGameScene : Scene
 		fog.sceneView = camera.viewMatrix;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
-		//terrainManager.cameraPosition = camera.position;
-		terrainManager.cameraPosition = Vector3f(0, 0, 0);
+		terrainManager.cameraPosition = camera.position;
+		//terrainManager.cameraPosition = Vector3f(0, 0, 0);
 		terrainManager.update;
 		sw.stop;
 
@@ -347,6 +360,9 @@ private final class SceneDebugAttachment : IImguiRenderable
 		if(igCollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			igText("Chunks: %d", scene.terrainManager.numChunks);
+			igText("Created: %d", scene.terrainManager.chunksCreated);
+			igText("Hibernated: %d", scene.terrainManager.chunksHibernated);
+			igText("Removed: %d", scene.terrainManager.chunksRemoved);
 		}
 		if(igCollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen))
 		{
@@ -371,7 +387,7 @@ private final class SceneDebugAttachment : IImguiRenderable
 		igBegin("Fog");
 
 		igSliderFloat("Density", &scene.fog.density, 0f, 0.1f, "%.6f");
-		igSliderFloat("Gradient", &scene.fog.gradient, 8f, 18f, "%.3f");
+		igSliderFloat("Gradient", &scene.fog.gradient, 0f, 18f, "%.3f");
 
 		float[3] col = scene.fog.colour.arrayof;
 		igColorPicker3("Fog Colour", col);

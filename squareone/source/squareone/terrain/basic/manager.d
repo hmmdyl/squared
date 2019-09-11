@@ -93,6 +93,7 @@ final class BasicTerrainRenderer : IRenderable
 struct BasicTMSettings
 {
 	Vector3i addRange, extendedAddRange, removeRange;
+	Vector3i playerLocalRange;
 	Resources resources;
 }
 
@@ -101,6 +102,7 @@ enum ChunkState
 	deallocated,
 	/// memory is assigned, but no voxel data.
 	notLoaded,
+	hibernated,
 	active
 }
 
@@ -166,6 +168,8 @@ final class BasicTerrainManager
 	VoxelInteraction voxelInteraction;
 	ChunkInteraction chunkInteraction;
 	BTMChunkDefer chunkDefer;
+
+	uint chunksCreated, chunksHibernated, chunksRemoved;
 
 	private Thread updateWorkerThread;
 
@@ -267,12 +271,13 @@ final class BasicTerrainManager
 			{
 				for(int z = lower.z; z < upper.z; z += cs)
 				{
-					if(numChunksAdded > 100) return;
+					//if(numChunksAdded > 1000) return;
 
 					auto newCp = ChunkPosition(x, y, z);
 
 					ChunkState* getter = newCp in chunkStates;
-					bool doAdd = getter is null || *getter == ChunkState.deallocated;
+					bool absent = getter is null || *getter == ChunkState.deallocated;
+					bool doAdd = absent || (isInPlayerLocalBounds(cp, newCp) && *getter == ChunkState.hibernated);
 
 					if(doAdd)
 					{
@@ -280,9 +285,10 @@ final class BasicTerrainManager
 						chunksTerrain[newCp] = chunk;
 						chunkStates[newCp] = ChunkState.notLoaded;
 						//chunkDefer.addition(newCp, chunk);
-					}
 
-					numChunksAdded++;
+						//numChunksAdded++;
+						chunksCreated++;
+					}
 				}
 			}
 		}
@@ -304,6 +310,8 @@ final class BasicTerrainManager
 				chunkStates.remove(chunk.position);
 				//chunkDefer.removal(chunk.position, chunk);
 				chunk.chunk.deinitialise(); //CHUNK DEFER
+
+				chunksRemoved++;
 			}
 		}
 	}
@@ -370,7 +378,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 50;
+		enum addMax = 5;
 
 		foreach(ChunkPosition pos; extensionCPCache)
 		{
@@ -387,6 +395,7 @@ final class BasicTerrainManager
 				//chunkDefer.addition(pos, chunk);
 
 				doAddNum++;
+				chunksCreated++;
 			}
 		}
 	}
@@ -409,14 +418,14 @@ final class BasicTerrainManager
 
 			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
 			{
-				if(chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
+				if((chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
 				   chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed ||
-				   chunk.fluidCount == ChunkData.chunkOverrunDimensionsCubed) 
+				   chunk.fluidCount == ChunkData.chunkOverrunDimensionsCubed) && !isInPlayerLocalBounds(cameraPositionChunk, bc.position)) 
 				{
 					chunksTerrain.remove(position);
 					chunk.deinitialise();
-					chunkStates[position] = ChunkState.notLoaded;
-					//chunksHibernated++;
+					chunkStates[position] = ChunkState.hibernated;
+					chunksHibernated++;
 					return;
 				}
 				else
@@ -474,6 +483,13 @@ final class BasicTerrainManager
 		}*/
 
 		noiseGeneratorManager.generate(noiseOrder);
+	}
+
+	private bool isInPlayerLocalBounds(ChunkPosition camera, ChunkPosition position)
+	{
+		return position.x >= camera.x - settings.playerLocalRange.x && position.x < camera.x + settings.playerLocalRange.x &&
+			position.y >= camera.y - settings.playerLocalRange.y && position.y < camera.y + settings.playerLocalRange.y &&
+			position.z >= camera.z - settings.playerLocalRange.z && position.z < camera.z + settings.playerLocalRange.z;
 	}
 
 	private bool isChunkInBounds(ChunkPosition camera, ChunkPosition position)
@@ -930,11 +946,22 @@ final class VoxelInteraction
 	private CyclicBuffer!VoxelSetOrder voxelSetCommands;
 	private CyclicBuffer!VoxelSetOrder overrunSetCommands; // if chunk is busy, add to queue and run after
 
+	private CyclicBuffer!BasicChunk chunksToMesh;
+
 	/// handle all interactions
 	void run()
 	{
 		executeSetVoxel;
 		executeDeferredOverruns;
+
+		auto length = chunksToMesh.length;
+		foreach(size_t chunkID; 0 .. length)
+		{
+			BasicChunk bc = chunksToMesh.front;
+			chunksToMesh.popFront;
+
+			bc.chunk.needsMesh = true;
+		}
 	}
 
 	/// handle direct voxel sets
@@ -975,10 +1002,11 @@ final class VoxelInteraction
 
 			bc.chunk.dataLoadBlocking = true;
 			bc.chunk.set(order.offset.x, order.offset.y, order.offset.z, order.voxel);
-			bc.chunk.needsMesh = true;
 			bc.chunk.dataLoadBlocking = false;
 
 			distributeOverruns(*bc, order.offset, order.voxel);
+
+			chunksToMesh.insertBack(*bc);
 		}
 	}
 
@@ -1185,8 +1213,9 @@ final class VoxelInteraction
 
 		bc.chunk.dataLoadBlocking = true;
 		bc.chunk.set(pos.x, pos.y, pos.z, voxel);
-		bc.chunk.needsMesh = true;
 		bc.chunk.dataLoadBlocking = false;
+
+		chunksToMesh.insertBack(*bc);
 
 		return true;
 	}

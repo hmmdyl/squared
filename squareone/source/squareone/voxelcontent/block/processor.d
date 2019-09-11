@@ -34,7 +34,7 @@ final class BlockProcessor : IProcessor
 	Resources resources;
 	Moxane moxane;
 
-	private enum mesherCount = 1;
+	private enum mesherCount = 2;
 	private int meshBarrel;
 	private Mesher[] meshers;
 
