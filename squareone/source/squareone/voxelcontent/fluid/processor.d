@@ -216,7 +216,7 @@ final class FluidProcessor : IProcessor
 			}
 
 			rd.vertexCount = result.buffer.vertexCount;
-			rd.chunkMax = result.order.chunk.dimensionsProper * result.order.chunk.voxelScale;
+			rd.chunkMax = result.order.chunk.dimensionsProper * result.order.chunk.blockskip * result.order.chunk.voxelScale;
 			const float invCM = 1f / rd.chunkMax;
 			rd.fit10BitScale = 1023f * invCM;
 
@@ -489,9 +489,11 @@ private class Mesher
 		do buffer = meshBufferPool.get;
 		while(buffer is null);
 
-		for(int x = 0; x < c.dimensionsProper; x += blockskip)
-		for(int y = 0; y < c.dimensionsProper; y += blockskip)
-		for(int z = 0; z < c.dimensionsProper; z += blockskip)
+		immutable int chunkDimLod = c.dimensionsProper * c.blockskip;
+
+		for(int x = 0; x < chunkDimLod; x += blockskip)
+		for(int y = 0; y < chunkDimLod; y += blockskip)
+		for(int z = 0; z < chunkDimLod; z += blockskip)
 		{
 			Voxel v = c.get(x, y, z);
 			Voxel[6] neighbours;

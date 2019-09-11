@@ -24,7 +24,6 @@ final class BlockProcessor : IProcessor
 	@property ubyte id() { return id_; }
 	@property void id(ubyte n) { id_ = n; }
 
-	//mixin(VoxelContentQuick!(resourceName("processor", "block"), "", appName, dylanGrahamName));
 	mixin(VoxelContentQuick!("squareOne:voxel:processor:block", "", appName, dylanGrahamName));
 
 	private Pool!(RenderData*) renderDataPool;
@@ -207,7 +206,7 @@ final class BlockProcessor : IProcessor
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 
-			rd.chunkMax = ChunkData.chunkDimensions * ChunkData.voxelScale;
+			/+rd.chunkMax = ChunkData.chunkDimensions * ChunkData.voxelScale;
 			float invCM = 1f / rd.chunkMax;
 			rd.fit10BitScale = 1023f * invCM;
 
@@ -252,7 +251,15 @@ final class BlockProcessor : IProcessor
 			}
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.normalBO);
-			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, compressionBuffer.ptr, GL_STATIC_DRAW);+/
+
+			rd.chunkMax = upItem.buffer.chunkMax;
+			rd.fit10BitScale = upItem.buffer.fit10Bit;
+
+			glBindBuffer(GL_ARRAY_BUFFER, rd.vertexBO);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, upItem.buffer.compressedVertices.ptr, GL_STATIC_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, rd.normalBO);
+			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, upItem.buffer.compressedNormals.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.metaBO);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, upItem.buffer.meta.ptr, GL_STATIC_DRAW);
@@ -465,6 +472,7 @@ private class Mesher
 					MeshBuffer nbmb;
 					while(nbmb is null)
 						nbmb = host.request(MeshSize.medium);
+					buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
 
 					copyBuffer(buffer, nbmb);
 
@@ -479,6 +487,7 @@ private class Mesher
 					MeshBuffer nbmb;
 					while(nbmb is null)
 						nbmb = host.request(MeshSize.full);
+					buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
 
 					copyBuffer(buffer, nbmb);
 
@@ -504,13 +513,16 @@ private class Mesher
 		Vector3f[64] verts, normals;
 		ushort[64] textureIDs;
 
-		const int blkskp = chunk.blockskip;
+		immutable int blkskp = chunk.blockskip;
+		immutable int chunkDimLod = chunk.dimensionsProper * chunk.blockskip;
 
-		for(int x = 0; x < ChunkData.chunkDimensions; x += blkskp) 
+		buffer.chunkMax = chunkDimLod * chunk.voxelScale;
+
+		for(int x = 0; x < chunkDimLod; x += blkskp) 
 		{
-			for(int y = 0; y < ChunkData.chunkDimensions; y += blkskp)  
+			for(int y = 0; y < chunkDimLod; y += blkskp)  
 			{
-				for(int z = 0; z < ChunkData.chunkDimensions; z += blkskp)  
+				for(int z = 0; z < chunkDimLod; z += blkskp)  
 				{
 					Voxel v = chunk.get(x, y, z);
 
@@ -610,9 +622,23 @@ class MeshBuffer
 	Vector3f[] normals;
 	uint[] meta;
 
+	uint[] compressedVertices;
+	uint[] compressedNormals;
+
 	int vertexCount;
 
 	const MeshSize ms;
+
+	enum tenBitMax = 2 ^^ 10 - 1;
+	private float chunkMax_ = 0f;
+	@property float chunkMax() const { return chunkMax_; }
+	@property void chunkMax(float cm)
+	{
+		chunkMax_ = cm;
+		inv = 1f / cm;
+		fit10Bit = tenBitMax * inv;
+	}
+	float inv = 0f, fit10Bit = 0f;
 
 	this(MeshSize ms) 
 	{
@@ -623,18 +649,24 @@ class MeshBuffer
 			vertices.length = vertsSmall;
 			normals.length = vertsSmall;
 			meta.length = vertsSmall;
+			compressedVertices.length = vertsSmall;
+			compressedNormals.length = vertsSmall;
 		}
 		if(ms == MeshSize.medium) 
 		{
 			vertices.length = vertsMedium;
 			normals.length = vertsMedium;
 			meta.length = vertsMedium;
+			compressedVertices.length = vertsMedium;
+			compressedNormals.length = vertsMedium;
 		}
 		if(ms == MeshSize.full) 
 		{
 			vertices.length = vertsFull;
 			normals.length = vertsFull;
 			meta.length = vertsFull;
+			compressedVertices.length = vertsFull;
+			compressedNormals.length = vertsFull;
 		}
 	}
 
@@ -643,6 +675,30 @@ class MeshBuffer
 		vertices[vertexCount] = vert;
 		normals[vertexCount] = normal;
 		this.meta[vertexCount] = meta;
+
+		const float vx = clamp(vert.x, 0f, chunkMax_) * fit10Bit;
+		uint vxU = cast(uint)vx & tenBitMax;
+
+		const float vy = clamp(vert.y, 0f, chunkMax_) * fit10Bit;
+		uint vyU = cast(uint)vy & tenBitMax;
+		vyU <<= 10;
+
+		const float vz = clamp(vert.z, 0f, chunkMax_) * fit10Bit;
+		uint vzU = cast(uint)vz & tenBitMax;
+		vzU <<= 20;
+
+		compressedVertices[vertexCount] = vxU | vyU | vzU;
+
+		const float nx = (((clamp(normal.x, -1f, 1f) + 1f) * 0.5f) * tenBitMax);
+		const float ny = (((clamp(normal.y, -1f, 1f) + 1f) * 0.5f) * tenBitMax);
+		const float nz = (((clamp(normal.z, -1f, 1f) + 1f) * 0.5f) * tenBitMax);
+
+		const uint nxU = (cast(uint)nx & tenBitMax);
+		const uint nyU = (cast(uint)ny & tenBitMax) << 10;
+		const uint nzU = (cast(uint)nz & tenBitMax) << 20;
+
+		compressedNormals[vertexCount] = nxU | nyU | nzU;
+
 		vertexCount++;
 	}
 
@@ -653,8 +709,8 @@ class MeshBuffer
 private class MeshBufferHost
 {
 	enum int smallMeshCount = 20;
-	enum int mediumMeshCount = 10;
-	enum int fullMeshCount = 2;
+	enum int mediumMeshCount = 0;
+	enum int fullMeshCount = 0;
 
 	private DList!(MeshBuffer) smallMeshes;
 	private DList!(MeshBuffer) mediumMeshes;

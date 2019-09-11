@@ -190,7 +190,7 @@ final class VegetationProcessor : IProcessor
 			vertexCompressionBuffer[] = 0;
 			texCoordCompressionBuffer[] = 0;
 
-			rd.chunkMax = result.order.chunk.dimensionsTotal * result.order.chunk.voxelScale;
+			rd.chunkMax = result.order.chunk.dimensionsTotal * result.order.chunk.blockskip * result.order.chunk.voxelScale;
 			float invCM = 1f / rd.chunkMax;
 			rd.offset = result.order.chunk.voxelScale;
 			rd.fit10BitScale = 1023f * invCM;
@@ -381,9 +381,12 @@ private final class Mesher
 		do buffer = processor.meshBufferPool.get;
 		while(buffer is null);
 
-		for(int x = 0; x < order.chunk.dimensionsProper; x += order.chunk.blockskip)
-		for(int y = 0; y < order.chunk.dimensionsProper; y += order.chunk.blockskip)
-		for(int z = 0; z < order.chunk.dimensionsProper; z += order.chunk.blockskip)
+		immutable int blockskip = order.chunk.blockskip;
+		immutable int chunkDimLod = order.chunk.dimensionsProper * order.chunk.blockskip;
+
+		for(int x = 0; x < chunkDimLod; x += blockskip)
+		for(int y = 0; y < chunkDimLod; y += blockskip)
+		for(int z = 0; z < chunkDimLod; z += blockskip)
 		{
 			Voxel voxel = order.chunk.get(x, y, z);
 			
@@ -391,7 +394,7 @@ private final class Mesher
 			if(meshPtr is null) continue;
 			IVegetationVoxelMesh mesh = *meshPtr;
 
-			Voxel ny = order.chunk.get(x, y - order.chunk.blockskip, z);
+			Voxel ny = order.chunk.get(x, y - blockskip, z);
 			const bool shiftDown = processor.resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
 
 			const Vector3f colour = voxel.extractColour;

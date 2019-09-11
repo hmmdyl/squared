@@ -152,7 +152,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(28, 8, 28), Vector3i(32, 12, 32), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(30, 8, 30), Vector3i(32, 12, 32), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -286,7 +286,8 @@ final class DebugGameScene : Scene
 		fog.sceneView = camera.viewMatrix;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
-		terrainManager.cameraPosition = camera.position;
+		//terrainManager.cameraPosition = camera.position;
+		terrainManager.cameraPosition = Vector3f(0, 0, 0);
 		terrainManager.update;
 		sw.stop;
 

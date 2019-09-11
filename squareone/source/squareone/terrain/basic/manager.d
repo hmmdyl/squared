@@ -239,7 +239,7 @@ final class BasicTerrainManager
 		Chunk c = new Chunk(resources);
 		c.initialise;
 		c.needsData = needsData;
-		c.lod = 0;
+		c.lod = 2;
 		c.blockskip = 2 ^^ c.lod;
 		return BasicChunk(c, pos);
 	}
@@ -256,7 +256,7 @@ final class BasicTerrainManager
 			cp.z + settings.addRange.z);
 
 		int numChunksAdded;
-		int cs = 1;
+		int cs = 4;
 
 		for(int x = lower.x; x < upper.x; x += cs)
 		{
@@ -338,7 +338,7 @@ final class BasicTerrainManager
 			upper.y = cam.y + settings.extendedAddRange.y;
 			upper.z = cam.z + settings.extendedAddRange.z;
 
-			int cs = 1;
+			int cs = 4;
 			int c;
 			for(int x = lower.x; x < upper.x; x += cs)
 				for(int y = lower.y; y < upper.y; y += cs)

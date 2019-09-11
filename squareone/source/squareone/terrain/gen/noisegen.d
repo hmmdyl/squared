@@ -288,13 +288,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 		if(!order.loadChunk && !order.loadRing) { return; }
 
-		const int s = order.loadRing ? -overrun : 0;
-		const int e = order.loadRing ? order.chunk.dimensionsProper + overrun : order.chunk.dimensionsProper;
+		const int s = (order.loadRing ? -overrun : 0) * order.chunk.blockskip;
+		const int e = (order.loadRing ? order.chunk.dimensionsProper + overrun : order.chunk.dimensionsProper) * order.chunk.blockskip;
 
 		int premC;
 
-		foreach(int box; s .. e)
-		foreach(int boz; s .. e)
+		for(int box = s; box < e; box += order.chunk.blockskip)
+		for(int boz = s; boz < e; boz += order.chunk.blockskip)
 		{
 			if(!order.loadChunk)
 				if(box >= 1 && boz >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1)
@@ -346,31 +346,31 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			upperMat = mdet > 0.5f ? materials.stone : materials.grass;
 			upperMat = outcropping ? materials.stone : upperMat;
 
-			foreach(int boy; s .. e)
+			for(int boy = s; boy < e; boy += order.chunk.blockskip)
 			{
 				if(!order.loadChunk)
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box, boy, boz, Voxel(realPos1.y < 0.5 ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
 					{
-						raw.set(box, boy, boz, Voxel(materials.water, meshes.fluid, 0, 0));
+						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;
 					}
 					else
 					{
-						raw.set(box, boy, boz, Voxel(0, meshes.invisible, 0, 0));
+						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(0, meshes.invisible, 0, 0));
 						premC++;
 					}
 				}
 			}
 		}
 
-		addGrassBlades(order, s, e, premC);
+		//addGrassBlades(order, s, e, premC);
 		runSmoother(order);
 
 		postProcess(order, premC);
@@ -394,12 +394,6 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid && ny.material == materials.grass)
 			{
 				Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
-				//float a = simplex.eval(realPos.x / 4f + 27, realPos.z / 4f + 675);
-				//if(a < 0.5f) continue;
-
-				//auto vsrc = (float x, float y) => simplex.eval(x, y);
-				//if(voronoi(cast(Vector2f)realPos.xz / 4f, vsrc).x < 0.5f) continue;
-
 				ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
 
 				/+GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
@@ -449,7 +443,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(!order.loadChunk)
 					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
 						continue;
-				order.chunk.set(x, y, z, smootherOutput.get(x, y, z));
+				order.chunk.set(x * order.chunk.blockskip, y * order.chunk.blockskip, z * order.chunk.blockskip, smootherOutput.get(x, y, z));
 			}
 		}
 		else
@@ -462,7 +456,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
 						continue;
 
-				order.chunk.set(x, y, z, smootherOutput.get(x, y, z));
+				order.chunk.set(x * order.chunk.blockskip, y * order.chunk.blockskip, z * order.chunk.blockskip, smootherOutput.get(x, y, z));
 			}
 		}
 	}
@@ -480,7 +474,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				if(x >= 0 && y >= 0 && z >= 0 && x < order.chunk.dimensionsProper && z < order.chunk.dimensionsProper && y < order.chunk.dimensionsProper)
 					continue;
 
-			Voxel voxel = order.chunk.get(x, y, z);
+			Voxel voxel = order.chunk.get(x * order.chunk.blockskip, y * order.chunk.blockskip, z * order.chunk.blockskip);
 			if(voxel.mesh == meshes.invisible)
 				airCount++;
 			else if(voxel.mesh == meshes.fluid)
