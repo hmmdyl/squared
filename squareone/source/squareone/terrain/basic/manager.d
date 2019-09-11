@@ -29,6 +29,8 @@ final class BasicTerrainRenderer : IRenderable
 
 	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
 	{
+		if(lc.type == PassType.waterRefraction) return;
+	
 		Matrix4f vp = lc.projection * lc.view;
 		Frustum frustum = Frustum(vp);
 
@@ -262,7 +264,7 @@ final class BasicTerrainManager
 			{
 				for(int z = lower.z; z < upper.z; z += cs)
 				{
-					if(numChunksAdded > 1000) return;
+					if(numChunksAdded > 100) return;
 
 					auto newCp = ChunkPosition(x, y, z);
 
