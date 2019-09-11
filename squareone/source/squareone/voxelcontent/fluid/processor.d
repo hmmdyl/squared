@@ -17,6 +17,7 @@ import dlib.math.transformation;
 import dlib.math.utils : clamp;
 import std.random;
 import std.algorithm;
+import std.datetime.stopwatch;
 
 final class FluidProcessor : IProcessor
 {
@@ -186,7 +187,10 @@ final class FluidProcessor : IProcessor
 	private void performUploads()
 	{
 		import derelict.opengl3.gl3;
-		while(!meshResults.empty)
+
+		StopWatch uploadSw = StopWatch(AutoStart.yes);
+
+		while(uploadSw.peek.total!"msecs" < 4 && !meshResults.empty)
 		{
 			Maybe!MeshResult meshResult = meshResults.tryGet;
 			if(meshResult.isNull) return;

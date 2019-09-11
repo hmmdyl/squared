@@ -19,6 +19,7 @@ import dlib.math.matrix;
 import dlib.math.transformation;
 import dlib.math.utils;
 import core.thread;
+import std.datetime.stopwatch;
 
 final class VegetationProcessor : IProcessor
 {
@@ -156,7 +157,8 @@ final class VegetationProcessor : IProcessor
 
 	void performUploads()
 	{
-		while(!meshResults.empty)
+		StopWatch uploadSw = StopWatch(AutoStart.yes);
+		while(uploadSw.peek.total!"msecs" < 4 && !meshResults.empty)
 		{
 			Maybe!MeshResult meshResult = meshResults.tryGet;
 			if(meshResult.isNull) return;

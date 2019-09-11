@@ -40,7 +40,7 @@ final class BasicTerrainRenderer : IRenderable
 		scope(exit)
 		{
 			sw.stop;
-			renderTime = sw.peek.total!"nsecs" / 1_000_000_000f;
+			renderTime += sw.peek.total!"nsecs" / 1_000_000_000f;
 			trueRenderTime = trueSw.peek.total!"nsecs" / 1_000_000_000f;
 		}
 
@@ -180,7 +180,7 @@ final class BasicTerrainManager
 
 		updateWorkerThread = new Thread(&updateWorker);
 		updateWorkerThread.isDaemon = true;
-		updateWorkerThread.start;
+		//updateWorkerThread.start;
 	}
 
 	~this()
@@ -192,7 +192,7 @@ final class BasicTerrainManager
 	{
 		//chunkDefer.update;
 
-		//manageChunks;
+		manageChunks;
 	}
 
 	private void updateWorker()

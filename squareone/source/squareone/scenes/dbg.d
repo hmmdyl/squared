@@ -330,6 +330,7 @@ True: %0.6fs",
 						terrainManager.numChunks,
 						terrainRenderer.renderTime, terrainRenderer.trueRenderTime);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
+		terrainRenderer.renderTime = 0f;
 	}
 
 	override void onRenderBegin() @trusted
