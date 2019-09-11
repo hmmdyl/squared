@@ -29,7 +29,7 @@ final class BasicTerrainRenderer : IRenderable
 
 	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
 	{
-		if(lc.type == PassType.waterRefraction) return;
+		//if(lc.type == PassType.waterRefraction) return;
 	
 		Matrix4f vp = lc.projection * lc.view;
 		Frustum frustum = Frustum(vp);
@@ -52,10 +52,13 @@ final class BasicTerrainRenderer : IRenderable
 			p.prepareRender(renderer);
 			scope(exit) p.endRender;
 
+			foreach(ChunkPosition cp, BasicChunk bc; btm.chunksTerrain)
+				p.render(bc.chunk, lc, drawCalls, numVerts);
+
 			/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
 				p.render(chunk.chunk, lc, drawCalls, numVerts);+/
 
-			enum skipSize = 4;
+			/+enum skipSize = 4;
 			enum skipSizeHalf = skipSize / 2;
 
 			for(int cx = min.x; cx < max.x; cx += skipSize)
@@ -82,7 +85,7 @@ final class BasicTerrainRenderer : IRenderable
 					p.render(chunk.chunk, lc, drawCalls, numVerts);
 					//trueSw.stop;
 				}
-			}
+			}+/
 		}
 	}
 }
@@ -239,7 +242,7 @@ final class BasicTerrainManager
 		Chunk c = new Chunk(resources);
 		c.initialise;
 		c.needsData = needsData;
-		c.lod = 2;
+		c.lod = 0;
 		c.blockskip = 2 ^^ c.lod;
 		return BasicChunk(c, pos);
 	}
@@ -256,7 +259,7 @@ final class BasicTerrainManager
 			cp.z + settings.addRange.z);
 
 		int numChunksAdded;
-		int cs = 4;
+		int cs = 1;
 
 		for(int x = lower.x; x < upper.x; x += cs)
 		{
@@ -338,7 +341,7 @@ final class BasicTerrainManager
 			upper.y = cam.y + settings.extendedAddRange.y;
 			upper.z = cam.z + settings.extendedAddRange.z;
 
-			int cs = 4;
+			int cs = 1;
 			int c;
 			for(int x = lower.x; x < upper.x; x += cs)
 				for(int y = lower.y; y < upper.y; y += cs)
