@@ -367,7 +367,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 250;
+		enum addMax = 150;
 
 		foreach(ChunkPosition pos; extensionCPCache)
 		{

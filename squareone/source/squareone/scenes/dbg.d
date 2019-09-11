@@ -25,6 +25,7 @@ import squareone.systems.inventory;
 import dlib.math;
 
 import core.stdc.stdio : sprintf;
+import std.datetime.stopwatch;
 
 final class DebugGameScene : Scene
 {
@@ -151,7 +152,7 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(16, 10, 16), Vector3i(18, 12, 18), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(28, 8, 28), Vector3i(32, 12, 32), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -239,36 +240,10 @@ final class DebugGameScene : Scene
 
 		Transform* t = playerEntity.get!Transform;
 		pl.position = t.position;
-		//pl.position.y += 30f;
-		//pl.position.x -= 3f;
-		//pl.position.z -= 3f;
 		{
 			Transform* sk = skyEntity.get!Transform;
 			sk.position = t.position;
 		}
-
-		/+if(win.isFocused && win.isMouseButtonDown(MouseButton.right))
-		{
-			win.hideCursor = true;
-			//clickPrev = false;
-		}
-		else if(win.isFocused && win.isKeyDown(Keys.tab) && win.isMouseButtonDown(MouseButton.left) && !clickPrev)
-		{
-			clickPrev = true;
-			PlayerComponent* pc = playerEntity.get!PlayerComponent;
-			//if(pc is null) break;
-
-			import squareone.voxelutils.picker;
-			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
-			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
-			if(pr.got) 
-				terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition);
-		}
-		else 
-		{
-			win.hideCursor = false;
-			clickPrev = false;
-		}+/
 
 		win.hideCursor = true;
 		bool shouldBreak = win.isMouseButtonDown(MouseButton.right) && !clickPrev;
@@ -304,14 +279,16 @@ final class DebugGameScene : Scene
 				if(pr.side == VoxelSide.nz) pr.blockPosition.z -= 1;
 				if(pr.side == VoxelSide.pz) pr.blockPosition.z += 1;
 
-				terrainManager.voxelInteraction.set(Voxel(8, 1, 0, 0), pr.blockPosition);
+				terrainManager.voxelInteraction.set(Voxel(7, 1, 0, 0), pr.blockPosition);
 			}
 		}
 
 		fog.sceneView = camera.viewMatrix;
 
+		StopWatch sw = StopWatch(AutoStart.yes);
 		terrainManager.cameraPosition = camera.position;
 		terrainManager.update;
+		sw.stop;
 
 		buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 
@@ -321,14 +298,15 @@ Camera rotation: %0.3f %0.3f %0.3f
 Delta: %0.6fs
 						
 Chunks: %d
+Man. time: %0.6fms
 						
-Render Time: %0.6fs
-True: %0.6fs", 
+Render Time: %0.6fms
+True: %0.6fms", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
-						terrainManager.numChunks,
-						terrainRenderer.renderTime, terrainRenderer.trueRenderTime);
+						terrainManager.numChunks, sw.peek.total!"nsecs" / 1_000_000f,
+						terrainRenderer.renderTime * 1_000f, terrainRenderer.trueRenderTime * 1000f);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}
