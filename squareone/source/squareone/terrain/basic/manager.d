@@ -32,39 +32,42 @@ final class BasicTerrainRenderer : IRenderable
 		const Vector3i min = btm.cameraPositionChunk.toVec3i - btm.settings.removeRange;
 		const Vector3i max = btm.cameraPositionChunk.toVec3i + (btm.settings.removeRange + 1);
 
-		foreach(proc; 0 .. btm.resources.processorCount)
+		synchronized(btm.chunkDefer)
 		{
-			IProcessor p = btm.resources.getProcessor(proc);
-			p.prepareRender(renderer);
-			scope(exit) p.endRender;
-
-			/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
-				p.render(chunk.chunk, lc, drawCalls, numVerts);+/
-
-			enum skipSize = 4;
-			enum skipSizeHalf = skipSize / 2;
-
-			for(int cx = min.x; cx < max.x; cx += skipSize)
-			for(int cy = min.y; cy < max.y; cy += skipSize)
-			for(int cz = min.z; cz < max.z; cz += skipSize)
+			foreach(proc; 0 .. btm.resources.processorCount)
 			{
-				Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
-				Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
-				enum float radius = sqrt(128f);
-				Sphere s = Sphere(centreReal, radius);
+				IProcessor p = btm.resources.getProcessor(proc);
+				p.prepareRender(renderer);
+				scope(exit) p.endRender;
 
-				if(!frustum.intersectsSphere(s))
-					continue;
+				/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
+					p.render(chunk.chunk, lc, drawCalls, numVerts);+/
 
-				foreach(int cix; cx .. cx + skipSize)
-				foreach(int ciy; cy .. cy + skipSize)
-				foreach(int ciz; cz .. cz + skipSize)
+				enum skipSize = 4;
+				enum skipSizeHalf = skipSize / 2;
+
+				for(int cx = min.x; cx < max.x; cx += skipSize)
+				for(int cy = min.y; cy < max.y; cy += skipSize)
+				for(int cz = min.z; cz < max.z; cz += skipSize)
 				{
-					BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunksTerrain;
-					if(chunk is null)
+					Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
+					Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
+					enum float radius = sqrt(128f);
+					Sphere s = Sphere(centreReal, radius);
+
+					if(!frustum.intersectsSphere(s))
 						continue;
 
-					p.render(chunk.chunk, lc, drawCalls, numVerts);
+					foreach(int cix; cx .. cx + skipSize)
+					foreach(int ciy; cy .. cy + skipSize)
+					foreach(int ciz; cz .. cz + skipSize)
+					{
+						BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunkDefer.chunks;
+						if(chunk is null)
+							continue;
+
+						p.render(chunk.chunk, lc, drawCalls, numVerts);
+					}
 				}
 			}
 		}
@@ -85,6 +88,50 @@ enum ChunkState
 	active
 }
 
+private final class BTMChunkDefer
+{
+	BasicChunk[ChunkPosition] chunks;
+
+	struct Item 
+	{
+		BasicChunk val;
+		ChunkPosition key;
+		this(BasicChunk val, ChunkPosition key) { this.val = val; this.key = key; }
+	}
+
+	UnrolledList!Item additions;
+	UnrolledList!Item removals;
+
+	void update()
+	{
+		synchronized(this)
+		{
+			while(additions.length > 0)
+			{
+				Item i = additions.front;
+				additions.popFront;
+
+				chunks[i.key] = i.val;
+			}
+
+			while(removals.length > 0)
+			{
+				Item i = removals.front;
+				removals.popFront;
+
+				chunks.remove(i.key);
+
+				i.val.chunk.deinitialise;
+
+				// TODO: handle memory recycle of chunk
+			}
+		}
+	}
+
+	void addition(ChunkPosition pos, BasicChunk chunk) { synchronized(this) additions ~= Item(chunk, pos); }
+	void removal(ChunkPosition pos, BasicChunk chunk) { synchronized(this) removals ~= Item(chunk, pos); }
+}
+
 final class BasicTerrainManager
 {
 	Resources resources;
@@ -103,6 +150,9 @@ final class BasicTerrainManager
 
 	VoxelInteraction voxelInteraction;
 	ChunkInteraction chunkInteraction;
+	BTMChunkDefer chunkDefer;
+
+	private Thread updateWorkerThread;
 
 	this(Moxane moxane, BasicTMSettings settings)
 	{
@@ -110,15 +160,17 @@ final class BasicTerrainManager
 		this.settings = settings;
 		resources = settings.resources;
 
-		//chunkSys = new ChunkInteraction(this);
-		//voxel = new VoxelInteraction(this);
-
 		voxelInteraction = new VoxelInteraction(this);
 		chunkInteraction = new ChunkInteraction(this);
+		chunkDefer = new BTMChunkDefer;
 
 		noiseGeneratorManager = new NoiseGeneratorManager(resources, 4, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
+
+		updateWorkerThread = new Thread(&updateWorker);
+		updateWorkerThread.isDaemon = true;
+		updateWorkerThread.start;
 	}
 
 	~this()
@@ -128,6 +180,26 @@ final class BasicTerrainManager
 
 	void update()
 	{
+		chunkDefer.update;
+	}
+
+	private void updateWorker()
+	{
+		try
+		{
+			while(true)
+				manageChunks;
+		}
+		catch(Error e)
+		{
+			moxane.services.get!Log().write(Log.Severity.panic, "Manager failed! " ~ e.toString);
+		}
+	}
+
+	private void manageChunks()
+	{
+		StopWatch sw = StopWatch(AutoStart.yes);
+
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
 		cameraPositionChunk = cp;
 
@@ -142,6 +214,10 @@ final class BasicTerrainManager
 			manageChunkState(bc);
 			removeChunkHandler(bc, cp);
 		}
+
+		sw.stop;
+		//import std.conv : to;
+		//moxane.services.get!Log().write(Log.Severity.info, to!string(sw.peek.total!"nsecs" / 1_000_000f));
 	}
 
 	private BasicChunk createChunk(ChunkPosition pos, bool needsData = true)
@@ -165,12 +241,16 @@ final class BasicTerrainManager
 			cp.y + settings.addRange.y,
 			cp.z + settings.addRange.z);
 
+		int numChunksAdded;
+
 		for(int x = lower.x; x < upper.x; x++)
 		{
 			for(int y = lower.y; y < upper.y; y++)
 			{
 				for(int z = lower.z; z < upper.z; z++)
 				{
+					if(numChunksAdded > 1000) return;
+
 					auto newCp = ChunkPosition(x, y, z);
 
 					ChunkState* getter = newCp in chunkStates;
@@ -181,7 +261,10 @@ final class BasicTerrainManager
 						auto chunk = createChunk(newCp);
 						chunksTerrain[newCp] = chunk;
 						chunkStates[newCp] = ChunkState.notLoaded;
+						chunkDefer.addition(newCp, chunk);
 					}
+
+					numChunksAdded++;
 				}
 			}
 		}
@@ -201,7 +284,8 @@ final class BasicTerrainManager
 
 				chunksTerrain.remove(chunk.position);
 				chunkStates.remove(chunk.position);
-				chunk.chunk.deinitialise();
+				chunkDefer.removal(chunk.position, chunk);
+				//chunk.chunk.deinitialise(); CHUNK DEFER
 			}
 		}
 	}
@@ -281,6 +365,7 @@ final class BasicTerrainManager
 				BasicChunk chunk = createChunk(pos);
 				chunksTerrain[pos] = chunk;
 				chunkStates[pos] = ChunkState.notLoaded;
+				chunkDefer.addition(pos, chunk);
 
 				doAddNum++;
 			}

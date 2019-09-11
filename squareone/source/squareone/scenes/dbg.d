@@ -313,7 +313,7 @@ final class DebugGameScene : Scene
 		terrainManager.cameraPosition = camera.position;
 		terrainManager.update;
 
-		/*buffer[] = char.init;
+		buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 
 "Camera position: %0.3f %0.3f %0.3f
 Camera rotation: %0.3f %0.3f %0.3f
@@ -325,7 +325,7 @@ Chunks: %d",
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
 						terrainManager.numChunks);
-		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));*/
+		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10));
 	}
 
 	override void onRenderBegin() @trusted
