@@ -368,6 +368,10 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Created: %d", scene.terrainManager.chunksCreated);
 			igText("Hibernated: %d", scene.terrainManager.chunksHibernated);
 			igText("Removed: %d", scene.terrainManager.chunksRemoved);
+
+			int ci = cast(int)scene.terrainRenderer.cullingMode;
+			igComboStr("Thingy", &ci, "None\0Skip\0All", -1);
+			scene.terrainRenderer.cullingMode = cast(BasicTerrainRenderer.CullMode)ci;
 		}
 		if(igCollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen))
 		{

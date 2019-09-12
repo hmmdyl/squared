@@ -18,11 +18,20 @@ import core.thread;
 
 final class BasicTerrainRenderer : IRenderable
 {
+	enum CullMode
+	{
+		none,
+		skip,
+		all
+	}
+
+	CullMode cullingMode;
+
 	BasicTerrainManager btm;
 	invariant { assert(btm !is null); }
 
-	this(BasicTerrainManager btm)
-	{ this.btm = btm; }
+	this(BasicTerrainManager btm, CullMode cullingMode = CullMode.all)
+	{ this.btm = btm; this.cullingMode = cullingMode; }
 
 	float renderTime = 0f;
 	float prepareTime = 0f;
@@ -60,32 +69,55 @@ final class BasicTerrainRenderer : IRenderable
 			/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
 				p.render(chunk.chunk, lc, drawCalls, numVerts);+/
 
-			enum skipSize = 1;
-			enum skipSizeHalf = skipSize / 2;
-
-			for(int cx = min.x; cx < max.x; cx += skipSize)
-			for(int cy = min.y; cy < max.y; cy += skipSize)
-			for(int cz = min.z; cz < max.z; cz += skipSize)
+			if(cullingMode == CullMode.none)
 			{
-				Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
-				Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
-				enum float radius = sqrt(128f);
-				Sphere s = Sphere(centreReal, radius);
+				foreach(BasicChunk chunk; btm.chunksTerrain)
+					p.render(chunk.chunk, lc, drawCalls, numVerts);
+			}
+			else if(cullingMode == CullMode.skip)
+			{
+				enum skipSize = 2;
+				enum skipSizeHalf = skipSize / 2;
 
-				if(!frustum.intersectsSphere(s))
-					continue;
-
-				foreach(int cix; cx .. cx + skipSize)
-				foreach(int ciy; cy .. cy + skipSize)
-				foreach(int ciz; cz .. cz + skipSize)
+				for(int cx = min.x; cx < max.x; cx += skipSize)
+				for(int cy = min.y; cy < max.y; cy += skipSize)
+				for(int cz = min.z; cz < max.z; cz += skipSize)
 				{
-					BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunksTerrain;
-					if(chunk is null)
+					Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
+					Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
+					enum float radius = sqrt(128f);
+					Sphere s = Sphere(centreReal, radius);
+
+					if(!frustum.intersectsSphere(s))
 						continue;
 
-					//trueSw.start;
+					foreach(int cix; cx .. cx + skipSize)
+					foreach(int ciy; cy .. cy + skipSize)
+					foreach(int ciz; cz .. cz + skipSize)
+					{
+						BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunksTerrain;
+						if(chunk is null)
+							continue;
+
+						//trueSw.start;
+						p.render(chunk.chunk, lc, drawCalls, numVerts);
+						//trueSw.stop;
+					}
+				}
+			}
+			else if(cullingMode == CullMode.all)
+			{
+				foreach(BasicChunk chunk; btm.chunksTerrain)
+				{
+					immutable Vector3f chunkPosReal = chunk.position.toVec3f;
+					immutable float dimReal = ChunkData.chunkDimensionsMetres * chunk.chunk.blockskip;
+					immutable Vector3f center = Vector3f(chunkPosReal.x + dimReal * 0.5f, chunkPosReal.y + dimReal * 0.5f, chunkPosReal.z + dimReal * 0.5f);
+					immutable float radius = sqrt(dimReal ^^ 2 + dimReal ^^ 2);
+					Sphere s = Sphere(center, radius);
+
+					if(!frustum.intersectsSphere(s)) continue;
+
 					p.render(chunk.chunk, lc, drawCalls, numVerts);
-					//trueSw.stop;
 				}
 			}
 		}
