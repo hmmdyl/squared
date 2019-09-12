@@ -25,11 +25,11 @@ final class BasicTerrainRenderer : IRenderable
 	{ this.btm = btm; }
 
 	float renderTime = 0f;
-	float trueRenderTime = 0f;
+	float prepareTime = 0f;
 
 	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
 	{
-		//if(lc.type == PassType.waterRefraction) return;
+		if(lc.type == PassType.waterRefraction) return;
 	
 		Matrix4f vp = lc.projection * lc.view;
 		Frustum frustum = Frustum(vp);
@@ -43,22 +43,24 @@ final class BasicTerrainRenderer : IRenderable
 		{
 			sw.stop;
 			renderTime += sw.peek.total!"nsecs" / 1_000_000_000f;
-			trueRenderTime = trueSw.peek.total!"nsecs" / 1_000_000_000f;
+			prepareTime = trueSw.peek.total!"nsecs" / 1_000_000_000f;
 		}
 
 		foreach(proc; 0 .. btm.resources.processorCount)
 		{
 			IProcessor p = btm.resources.getProcessor(proc);
+			trueSw.start;
 			p.prepareRender(renderer);
+			trueSw.stop;
 			scope(exit) p.endRender;
 
-			foreach(ChunkPosition cp, BasicChunk bc; btm.chunksTerrain)
-				p.render(bc.chunk, lc, drawCalls, numVerts);
+			/+foreach(ChunkPosition cp, BasicChunk bc; btm.chunksTerrain)
+				p.render(bc.chunk, lc, drawCalls, numVerts);+/
 
 			/+foreach(ref BasicChunk chunk; btm.chunksTerrain)
 				p.render(chunk.chunk, lc, drawCalls, numVerts);+/
 
-			/+enum skipSize = 4;
+			enum skipSize = 1;
 			enum skipSizeHalf = skipSize / 2;
 
 			for(int cx = min.x; cx < max.x; cx += skipSize)
@@ -85,7 +87,7 @@ final class BasicTerrainRenderer : IRenderable
 					p.render(chunk.chunk, lc, drawCalls, numVerts);
 					//trueSw.stop;
 				}
-			}+/
+			}
 		}
 	}
 }
@@ -162,7 +164,7 @@ final class BasicTerrainManager
 	const BasicTMSettings settings;
 
 	Vector3f cameraPosition;
-	ChunkPosition cameraPositionChunk;
+	ChunkPosition cameraPositionChunk, cameraPositionPreviousChunk;
 	NoiseGeneratorManager noiseGeneratorManager;
 
 	VoxelInteraction voxelInteraction;
@@ -219,26 +221,21 @@ final class BasicTerrainManager
 
 	void manageChunks()
 	{
-		StopWatch sw = StopWatch(AutoStart.yes);
-
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
+		cameraPositionPreviousChunk = cameraPositionChunk;
 		cameraPositionChunk = cp;
 
-		addChunksLocal(cp);
+		//addChunksLocal(cp);
 		addChunksExtension(cp);
 
-		voxelInteraction.run;
+		//voxelInteraction.run;
 
-		noiseGeneratorManager.pumpCompletedQueue;
+		//noiseGeneratorManager.pumpCompletedQueue;
 		foreach(ref BasicChunk bc; chunksTerrain)
 		{
 			manageChunkState(bc);
 			removeChunkHandler(bc, cp);
 		}
-
-		sw.stop;
-		//import std.conv : to;
-		//moxane.services.get!Log().write(Log.Severity.info, to!string(sw.peek.total!"nsecs" / 1_000_000f));
 	}
 
 	private BasicChunk createChunk(ChunkPosition pos, bool needsData = true)
@@ -253,6 +250,9 @@ final class BasicTerrainManager
 
 	private void addChunksLocal(const ChunkPosition cp)
 	{
+		if(cameraPositionChunk == cameraPositionPreviousChunk)
+			return;
+
 		Vector3i lower = Vector3i(
 			cp.x - settings.addRange.x,
 			cp.y - settings.addRange.y,
@@ -329,7 +329,7 @@ final class BasicTerrainManager
 			addExtensionSortSw.start;
 			doSort = true;
 		}
-		if(addExtensionSortSw.peek.total!"msecs"() >= 300)
+		if(addExtensionSortSw.peek.total!"msecs"() >= 300 && cameraPositionChunk != cameraPositionPreviousChunk)
 		{
 			addExtensionSortSw.reset;
 			addExtensionSortSw.start;

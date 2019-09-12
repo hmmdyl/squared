@@ -181,7 +181,7 @@ final class BlockProcessor : IProcessor
 
 		uploadItemSw.start();
 
-		while(uploadItemSw.peek().total!"msecs" < 4 && !isEmpty()){
+		while(/*uploadItemSw.peek().total!"msecs" < 4 && */!isEmpty()){
 			if(isEmpty) return;
 
 			MeshResult upItem = getFromUploadQueue();

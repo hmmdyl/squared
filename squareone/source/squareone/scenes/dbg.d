@@ -152,7 +152,11 @@ final class DebugGameScene : Scene
 		resources.add(new WoodCore);
 
 		resources.finaliseResources;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(8, 8, 8), Vector3i(22, 8, 22), Vector3i(23, 12, 23), Vector3i(2, 2, 2), resources);
+		enum immediate = 3;
+		enum extended = 10;
+		enum remove = 11;
+		enum local = 3;
+		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, remove, remove), Vector3i(local, local, local), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -259,7 +263,7 @@ final class DebugGameScene : Scene
 		bool shouldPlace = win.isMouseButtonDown(MouseButton.left) && !placePrev;
 		placePrev = win.isMouseButtonDown(MouseButton.left);
 
-		if(shouldBreak)
+		/+if(shouldBreak)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -294,7 +298,7 @@ final class DebugGameScene : Scene
 
 				terrainManager.voxelInteraction.set(Voxel(7, 1, 0, 0), pr.blockPosition);
 			}
-		}
+		}+/
 
 		fog.sceneView = camera.viewMatrix;
 
@@ -315,12 +319,13 @@ Chunks: %d
 Man. time: %0.6fms
 						
 Render Time: %0.6fms
+Upload: %0.6fms
 True: %0.6fms", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
 						terrainManager.numChunks, sw.peek.total!"nsecs" / 1_000_000f,
-						terrainRenderer.renderTime * 1_000f, terrainRenderer.trueRenderTime * 1000f);
+						terrainRenderer.renderTime * 1_000f, terrainRenderer.prepareTime * 1000f, (terrainRenderer.renderTime - terrainRenderer.prepareTime) * 1000f);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}
