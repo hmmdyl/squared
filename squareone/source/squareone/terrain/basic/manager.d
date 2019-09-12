@@ -36,9 +36,13 @@ final class BasicTerrainRenderer : IRenderable
 	float renderTime = 0f;
 	float prepareTime = 0f;
 
+	int drawCallsPhys, drawCallsRefrac;
+
+	private size_t translucentCount;
+
 	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
 	{
-		if(lc.type == PassType.waterRefraction) return;
+		//if(lc.type == PassType.waterRefraction) return;
 	
 		Matrix4f vp = lc.projection * lc.view;
 		Frustum frustum = Frustum(vp);
@@ -107,7 +111,7 @@ final class BasicTerrainRenderer : IRenderable
 			}
 			else if(cullingMode == CullMode.all)
 			{
-				foreach(BasicChunk chunk; btm.chunksTerrain)
+				bool shouldRender(BasicChunk chunk)
 				{
 					immutable Vector3f chunkPosReal = chunk.position.toVec3f;
 					immutable float dimReal = ChunkData.chunkDimensionsMetres * chunk.chunk.blockskip;
@@ -115,9 +119,39 @@ final class BasicTerrainRenderer : IRenderable
 					immutable float radius = sqrt(dimReal ^^ 2 + dimReal ^^ 2);
 					Sphere s = Sphere(center, radius);
 
-					if(!frustum.intersectsSphere(s)) continue;
+					return frustum.intersectsSphere(s);
+				}
 
-					p.render(chunk.chunk, lc, drawCalls, numVerts);
+				if(lc.type == PassType.waterRefraction)
+				{
+					translucentCount = 0;
+					foreach(BasicChunk bc; btm.chunksTerrain)
+					{
+						if(bc.chunk.fluidCount > 0 && shouldRender(bc))
+							translucentCount++;
+					}
+					if(translucentCount > 0)
+					{
+						foreach(BasicChunk chunk; btm.chunksTerrain)
+						{
+							if(!shouldRender(chunk)) continue;
+
+							uint dc;
+							p.render(chunk.chunk, lc, dc, numVerts);
+							drawCallsRefrac += dc;
+						}
+					}
+				}
+				else
+				{
+					foreach(BasicChunk chunk; btm.chunksTerrain)
+					{
+						if(!shouldRender(chunk)) continue;
+
+						uint dc;
+						p.render(chunk.chunk, lc, dc, numVerts);
+						drawCallsPhys += dc;
+					}
 				}
 			}
 		}
@@ -351,6 +385,7 @@ final class BasicTerrainManager
 	private StopWatch addExtensionSortSw;
 	private bool isExtensionCacheSorted;
 	private ChunkPosition[] extensionCPCache;
+	private size_t extensionCPBias;
 
 	private void addChunksExtension(const ChunkPosition cam)
 	{
@@ -402,6 +437,7 @@ final class BasicTerrainManager
 				import std.algorithm.sorting : sort;
 				sort!cdCmp(cache);
 				isExtensionCacheSorted = true;
+				extensionCPBias = 0;
 			}
 
 			taskPool.put(task(&sortTask, extensionCPCache));
@@ -412,7 +448,7 @@ final class BasicTerrainManager
 		int doAddNum;
 		enum addMax = 5;
 
-		foreach(ChunkPosition pos; extensionCPCache)
+		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. $])
 		{
 			ChunkState* getter = pos in chunkStates;
 			bool doAdd = getter is null || *getter == ChunkState.deallocated;
@@ -428,6 +464,7 @@ final class BasicTerrainManager
 
 				doAddNum++;
 				chunksCreated++;
+				extensionCPBias++;
 			}
 		}
 	}

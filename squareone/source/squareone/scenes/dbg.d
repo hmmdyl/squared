@@ -74,7 +74,7 @@ final class DebugGameScene : Scene
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
 		Renderer renderer = moxane.services.get!Renderer();
 
-		renderer.postProcesses.processes ~= fog;
+		//renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(1f, 1f, 1f), 0.010241f, 2.819f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
@@ -95,14 +95,14 @@ final class DebugGameScene : Scene
 
 		skySystem = new SkySystem(moxane);
 		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
-		renderer.addSceneRenderable(skyRenderer);
+		//renderer.addSceneRenderable(skyRenderer);
 		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer, moxane);
 		imgui.renderables ~= skyAttachment;
 
 		EntityManager em = moxane.services.get!EntityManager;
 
 		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 24 * 8, 80, VirtualTime.init);
-		em.add(skyEntity);
+		//em.add(skyEntity);
 
 		resources = new Resources;
 		resources.add(new Invisible);
@@ -153,8 +153,8 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 10;
-		enum remove = 11;
+		enum extended = 8;
+		enum remove = 10;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, remove, remove), Vector3i(local, local, local), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
@@ -203,7 +203,7 @@ final class DebugGameScene : Scene
 		PlayerInventory* pi = playerEntity.createComponent!PlayerInventory;
 		PlayerInventoryLocal* pil = playerEntity.createComponent!PlayerInventoryLocal;
 		pil.isOpen = false;
-		renderer.uiRenderables ~= playerInventory;
+		//renderer.uiRenderables ~= playerInventory;
 		playerInventory.target = playerEntity;
 	}
 
@@ -337,6 +337,9 @@ True: %0.6fms",
 		Window win = moxane.services.get!Window;
 		import derelict.opengl3.gl3;
 		moxane.services.get!Renderer().wireframe = win.isKeyDown(Keys.x);
+
+		terrainRenderer.drawCallsPhys = 0;
+		terrainRenderer.drawCallsRefrac = 0;
 	}
 
 	override void onRender()
@@ -361,6 +364,7 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Rotation: %0.3f, %0.3f, %0.3f", scene.camera.rotation.x, scene.camera.rotation.y, scene.camera.rotation.z);
 			igText("Delta: %0.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
+			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
 		}
 		if(igCollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen))
 		{
@@ -370,8 +374,14 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Removed: %d", scene.terrainManager.chunksRemoved);
 
 			int ci = cast(int)scene.terrainRenderer.cullingMode;
-			igComboStr("Thingy", &ci, "None\0Skip\0All", -1);
+			igComboStr("Cull Mode", &ci, "None\0Skip\0All", -1);
 			scene.terrainRenderer.cullingMode = cast(BasicTerrainRenderer.CullMode)ci;
+
+			igText("Render time: %0.6fms", scene.terrainRenderer.renderTime * 1000f);
+			igText("Render prepare time: %0.6fms", scene.terrainRenderer.prepareTime * 1000f);
+
+			igText("Draw calls phys.: %d", scene.terrainRenderer.drawCallsPhys);
+			igText("Draw calls refrac.: %d", scene.terrainRenderer.drawCallsRefrac);
 		}
 		if(igCollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen))
 		{
