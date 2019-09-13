@@ -169,6 +169,7 @@ final class VegetationProcessor : IProcessor
 			{
 				if(!isRdNull(result.order.chunk))
 					removeChunk(result.order.chunk);
+				result.order.chunk.meshBlocking(false, id_);
 				continue;
 			}
 
@@ -467,7 +468,7 @@ private final class Mesher
 			buffer.reset;
 			processor.meshBufferPool.give(buffer);
 			buffer = null;
-			order.chunk.meshBlocking(false, processor.id_);
+			//order.chunk.meshBlocking(false, processor.id_);
 
 			MeshResult mr;
 			mr.order = order;

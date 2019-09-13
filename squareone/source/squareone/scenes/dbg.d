@@ -153,8 +153,8 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 8;
-		enum remove = 10;
+		enum extended = 24;
+		enum remove = 26;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, remove, remove), Vector3i(local, local, local), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
@@ -238,6 +238,8 @@ final class DebugGameScene : Scene
 
 	private bool clickPrev = false, placePrev = false;
 	private bool keyCapture = false, f1Prev = false;
+	private float managementTime;
+	private BlockPosition properBP, snappedBP;
 
 	override void onUpdate() @trusted
 	{
@@ -263,7 +265,7 @@ final class DebugGameScene : Scene
 		bool shouldPlace = win.isMouseButtonDown(MouseButton.left) && !placePrev;
 		placePrev = win.isMouseButtonDown(MouseButton.left);
 
-		/+if(shouldBreak)
+		if(shouldBreak)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -273,9 +275,14 @@ final class DebugGameScene : Scene
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 			{
-				foreach(x; -2 .. 2)
-					foreach(y; -2 .. 2)
-						foreach(z; -2 .. 2)
+				properBP = pr.blockPosition;
+				pr.blockPosition.x = pr.blockPosition.x - pr.blockPosition.x % 4;
+				pr.blockPosition.y = pr.blockPosition.y - pr.blockPosition.y % 4;
+				pr.blockPosition.z = pr.blockPosition.z - pr.blockPosition.z % 4;
+				snappedBP = pr.blockPosition;
+				foreach(x; 0 .. 4)
+					foreach(y; 0 .. 4)
+						foreach(z; 0 .. 4)
 							terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition + BlockPosition(x, y, z));
 			}
 		}
@@ -298,7 +305,7 @@ final class DebugGameScene : Scene
 
 				terrainManager.voxelInteraction.set(Voxel(7, 1, 0, 0), pr.blockPosition);
 			}
-		}+/
+		}
 
 		fog.sceneView = camera.viewMatrix;
 
@@ -307,6 +314,7 @@ final class DebugGameScene : Scene
 		//terrainManager.cameraPosition = Vector3f(0, 0, 0);
 		terrainManager.update;
 		sw.stop;
+		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
 
 		buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 
@@ -324,7 +332,7 @@ True: %0.6fms",
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
-						terrainManager.numChunks, sw.peek.total!"nsecs" / 1_000_000f,
+						terrainManager.numChunks, managementTime,
 						terrainRenderer.renderTime * 1_000f, terrainRenderer.prepareTime * 1000f, (terrainRenderer.renderTime - terrainRenderer.prepareTime) * 1000f);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
@@ -362,7 +370,7 @@ private final class SceneDebugAttachment : IImguiRenderable
 		{
 			igText("Position: %0.3f, %0.3f, %0.3f", scene.camera.position.x, scene.camera.position.y, scene.camera.position.z);
 			igText("Rotation: %0.3f, %0.3f, %0.3f", scene.camera.rotation.x, scene.camera.rotation.y, scene.camera.rotation.z);
-			igText("Delta: %0.3fms", scene.moxane.deltaTime * 1000f);
+			igText("Delta: %7.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
 		}
@@ -372,16 +380,20 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Created: %d", scene.terrainManager.chunksCreated);
 			igText("Hibernated: %d", scene.terrainManager.chunksHibernated);
 			igText("Removed: %d", scene.terrainManager.chunksRemoved);
+			igText("Manage time: %6.3fms", scene.managementTime);
 
 			int ci = cast(int)scene.terrainRenderer.cullingMode;
 			igComboStr("Cull Mode", &ci, "None\0Skip\0All", -1);
 			scene.terrainRenderer.cullingMode = cast(BasicTerrainRenderer.CullMode)ci;
 
-			igText("Render time: %0.6fms", scene.terrainRenderer.renderTime * 1000f);
-			igText("Render prepare time: %0.6fms", scene.terrainRenderer.prepareTime * 1000f);
+			igText("Render time: %7.3fms", scene.terrainRenderer.renderTime * 1000f);
+			igText("Render prepare time: %7.3fms", scene.terrainRenderer.prepareTime * 1000f);
 
 			igText("Draw calls phys.: %d", scene.terrainRenderer.drawCallsPhys);
 			igText("Draw calls refrac.: %d", scene.terrainRenderer.drawCallsRefrac);
+
+			igText("Block pos: %d, %d, %d", scene.properBP.x, scene.properBP.y, scene.properBP.z);
+			igText("Block pos snapped: %d, %d, %d", scene.snappedBP.x, scene.snappedBP.y, scene.snappedBP.z);
 		}
 		if(igCollapsingHeader("Time", ImGuiTreeNodeFlags_DefaultOpen))
 		{

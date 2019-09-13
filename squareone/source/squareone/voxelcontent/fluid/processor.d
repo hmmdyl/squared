@@ -202,6 +202,7 @@ final class FluidProcessor : IProcessor
 			{
 				if(!isRdNull(result.order.chunk))
 					removeChunk(result.order.chunk);
+				result.order.chunk.meshBlocking(false, id_);
 				continue;
 			}
 
@@ -585,7 +586,7 @@ private class Mesher
 			buffer.reset;
 			meshBufferPool.give(buffer);
 			buffer = null;
-			c.meshBlocking(false, processor.id_);
+			//c.meshBlocking(false, processor.id_);
 
 			MeshResult mr;
 			mr.order = o;

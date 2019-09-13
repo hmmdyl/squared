@@ -139,6 +139,7 @@ final class BasicTerrainRenderer : IRenderable
 							uint dc;
 							p.render(chunk.chunk, lc, dc, numVerts);
 							drawCallsRefrac += dc;
+							drawCalls += dc;
 						}
 					}
 				}
@@ -151,6 +152,7 @@ final class BasicTerrainRenderer : IRenderable
 						uint dc;
 						p.render(chunk.chunk, lc, dc, numVerts);
 						drawCallsPhys += dc;
+						drawCalls += dc;
 					}
 				}
 			}
@@ -294,7 +296,7 @@ final class BasicTerrainManager
 		//addChunksLocal(cp);
 		addChunksExtension(cp);
 
-		//voxelInteraction.run;
+		voxelInteraction.run;
 
 		//noiseGeneratorManager.pumpCompletedQueue;
 		foreach(ref BasicChunk bc; chunksTerrain)
@@ -376,6 +378,7 @@ final class BasicTerrainManager
 				chunkStates.remove(chunk.position);
 				//chunkDefer.removal(chunk.position, chunk);
 				chunk.chunk.deinitialise(); //CHUNK DEFER
+				delete chunk.chunk;
 
 				chunksRemoved++;
 			}
@@ -407,16 +410,17 @@ final class BasicTerrainManager
 		{
 			isExtensionCacheSorted = false;
 
-			Vector3i lower;
-			lower.x = cam.x - settings.extendedAddRange.x;
-			lower.y = cam.y - settings.extendedAddRange.y;
-			lower.z = cam.z - settings.extendedAddRange.z;
-			Vector3i upper;
-			upper.x = cam.x + settings.extendedAddRange.x;
-			upper.y = cam.y + settings.extendedAddRange.y;
-			upper.z = cam.z + settings.extendedAddRange.z;
+			enum int cs = 1;
 
-			int cs = 1;
+			Vector3i lower;
+			lower.x = cam.x / cs - settings.extendedAddRange.x;
+			lower.y = cam.y / cs - settings.extendedAddRange.y;
+			lower.z = cam.z / cs - settings.extendedAddRange.z;
+			Vector3i upper;
+			upper.x = cam.x / cs + settings.extendedAddRange.x;
+			upper.y = cam.y / cs + settings.extendedAddRange.y;
+			upper.z = cam.z / cs + settings.extendedAddRange.z;
+
 			int c;
 			for(int x = lower.x; x < upper.x; x += cs)
 				for(int y = lower.y; y < upper.y; y += cs)

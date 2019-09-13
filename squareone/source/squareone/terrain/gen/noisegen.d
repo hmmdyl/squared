@@ -349,7 +349,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			float height = swamp();
 
-			bool outcropping = simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
+			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
 				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 32f;
 

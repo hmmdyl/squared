@@ -190,6 +190,7 @@ final class BlockProcessor : IProcessor
 			if(upItem.buffer is null)
 			{
 				removeChunk(upItem.order.chunk);
+				upItem.order.chunk.meshBlocking(false, id_);
 				continue;
 			}
 
@@ -566,7 +567,7 @@ private class Mesher
 				buffer.reset;
 				host.give(buffer);
 				buffer = null;
-				chunk.meshBlocking(false, processor.id_);
+				//chunk.meshBlocking(false, processor.id_);
 
 				BlockProcessor.MeshResult mr;
 				mr.order = order;
