@@ -122,7 +122,7 @@ final class BasicTerrainRenderer : IRenderable
 					return frustum.intersectsSphere(s);
 				}
 
-				if(lc.type == PassType.waterRefraction)
+				/+if(lc.type == PassType.waterRefraction)
 				{
 					translucentCount = 0;
 					foreach(BasicChunk bc; btm.chunksTerrain)
@@ -144,7 +144,7 @@ final class BasicTerrainRenderer : IRenderable
 					}
 				}
 				else
-				{
+				{+/
 					foreach(BasicChunk chunk; btm.chunksTerrain)
 					{
 						if(!shouldRender(chunk)) continue;
@@ -154,7 +154,7 @@ final class BasicTerrainRenderer : IRenderable
 						drawCallsPhys += dc;
 						drawCalls += dc;
 					}
-				}
+				//}
 			}
 		}
 	}

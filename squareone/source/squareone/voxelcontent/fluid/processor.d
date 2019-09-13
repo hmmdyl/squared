@@ -274,13 +274,13 @@ final class FluidProcessor : IProcessor
 
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, renderer.refraction.diffuse);
+		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.diffuse);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, renderer.refraction.normal);
+		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.normal);
 		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, renderer.refraction.worldPos);
+		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.worldPos);
 		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, renderer.refraction.depthTexture.depth);
+		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.depthTexture.depth);
 
 		effect["RefractionDiffuse"].set(0);
 		effect["RefractionNormal"].set(1);
@@ -300,7 +300,7 @@ final class FluidProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(lc.type == PassType.waterRefraction) return;
+		if(lc.type != PassType.waterRefraction) return;
 
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;

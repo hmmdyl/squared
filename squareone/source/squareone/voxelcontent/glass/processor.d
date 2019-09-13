@@ -183,7 +183,7 @@ final class GlassProcessor : IProcessor
 
 		effect.bind;
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, renderer.refractionWithLighting.diffuse);
+		//glBindTexture(GL_TEXTURE_2D, renderer.refractionWithLighting.diffuse);
 		effect["SceneDiffuse"].set(0);
 	}
 
