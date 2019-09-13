@@ -186,6 +186,8 @@ final class DebugGameScene : Scene
 		im.setBinding("playerStrafeRight", Keys.d);
 		im.setBinding("debugUp", Keys.e);
 		im.setBinding("debugDown", Keys.q);
+		im.setBinding("invVoxelIncSize", Keys.equal);
+		im.setBinding("invVoxelDecSize", Keys.minus);
 
 		string[] playerKeyBindings = new string[](PlayerBindingName.length);
 		playerKeyBindings[PlayerBindingName.walkForward] = "playerWalkForward";
@@ -241,9 +243,13 @@ final class DebugGameScene : Scene
 	private float managementTime;
 	private BlockPosition properBP, snappedBP;
 
+	private int toolSize = 4;
+	private bool incPrev = false, decPrev = false;
+
 	override void onUpdate() @trusted
 	{
 		Window win = moxane.services.get!Window;
+		InputManager im = moxane.services.get!InputManager;
 
 		Transform* t = playerEntity.get!Transform;
 		pl.position = t.position;
@@ -265,7 +271,20 @@ final class DebugGameScene : Scene
 		bool shouldPlace = win.isMouseButtonDown(MouseButton.left) && !placePrev;
 		placePrev = win.isMouseButtonDown(MouseButton.left);
 
-		if(shouldBreak)
+		bool incKeyState = im.getBindingState("invVoxelIncSize") == ButtonAction.press;
+		bool shouldInc = incKeyState && !incPrev;
+		incPrev = incKeyState;
+		bool decKeyState = im.getBindingState("invVoxelDecSize") == ButtonAction.press;
+		bool shouldDec = decKeyState && !decPrev;
+		decPrev = decKeyState;
+
+		if(shouldInc) toolSize *= 2;
+		if(shouldDec) toolSize /= 2;
+
+		if(toolSize < 1) toolSize = 1;
+		if(toolSize > 4) toolSize = 4;
+
+		if(shouldBreak || shouldPlace)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -275,26 +294,36 @@ final class DebugGameScene : Scene
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 			{
+				if(shouldPlace)
+				{
+					if(pr.side == VoxelSide.nx) pr.blockPosition.x -= toolSize;
+					if(pr.side == VoxelSide.px) pr.blockPosition.x += toolSize;
+					if(pr.side == VoxelSide.ny) pr.blockPosition.y -= toolSize;
+					if(pr.side == VoxelSide.py) pr.blockPosition.y += toolSize;
+					if(pr.side == VoxelSide.nz) pr.blockPosition.z -= toolSize;
+					if(pr.side == VoxelSide.pz) pr.blockPosition.z += toolSize;
+				}
+
 				properBP = pr.blockPosition;
 
-				auto mx = pr.blockPosition.x % 4;
+				auto mx = pr.blockPosition.x % toolSize;
 				pr.blockPosition.x = pr.blockPosition.x < 0 ? pr.blockPosition.x + mx : pr.blockPosition.x - mx;
-				auto my = pr.blockPosition.y % 4;
+				auto my = pr.blockPosition.y % toolSize;
 				pr.blockPosition.y = pr.blockPosition.y < 0 ? pr.blockPosition.y + my : pr.blockPosition.y - my;
-				auto mz = pr.blockPosition.z % 4;
+				auto mz = pr.blockPosition.z % toolSize;
 				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
 
 				//pr.blockPosition.x = pr.blockPosition.x - pr.blockPosition.x % 4;
 				//pr.blockPosition.y = pr.blockPosition.y - pr.blockPosition.y % 4;
 				//pr.blockPosition.z = pr.blockPosition.z - pr.blockPosition.z % 4;
 				snappedBP = pr.blockPosition;
-				foreach(x; 0 .. 4)
-					foreach(y; 0 .. 4)
-						foreach(z; 0 .. 4)
-							terrainManager.voxelInteraction.set(Voxel(), pr.blockPosition + BlockPosition(x, y, z));
+				foreach(x; 0 .. toolSize)
+					foreach(y; 0 .. toolSize)
+						foreach(z; 0 .. toolSize)
+							terrainManager.voxelInteraction.set(shouldPlace ? Voxel(7, 1, 0, 0) : Voxel(), pr.blockPosition + BlockPosition(x, y, z));
 			}
 		}
-		if(shouldPlace)
+		/+if(shouldPlace)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -313,7 +342,7 @@ final class DebugGameScene : Scene
 
 				terrainManager.voxelInteraction.set(Voxel(7, 1, 0, 0), pr.blockPosition);
 			}
-		}
+		}+/
 
 		fog.sceneView = camera.viewMatrix;
 
