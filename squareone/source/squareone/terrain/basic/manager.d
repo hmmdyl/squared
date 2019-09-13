@@ -455,7 +455,8 @@ final class BasicTerrainManager
 		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. $])
 		{
 			ChunkState* getter = pos in chunkStates;
-			bool doAdd = getter is null || *getter == ChunkState.deallocated;
+			bool absent = getter is null || *getter == ChunkState.deallocated;
+			bool doAdd = absent || (isInPlayerLocalBounds(cam, pos) && *getter == ChunkState.hibernated);
 
 			if(doAdd)
 			{

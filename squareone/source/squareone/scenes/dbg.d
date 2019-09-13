@@ -74,7 +74,7 @@ final class DebugGameScene : Scene
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
 		Renderer renderer = moxane.services.get!Renderer();
 
-		//renderer.postProcesses.processes ~= fog;
+		renderer.postProcesses.processes ~= fog;
 		fog.update(Vector3f(1f, 1f, 1f), 0.010241f, 2.819f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
@@ -95,14 +95,14 @@ final class DebugGameScene : Scene
 
 		skySystem = new SkySystem(moxane);
 		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
-		//renderer.addSceneRenderable(skyRenderer);
+		renderer.addSceneRenderable(skyRenderer);
 		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer, moxane);
 		imgui.renderables ~= skyAttachment;
 
 		EntityManager em = moxane.services.get!EntityManager;
 
 		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 24 * 8, 80, VirtualTime.init);
-		//em.add(skyEntity);
+		em.add(skyEntity);
 
 		resources = new Resources;
 		resources.add(new Invisible);
@@ -276,9 +276,17 @@ final class DebugGameScene : Scene
 			if(pr.got) 
 			{
 				properBP = pr.blockPosition;
-				pr.blockPosition.x = pr.blockPosition.x - pr.blockPosition.x % 4;
-				pr.blockPosition.y = pr.blockPosition.y - pr.blockPosition.y % 4;
-				pr.blockPosition.z = pr.blockPosition.z - pr.blockPosition.z % 4;
+
+				auto mx = pr.blockPosition.x % 4;
+				pr.blockPosition.x = pr.blockPosition.x < 0 ? pr.blockPosition.x + mx : pr.blockPosition.x - mx;
+				auto my = pr.blockPosition.y % 4;
+				pr.blockPosition.y = pr.blockPosition.y < 0 ? pr.blockPosition.y + my : pr.blockPosition.y - my;
+				auto mz = pr.blockPosition.z % 4;
+				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
+
+				//pr.blockPosition.x = pr.blockPosition.x - pr.blockPosition.x % 4;
+				//pr.blockPosition.y = pr.blockPosition.y - pr.blockPosition.y % 4;
+				//pr.blockPosition.z = pr.blockPosition.z - pr.blockPosition.z % 4;
 				snappedBP = pr.blockPosition;
 				foreach(x; 0 .. 4)
 					foreach(y; 0 .. 4)
