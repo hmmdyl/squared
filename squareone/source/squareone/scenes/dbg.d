@@ -153,8 +153,8 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 8;
-		enum remove = 10;
+		enum extended = 10;
+		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, remove, remove), Vector3i(local, local, local), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);

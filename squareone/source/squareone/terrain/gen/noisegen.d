@@ -329,22 +329,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
 			auto simplexSrc = (float x, float y) => simplex.eval(x, y);
+	
+			float mountains()
+			{
+				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 1024f, 16) * 128f;
+				return h;
+			}
+
 			float swamp()
 			{
-				//float h = multiNoise(simplexSrc, realPos.x, realPos.z, 128f, 4);
-				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 1024f, 16) * 128f;
-				return h;//redistributeNoise(h, 2f);
-				/+if(h > 0) 
-				{
-					float h1 = multiNoise(simplexSrc, realPos.x, realPos.z, 256f, 16) * 8;
-					h1 = redistributeNoise(h1, 2f);
-					return h + h1;
-				}
-
-				float h1 = multiNoise(simplexSrc, realPos.x, realPos.z, 64f, 2);// * 0.5f + 0.5f;
-				//h1 *= 0.5f;
-				h1 = redistributeNoise(h1, 4f);
-				return h + h1;+/
+				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 2f, 4);
+				return h;
 			}
 
 			float height = swamp();
