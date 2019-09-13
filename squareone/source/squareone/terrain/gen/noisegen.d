@@ -338,7 +338,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			float swamp()
 			{
-				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 2f, 4);
+				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 6f, 4);
 				return h;
 			}
 

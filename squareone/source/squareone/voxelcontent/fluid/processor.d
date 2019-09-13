@@ -130,7 +130,7 @@ final class FluidProcessor : IProcessor
 		waveSpeeds[] = 0f;
 		waveDirections[] = Vector2f(0f, 0f);
 
-		waveAmplitudes[0] = 0.5f;
+		waveAmplitudes[0] = 0.05f;
 		waveWavelengths[0] = 3f;
 		waveSpeeds[0] = 0.25f;
 		waveDirections[0] = Vector2f(1f, 0f);
