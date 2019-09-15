@@ -12,9 +12,20 @@ import std.exception : enforce;
 import std.conv : to;
 import dlib.math.vector : Vector2i, Vector3f;
 
+interface IItemFamily
+{
+	void onSelect(IItemType type, ItemStack stack);
+	void onDeselect(IItemType type, ItemStack stack);
+}
+
 interface IItemType
 {
+	@property TypeInfo family();
+
 	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);
+
+	void onSelect(IItemType type, ItemStack stack);
+	void onDeselect(IItemType type, ItemStack stack);
 }
 
 struct ItemInstance
@@ -43,6 +54,12 @@ struct PlayerInventoryLocal
 	bool isOpen;
 	int hotbarSel;
 	int meshSel;
+}
+
+class InventoryRegister
+{
+	private IItemFamily[TypeInfo] families;
+	//private IItemType
 }
 
 class PlayerInventorySystem : IRenderable

@@ -151,7 +151,7 @@ package struct MeshResult
 	CompressedMeshBuffer buffer;
 }
 
-package enum maxVertices = 8_192;
+package enum maxVertices = 80_192;
 package enum channels = 3;
 
 package class CompressedMeshBuffer

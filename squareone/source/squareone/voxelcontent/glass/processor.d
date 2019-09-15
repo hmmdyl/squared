@@ -183,13 +183,13 @@ final class GlassProcessor : IProcessor
 
 		effect.bind;
 		glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, renderer.refractionWithLighting.diffuse);
+		glBindTexture(GL_TEXTURE_2D, renderer.postProcesses.lightTexture.diffuse);
 		effect["SceneDiffuse"].set(0);
 	}
 
 	void render(IMeshableVoxelBuffer vb, ref LocalContext lc, ref uint dc, ref uint nv)
 	{
-		if(lc.type == PassType.waterRefraction) return;
+		if(lc.type != PassType.glass) return;
 		if(isRdNull(vb)) return;
 
 		RenderData* rd = getRd(vb);

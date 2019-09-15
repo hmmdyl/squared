@@ -300,7 +300,7 @@ final class FluidProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(lc.type != PassType.waterRefraction) return;
+		if(lc.type != PassType.water) return;
 
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;
