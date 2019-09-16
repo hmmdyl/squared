@@ -12,14 +12,19 @@ import std.exception : enforce;
 import std.conv : to;
 import dlib.math.vector : Vector2i, Vector3f;
 
-interface IItemFamily
+/// Represents a distinct family of IItemTypes. This can be used for common data between all types.
+@safe interface IItemFamily
 {
+	/// An item belonging to this family was selected.
 	void onSelect(IItemType type, ItemStack stack);
+	/// An item belonging to this family was deselected.
 	void onDeselect(IItemType type, ItemStack stack);
 }
 
-interface IItemType
+/// Represents a type of item.
+@safe interface IItemType
 {
+	/// Encompassing family
 	@property TypeInfo family();
 
 	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);
@@ -28,19 +33,19 @@ interface IItemType
 	void onDeselect(IItemType type, ItemStack stack);
 }
 
-struct ItemInstance
+@safe struct ItemInstance
 {
 	IItemType type;
 	void* data;
 }
 
-struct ItemStack
+@safe struct ItemStack
 {
 	ItemInstance representative;
 	ushort count;
 }
 
-struct PlayerInventory
+@safe struct PlayerInventory
 {
 	int width, height;
 	bool hotbar;
@@ -60,6 +65,13 @@ class InventoryRegister
 {
 	private IItemFamily[TypeInfo] families;
 	//private IItemType
+
+	IItemFamily getFamily(TypeInfo ti) nothrow 
+	{ 
+		IItemFamily* fam = ti in families;
+		if(ti is null) return null;
+		else *fam;
+	}
 }
 
 class PlayerInventorySystem : IRenderable
