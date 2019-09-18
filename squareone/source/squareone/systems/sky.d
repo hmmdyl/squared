@@ -92,7 +92,14 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			foreach(r; 0 .. Rings)
 				colours[r][d] = [255, 255, 255, 255];
 
-		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, Filter.linear, Filter.linear, false, true);
+		Texture2D.ConstructionInfo ci;
+		ci.bitDepth = TextureBitDepth.eight;
+		ci.clamp = true;
+		ci.magnification = Filter.linear;
+		ci.minification = Filter.linear;
+		ci.mipMaps = false;
+		ci.srgb = false;
+		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, ci);
 
 		Log log = moxane.services.get!Log;
 		Shader vs = new Shader, fs = new Shader;
@@ -180,6 +187,9 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		private int timeSlider;
 		private int ringSlider;
 
+		private float expGradient = 1f;
+		private float expN0 = 1f;
+
 		void renderUI(ImguiRenderer imgui, Renderer renderer, ref LocalContext lc)
 		{
 			igBegin("Sky");
@@ -232,7 +242,53 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			float[3] col = [skyRenderer.colours[ringSlider][timeSlider][2] / 255f, skyRenderer.colours[ringSlider][timeSlider][1] / 255f, skyRenderer.colours[ringSlider][timeSlider][0] / 255f];
 			igColorPicker3("Colour", col);
 			skyRenderer.colours[ringSlider][timeSlider] = [cast(ubyte)(col[2] * 255), cast(ubyte)(col[1] * 255), cast(ubyte)(col[0] * 255), 255];
-			skyRenderer.colourMap.upload(skyRenderer.colours.ptr, TimeDivisions, Rings, Filter.linear, Filter.linear, false, true);
+
+			if(igButton("Linear gradient"))
+			{
+				ubyte[4] base = skyRenderer.colours[0][timeSlider];
+				ubyte[4] top = skyRenderer.colours[Rings-1][timeSlider];
+
+				foreach(r; 1 .. Rings-1)
+				{
+					ubyte[4] lerpCol;
+					import dlib.math.interpolation;
+					lerpCol[0] = cast(ubyte)interpLinear!float(base[0], top[0], cast(float)r / Rings);
+					lerpCol[1] = cast(ubyte)interpLinear!float(base[1], top[1], cast(float)r / Rings);
+					lerpCol[2] = cast(ubyte)interpLinear!float(base[2], top[2], cast(float)r / Rings);
+					lerpCol[3] = 255;
+					skyRenderer.colours[r][timeSlider] = lerpCol;
+				}
+			}
+			igSliderFloat("Exp base", &expGradient, 0, 10);
+			igSliderFloat("Exp N0", &expN0, 0, 10);
+			if(igButton("Exp gradient"))
+			{
+				ubyte[4] base = skyRenderer.colours[0][timeSlider];
+				ubyte[4] top = skyRenderer.colours[Rings-1][timeSlider];
+
+				foreach(r; 0 .. Rings)
+				{
+					ubyte[4] lerpCol;
+					import dlib.math.interpolation;
+					import dlib.math.utils;
+					import std.math;
+					float l = expN0 * exp((cast(float)r / cast(float)Rings) * -expGradient);
+					l = clamp(l, 0, 1);
+					foreach(c; 0 .. 3)
+						lerpCol[c] = cast(ubyte)clamp(interpLinear!float(top[c], base[c], l), 0, 255);
+					lerpCol[3] = 255;
+					skyRenderer.colours[r][timeSlider] = lerpCol;
+				}
+			}
+
+			Texture2D.ConstructionInfo ci;
+			ci.bitDepth = TextureBitDepth.eight;
+			ci.clamp = true;
+			ci.mipMaps = false;
+			ci.minification = Filter.linear;
+			ci.magnification = Filter.linear;
+			ci.srgb = false;
+			skyRenderer.colourMap.upload(skyRenderer.colours.ptr, TimeDivisions, Rings, ci);
 		}
 	}
 }

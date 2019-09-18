@@ -79,14 +79,14 @@ final class DebugGameScene : Scene
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
 		pl.diffuseIntensity = 1f;
-		pl.colour = Vector3f(1f, 1f, 1f);
+		pl.colour = Vector3f(1f, 0f, 0f);
 		pl.position = Vector3f(-2f, 4f, 0f);
 		pl.constAtt = 1f;
 		pl.linAtt = 0.9f;
 		pl.expAtt = 0.1f;
 		renderer.lights.pointLights ~= pl;
 
-		DirectionalLight dl = new DirectionalLight;
+		dl = new DirectionalLight;
 		dl.ambientIntensity = 0.1f;
 		dl.diffuseIntensity = 0.5f;
 		dl.colour = Vector3f(1, 1, 1);
@@ -410,6 +410,9 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Delta: %7.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
+
+			igColorPicker3("Directional light colour", scene.dl.colour.arrayof);
+			igColorPicker3("Point light colour", scene.pl.colour.arrayof);
 		}
 		if(igCollapsingHeader("Terrain", ImGuiTreeNodeFlags_DefaultOpen))
 		{

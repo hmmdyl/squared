@@ -29,7 +29,7 @@ final class SplashscreenScene : Scene
 		UIPicture* p = testButton.createComponent!UIPicture;
 		p.offset = Vector2i(0, 0);
 		p.dimensions = moxane.services.get!Window().framebufferSize;
-		p.texture = new Texture2D(AssetManager.translateToAbsoluteDir("content/backgrounds/splash.png"));
+		p.texture = new Texture2D(AssetManager.translateToAbsoluteDir("content/backgrounds/splash.png"), Texture2D.ConstructionInfo.standard);
 	}
 
 	~this()

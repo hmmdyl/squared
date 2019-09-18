@@ -33,7 +33,7 @@ import moxane.io.input;
 		this.incToolSizeBinding = incToolSizeBinding;
 		this.decToolSizeBinding = decToolSizeBinding;
 
-		InputManager im = moxane.get!InputManager;
+		InputManager im = moxane.services.get!InputManager;
 		if(!im.hasBinding(incToolSizeBinding))
 			im.setBinding(incToolSizeBinding, incToolSizeBindingDefault);
 		if(!im.hasBinding(decToolSizeBinding))
@@ -45,7 +45,7 @@ import moxane.io.input;
 
 	~this()
 	{
-		InputManager im = moxane.get!InputManager;
+		InputManager im = moxane.services.get!InputManager;
 		im.boundKeys[incToolSizeBinding] -= &onInput;
 		im.boundKeys[decToolSizeBinding] -= &onInput;
 	}

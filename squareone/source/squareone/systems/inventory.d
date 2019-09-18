@@ -70,7 +70,7 @@ class InventoryRegister
 	{ 
 		IItemFamily* fam = ti in families;
 		if(ti is null) return null;
-		else *fam;
+		else return *fam;
 	}
 }
 
