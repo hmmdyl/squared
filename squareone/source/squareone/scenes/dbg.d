@@ -65,6 +65,8 @@ final class DebugGameScene : Scene
 	PointLight pl;
 	DirectionalLight dl;
 
+	Renderer renderer;
+
 	private void initialise()
 	{
 		ImguiRenderer imgui = moxane.services.get!ImguiRenderer;
@@ -72,14 +74,14 @@ final class DebugGameScene : Scene
 			imgui.renderables ~= new SceneDebugAttachment(this);
 
 		fog = new Fog(moxane, moxane.services.get!Renderer().postProcesses.common);
-		Renderer renderer = moxane.services.get!Renderer();
+		renderer = moxane.services.get!Renderer();
 
 		renderer.postProcesses.processes ~= fog;
-		fog.update(Vector3f(1f, 1f, 1f), 0.010241f, 2.819f, Matrix4f.identity);
+		fog.update(Vector3f(1f, 1f, 1f), 0.022892f, 2.819f, Matrix4f.identity);
 		pl = new PointLight;
 		pl.ambientIntensity = 0f;
 		pl.diffuseIntensity = 1f;
-		pl.colour = Vector3f(1f, 0f, 0f);
+		pl.colour = Vector3f(1f, 1f, 1f);
 		pl.position = Vector3f(-2f, 4f, 0f);
 		pl.constAtt = 1f;
 		pl.linAtt = 0.9f;
@@ -284,7 +286,7 @@ final class DebugGameScene : Scene
 		if(toolSize < 1) toolSize = 1;
 		if(toolSize > 4) toolSize = 4;
 
-		if(shouldBreak || shouldPlace)
+		if((shouldBreak || shouldPlace) && keyCapture)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 			//if(pc is null) break;
@@ -410,6 +412,9 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Delta: %7.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
+
+			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
+			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");
 
 			igColorPicker3("Directional light colour", scene.dl.colour.arrayof);
 			igColorPicker3("Point light colour", scene.pl.colour.arrayof);

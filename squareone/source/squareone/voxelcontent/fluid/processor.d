@@ -114,17 +114,8 @@ final class FluidProcessor : IProcessor
 		minimumMurkStrength = 0.447f;
 		maximumMurkStrength = 0.634f;
 		//waterColour = Vector3f(0.1f, 0.75f, 0.9f);
-		waterColour = Vector3f(54f / 255f, 0f, 1f);
+		waterColour = Vector3f(0f, 242f / 255f, 1f);
 
-		/*foreach(ref float amplitude; waveAmplitudes)
-			amplitude = uniform01!float() * 0.075f;
-		foreach(ref float wavelength; waveWavelengths)
-			wavelength = uniform01!float() * 10f;
-		foreach(ref float speed; waveSpeeds)
-			speed = uniform01!float() * 0.5f;
-		foreach(ref Vector2f direction; waveDirections)
-			direction = Vector2f(((uniform01!float() - 0.5f) * 2f), ((uniform01!float() - 0.5f) * 2f));*/
-	
 		waveAmplitudes[] = 0f;
 		waveWavelengths[] = 0f;
 		waveSpeeds[] = 0f;
@@ -505,7 +496,7 @@ private class Mesher
 			neighbours[VoxelSide.px] = c.get(x + blockskip, y, z);
 			neighbours[VoxelSide.ny] = c.get(x, y - blockskip, z);
 			neighbours[VoxelSide.py] = c.get(x, y + blockskip, z);
-			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip); // caaused crash, related to glass
+			neighbours[VoxelSide.nz] = c.get(x, y, z - blockskip);
 			neighbours[VoxelSide.pz] = c.get(x, y, z + blockskip);
 
 			diagNeighbours[0] = c.get(x - blockskip, y, z - blockskip);
@@ -526,10 +517,8 @@ private class Mesher
 				SideSolidTable doMeshSide(int side)
 				{
 					if(isOverrun)
-					{
-						if(side == VoxelSide.py) return SideSolidTable.notSolid;
-						else return SideSolidTable.solid;
-					}
+						if(side == VoxelSide.py) 
+							return SideSolidTable.notSolid;
 
 					foreach(m; meshOn)
 						if(neighbours[side].mesh == m)
@@ -564,8 +553,6 @@ private class Mesher
 				if(isSideSolid[VoxelSide.pz] != SideSolidTable.solid) addSide(VoxelSide.pz);
 			}
 
-			//if(v.mesh != fluidID) continue;
-
 			if(v.mesh == fluidID)
 				addVoxel(false);
 			if(v.mesh != fluidID && v.mesh != 0)
@@ -575,10 +562,6 @@ private class Mesher
 				if(count!((Voxel v) => v.mesh == fluidID)(diagNeighbours[]) > 0 && count!((Voxel v) => v.mesh == fluidID)(diagNeighboursUpper[]) == 0)
 					addVoxel(true);
 			}
-			/+if(v.mesh != fluidID && v.mesh != 0 && 
-			   (any!((Voxel v) => v.mesh == fluidID)(neighbours[]) || 
-				(count!((Voxel v) => v.mesh == fluidID)(diagNeighbours[]) > 1)))
-				addVoxel(true);+/
 		}
 
 		if(buffer.vertexCount == 0)
@@ -586,7 +569,6 @@ private class Mesher
 			buffer.reset;
 			meshBufferPool.give(buffer);
 			buffer = null;
-			//c.meshBlocking(false, processor.id_);
 
 			MeshResult mr;
 			mr.order = o;
