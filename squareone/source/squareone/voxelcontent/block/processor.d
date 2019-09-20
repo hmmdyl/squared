@@ -298,7 +298,7 @@ final class BlockProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(lc.type != PassType.scene) return;
+		if(!(lc.type == PassType.shadow || lc.type == PassType.scene)) return;
 
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;

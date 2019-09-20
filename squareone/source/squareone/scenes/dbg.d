@@ -90,7 +90,7 @@ final class DebugGameScene : Scene
 		dl.ambientIntensity = 0.1f;
 		dl.diffuseIntensity = 0.5f;
 		dl.colour = Vector3f(1, 1, 1);
-		dl.direction = Vector3f(0, 1, 0);
+		dl.direction = Vector3f(0, 0.5, 0.5);
 		renderer.lights.directionalLights ~= dl;
 
 		skySystem = new SkySystem(moxane);

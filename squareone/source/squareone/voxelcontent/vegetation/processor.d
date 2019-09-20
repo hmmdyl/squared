@@ -266,7 +266,7 @@ final class VegetationProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(lc.type != PassType.scene) return;
+		if(!(lc.type == PassType.scene || lc.type == PassType.shadow)) return;
 
 		RenderData* rd = getRD(chunk);
 		if(rd is null) return;
