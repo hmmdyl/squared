@@ -330,6 +330,12 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			auto simplexSrc = (float x, float y) => simplex.eval(x, y);
 	
+			float archipelago()
+			{
+				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 90f, 8) * 4f;
+				return h;
+			}
+
 			float mountains()
 			{
 				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 1024f, 16) * 128f;
@@ -342,7 +348,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				return h;
 			}
 
-			float height = swamp();
+			float height = archipelago();
 
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
@@ -410,12 +416,12 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				gv.offset = offset;
 				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
 				Vector3f colour;
-				/+colour.x = 27 / 255f;
+				colour.x = 27 / 255f;
 				colour.y = 191 / 255f;
-				colour.z = 46 / 255f;+/
-				colour.x = 230 / 255f;
+				colour.z = 46 / 255f;
+				/+colour.x = 230 / 255f;
 				colour.y = 180 / 255f;
-				colour.z = 26 / 255f;
+				colour.z = 26 / 255f;+/
 				gv.colour = colour;
 
 				smootherOutput.set(x, y, z, gv.v);
