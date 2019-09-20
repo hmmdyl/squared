@@ -37,6 +37,7 @@ final class BlockProcessor : IProcessor
 	private enum mesherCount = 2;
 	private int meshBarrel;
 	private Mesher[] meshers;
+	float averageMeshTime = 0f;
 
 	private uint vao;
 	private Effect effect;
@@ -521,6 +522,8 @@ private class Mesher
 
 		buffer.chunkMax = chunkDimLod * chunk.voxelScale;
 
+		StopWatch sw = StopWatch(AutoStart.yes);
+
 		for(int x = 0; x < chunkDimLod; x += blkskp) 
 		{
 			for(int y = 0; y < chunkDimLod; y += blkskp)  
@@ -583,6 +586,14 @@ private class Mesher
 				mr.buffer = buffer;
 				uploadQueue.insert(mr);
 			}
+		}
+
+		sw.stop;
+		if(processor.averageMeshTime == 0f) processor.averageMeshTime = sw.peek.total!"nsecs" * (1f / 1_000_000f);
+		else
+		{
+			processor.averageMeshTime += sw.peek.total!"nsecs" * (1f / 1_000_000f);
+			processor.averageMeshTime *= 0.5f;
 		}
 
 		buffer = null;

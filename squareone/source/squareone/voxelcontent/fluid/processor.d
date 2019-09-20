@@ -8,6 +8,7 @@ import moxane.graphics.renderer;
 import moxane.utils.pool;
 import moxane.graphics.effect;
 import moxane.graphics.log;
+import moxane.graphics.texture;
 import moxane.utils.maybe;
 
 import core.thread : Thread;
@@ -51,6 +52,7 @@ final class FluidProcessor : IProcessor
 	float murkDepth;
 	float minimumMurkStrength, maximumMurkStrength;
 	Vector3f waterColour;
+	private Texture2D normalMap;
 
 	private IVoxelMesh[] meshOn;
 
@@ -107,14 +109,18 @@ final class FluidProcessor : IProcessor
 		effect.findUniform("MinimumMurkStrength");
 		effect.findUniform("MaximumMurkStrength");
 		effect.findUniform("DebugColour");
+		effect.findUniform("NormalMap");
 		effect.unbind;
+
+		Texture2D.ConstructionInfo ci = Texture2D.ConstructionInfo.standard;
+		ci.srgb = false;
+		normalMap = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/waterNormalMap.png"), ci);
 
 		fresnelReflectiveFactor = 0.9f;
 		murkDepth = 1.751f;
-		minimumMurkStrength = 0.447f;
-		maximumMurkStrength = 0.634f;
-		//waterColour = Vector3f(0.1f, 0.75f, 0.9f);
-		waterColour = Vector3f(0f, 242f / 255f, 1f);
+		minimumMurkStrength = 0.052f;
+		maximumMurkStrength = 0.89f;
+		waterColour = Vector3f(0f, 99f / 255f, 1f);
 
 		waveAmplitudes[] = 0f;
 		waveWavelengths[] = 0f;
@@ -272,11 +278,14 @@ final class FluidProcessor : IProcessor
 		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.worldPos);
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, renderer.sceneDup.depthTexture.depth);
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, normalMap.handle);
 
 		effect["RefractionDiffuse"].set(0);
 		effect["RefractionNormal"].set(1);
 		effect["RefractionWorldPos"].set(2);
 		effect["RefractionDepth"].set(3);
+		effect["NormalMap"].set(4);
 
 		effect["CameraPosition"].set(renderer.primaryCamera.position);
 		effect["NearPlane"].set(renderer.primaryCamera.perspective.near);
@@ -321,6 +330,8 @@ final class FluidProcessor : IProcessor
 	{
 		import derelict.opengl3.gl3;
 
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_2D, 0);
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glActiveTexture(GL_TEXTURE2);

@@ -288,7 +288,6 @@ final class DebugGameScene : Scene
 		if((shouldBreak || shouldPlace) && keyCapture)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
-			//if(pc is null) break;
 
 			import squareone.voxelutils.picker;
 			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
@@ -314,9 +313,6 @@ final class DebugGameScene : Scene
 				auto mz = pr.blockPosition.z % toolSize;
 				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
 
-				//pr.blockPosition.x = pr.blockPosition.x - pr.blockPosition.x % 4;
-				//pr.blockPosition.y = pr.blockPosition.y - pr.blockPosition.y % 4;
-				//pr.blockPosition.z = pr.blockPosition.z - pr.blockPosition.z % 4;
 				snappedBP = pr.blockPosition;
 				foreach(x; 0 .. toolSize)
 					foreach(y; 0 .. toolSize)
@@ -324,32 +320,11 @@ final class DebugGameScene : Scene
 							terrainManager.voxelInteraction.set(shouldPlace ? Voxel(7, 1, 0, 0) : Voxel(), pr.blockPosition + BlockPosition(x, y, z));
 			}
 		}
-		/+if(shouldPlace)
-		{
-			PlayerComponent* pc = playerEntity.get!PlayerComponent;
-			//if(pc is null) break;
-
-			import squareone.voxelutils.picker;
-			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
-			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
-			if(pr.got) 
-			{
-				if(pr.side == VoxelSide.nx) pr.blockPosition.x -= 1;
-				if(pr.side == VoxelSide.px) pr.blockPosition.x += 1;
-				if(pr.side == VoxelSide.ny) pr.blockPosition.y -= 1;
-				if(pr.side == VoxelSide.py) pr.blockPosition.y += 1;
-				if(pr.side == VoxelSide.nz) pr.blockPosition.z -= 1;
-				if(pr.side == VoxelSide.pz) pr.blockPosition.z += 1;
-
-				terrainManager.voxelInteraction.set(Voxel(7, 1, 0, 0), pr.blockPosition);
-			}
-		}+/
 
 		fog.sceneView = camera.viewMatrix;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
 		terrainManager.cameraPosition = camera.position;
-		//terrainManager.cameraPosition = Vector3f(0, 0, 0);
 		terrainManager.update;
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
@@ -414,7 +389,9 @@ private final class SceneDebugAttachment : IImguiRenderable
 
 			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
 			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");
-
+		}
+		if(igCollapsingHeader("Lights", 0))
+		{
 			igColorPicker3("Directional light colour", scene.dl.colour.arrayof);
 			igColorPicker3("Point light colour", scene.pl.colour.arrayof);
 		}
@@ -425,6 +402,8 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Hibernated: %d", scene.terrainManager.chunksHibernated);
 			igText("Removed: %d", scene.terrainManager.chunksRemoved);
 			igText("Manage time: %6.3fms", scene.managementTime);
+
+			igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);
 
 			int ci = cast(int)scene.terrainRenderer.cullingMode;
 			igComboStr("Cull Mode", &ci, "None\0Skip\0All", -1);

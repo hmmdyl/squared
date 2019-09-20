@@ -369,7 +369,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.stone : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
