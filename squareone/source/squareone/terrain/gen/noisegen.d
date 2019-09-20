@@ -329,7 +329,17 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
 			auto simplexSrc = (float x, float y) => simplex.eval(x, y);
-	
+
+			float icicycle()
+			{
+				float i = redistributeNoise(multiNoise(simplexSrc, realPos.x, realPos.z, 16f, 16), 8f) * 8f;
+				float b = multiNoise(simplexSrc, realPos.x, realPos.z, 64, 8) * 3;
+				
+				if(i > 0.5)
+					return i + b;
+				return b;
+			}
+
 			float archipelago()
 			{
 				float h = multiNoise(simplexSrc, realPos.x, realPos.z, 90f, 8) * 4f;
@@ -348,7 +358,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				return h;
 			}
 
-			float height = archipelago();
+			float height;
+			if(voronoi(Vector2f(realPos.xz) / 64f, simplexSrc).y > 0.5f)
+				height = icicycle;
+			else height = swamp;
 
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
@@ -369,7 +382,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
 				if(realPos1.y <= height)
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.stone : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
 				else
 				{
 					if(realPos1.y <= 0)
