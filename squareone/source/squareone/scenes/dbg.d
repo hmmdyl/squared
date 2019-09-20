@@ -162,7 +162,6 @@ final class DebugGameScene : Scene
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
-		//Renderer renderer = moxane.services.get!Renderer;
 		renderer.addSceneRenderable(terrainRenderer);
 
 		Window win = moxane.services.get!Window;

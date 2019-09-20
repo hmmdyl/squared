@@ -388,7 +388,7 @@ final class BasicTerrainManager
 	private StopWatch addExtensionSortSw;
 	private bool isExtensionCacheSorted;
 	private ChunkPosition[] extensionCPCache;
-	private size_t extensionCPBias;
+	private size_t extensionCPBias, extensionCPLength;
 
 	private void addChunksExtension(const ChunkPosition cam)
 	{
@@ -410,38 +410,42 @@ final class BasicTerrainManager
 		{
 			isExtensionCacheSorted = false;
 
-			enum int cs = 1;
-
-			Vector3i lower;
-			lower.x = cam.x / cs - settings.extendedAddRange.x;
-			lower.y = cam.y / cs - settings.extendedAddRange.y;
-			lower.z = cam.z / cs - settings.extendedAddRange.z;
-			Vector3i upper;
-			upper.x = cam.x / cs + settings.extendedAddRange.x;
-			upper.y = cam.y / cs + settings.extendedAddRange.y;
-			upper.z = cam.z / cs + settings.extendedAddRange.z;
-
-			int c;
-			for(int x = lower.x; x < upper.x; x += cs)
-				for(int y = lower.y; y < upper.y; y += cs)
-					for(int z = lower.z; z < upper.z; z += cs)
-						extensionCPCache[c++] = ChunkPosition(x, y, z);
-
-			float camf = cam.toVec3f.length;
-
-			auto cdCmp(ChunkPosition x, ChunkPosition y)
-			{
-				float x1 = x.toVec3f.length - camf;
-				float y1 = y.toVec3f.length - camf;
-				return x1 < y1;
-			}
-
 			void sortTask(ChunkPosition[] cache)
 			{
 				import std.algorithm.sorting : sort;
-				sort!cdCmp(cache);
-				isExtensionCacheSorted = true;
+
+				ChunkPosition lc = cam;
+				immutable camf = lc.toVec3f().lengthsqr;
+
+				auto cdCmp(ChunkPosition x, ChunkPosition y)
+				{
+					float x1 = x.toVec3f.lengthsqr - camf;
+					float y1 = y.toVec3f.lengthsqr - camf;
+					return x1 < y1;
+				}
+
+				enum int cs = 1;
+
+				Vector3i lower;
+				lower.x = lc.x / cs - settings.extendedAddRange.x;
+				lower.y = lc.y / cs - settings.extendedAddRange.y;
+				lower.z = lc.z / cs - settings.extendedAddRange.z;
+				Vector3i upper;
+				upper.x = lc.x / cs + settings.extendedAddRange.x;
+				upper.y = lc.y / cs + settings.extendedAddRange.y;
+				upper.z = lc.z / cs + settings.extendedAddRange.z;
+
+				int c;
+				for(int x = lower.x; x < upper.x; x += cs)
+					for(int y = lower.y; y < upper.y; y += cs)
+						for(int z = lower.z; z < upper.z; z += cs)
+							extensionCPCache[c++] = ChunkPosition(x, y, z);
+				extensionCPLength = c;
 				extensionCPBias = 0;
+
+				sort!cdCmp(cache[0..extensionCPLength]);
+
+				isExtensionCacheSorted = true;
 			}
 
 			taskPool.put(task(&sortTask, extensionCPCache));
@@ -452,7 +456,7 @@ final class BasicTerrainManager
 		int doAddNum;
 		enum addMax = 5;
 
-		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. $])
+		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. extensionCPLength])
 		{
 			ChunkState* getter = pos in chunkStates;
 			bool absent = getter is null || *getter == ChunkState.deallocated;
@@ -465,7 +469,6 @@ final class BasicTerrainManager
 				BasicChunk chunk = createChunk(pos);
 				chunksTerrain[pos] = chunk;
 				chunkStates[pos] = ChunkState.notLoaded;
-				//chunkDefer.addition(pos, chunk);
 
 				doAddNum++;
 				chunksCreated++;
