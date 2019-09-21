@@ -186,11 +186,19 @@ struct LeafVoxel
 	@property FlowerRotation rotation() const { return getFlowerRotation(v); }
 	@property void rotation(FlowerRotation f) { setFlowerRotation(f, &v); }
 
-	static bool isUpFacing(immutable Voxel v) { return cast(bool)((v.meshData >> 18) & 0x1); }
-	static void setIsUpFacing(ref Voxel v, bool up) { v.meshData = v.meshData & ~(0x1 << 18); v.meshData = v.meshData | ((cast(int)up & 0x1) << 18); }
+	enum Direction
+	{
+		negative90,
+		negative45,
+		zero,
+		positive45
+	}
 
-	@property bool up() const { return isUpFacing(v); }
-	@property void up(bool u) { setIsUpFacing(v, u); }
+	static Direction getDirection(immutable Voxel v) { return cast(Direction)((v.meshData >> 17) & 0x3); }
+	static void setDirection(ref Voxel v, Direction dir) { v.meshData = v.meshData & ~(0x3 << 17); v.meshData = v.meshData | ((cast(int)dir & 0x3) << 17); }
+
+	@property Direction direction() const { return getDirection(v); }
+	@property void direction(Direction u) { setDirection(v, u); }
 }
 
 struct RenderData

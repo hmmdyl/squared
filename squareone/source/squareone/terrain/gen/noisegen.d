@@ -358,10 +358,12 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				return h;
 			}
 
-			float height;
+			/+float height;
 			if(voronoi(Vector2f(realPos.xz) / 64f, simplexSrc).y > 0.5f)
 				height = icicycle;
-			else height = swamp;
+			else height = swamp;+/
+
+			float height = icicycle;
 
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
@@ -427,27 +429,14 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 				GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
 				gv.offset = offset;
-				gv.blockHeightCode = 3;//cast(ubyte)(simplex.eval(realPos.x / 12f + 3265, realPos.z / 12f + 287) * 2f);
+				gv.blockHeightCode = 3;
 				Vector3f colour;
 				colour.x = 27 / 255f;
 				colour.y = 191 / 255f;
 				colour.z = 46 / 255f;
-				/+colour.x = 230 / 255f;
-				colour.y = 180 / 255f;
-				colour.z = 26 / 255f;+/
 				gv.colour = colour;
 
 				smootherOutput.set(x, y, z, gv.v);
-
-				/+LeafVoxel lv = LeafVoxel(Voxel(materials.grassBlade, meshes.leaf, 0, 0));
-				lv.up = false;
-				lv.rotation = cast(FlowerRotation)offset;
-				Vector3f colour;
-				colour.x = 230 / 255f;
-				colour.y = 180 / 255f;
-				colour.z = 26 / 255f;
-				lv.colour = colour;
-				smootherOutput.set(x, y, z, lv.v);+/
 
 				premC--;
 			}

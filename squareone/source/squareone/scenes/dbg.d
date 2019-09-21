@@ -155,10 +155,10 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 10;
+		enum extended = 20;
 		enum remove = extended + 2;
 		enum local = 3;
-		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, remove, remove), Vector3i(local, local, local), resources);
+		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
 		terrainManager = new BasicTerrainManager(moxane, settings);
 		terrainRenderer = new BasicTerrainRenderer(terrainManager);
 
@@ -401,6 +401,8 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Created: %d", scene.terrainManager.chunksCreated);
 			igText("Hibernated: %d", scene.terrainManager.chunksHibernated);
 			igText("Removed: %d", scene.terrainManager.chunksRemoved);
+			igText("Compressed: %d", scene.terrainManager.chunksCompressed);
+			igText("Decompressed: %d", scene.terrainManager.chunksDecompressed);
 			igText("Manage time: %6.3fms", scene.managementTime);
 
 			igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);

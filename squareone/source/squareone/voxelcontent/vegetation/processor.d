@@ -227,14 +227,12 @@ final class VegetationProcessor : IProcessor
 			}
 			
 			glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
-			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector3f.sizeof, result.buffer.vertices.ptr, GL_STATIC_DRAW);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, vertexCompressionBuffer.ptr, GL_STATIC_DRAW);
 			
 			glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, result.buffer.colours.ptr, GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
-			//glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * Vector2f.sizeof, result.buffer.texCoords.ptr, GL_STATIC_DRAW);
 			glBufferData(GL_ARRAY_BUFFER, rd.vertexCount * uint.sizeof, texCoordCompressionBuffer.ptr, GL_STATIC_DRAW);
 			
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -266,7 +264,7 @@ final class VegetationProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(!(lc.type == PassType.scene || lc.type == PassType.scene)) return;
+		if(!(lc.type == PassType.scene || lc.type == PassType.shadow)) return;
 
 		RenderData* rd = getRD(chunk);
 		if(rd is null) return;
@@ -286,13 +284,10 @@ final class VegetationProcessor : IProcessor
 
 		import derelict.opengl3.gl3;
 		glBindBuffer(GL_ARRAY_BUFFER, rd.vertex);
-		//glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
 		glVertexAttribPointer(0, 4, GL_UNSIGNED_INT_2_10_10_10_REV, false, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.colour);
 		glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, rd.texCoords);
-		//glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, null);
-		//glVertexAttribPointer(2, 2, GL_UNSIGNED_SHORT, false, 0, null);
 		glVertexAttribIPointer(2, 2, GL_UNSIGNED_SHORT, 0, null);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -415,7 +410,6 @@ private final class Mesher
 			if(mesh.meshType == MeshType.grass)
 			{
 				GrassVoxel gv = GrassVoxel(voxel);
-				// TODO: implement height
 				float height = gv.blockHeight;
 				colourBytes[3] = material.grassTexture;
 
@@ -445,9 +439,26 @@ private final class Mesher
 			{
 				LeafVoxel lv = LeafVoxel(voxel);
 
+				float rotation;
+				final switch(lv.direction) with(LeafVoxel.Direction)
+				{
+					case negative90:
+						rotation = -45f;
+						break;
+					case negative45:
+						rotation = 0f;
+						break;
+					case zero:
+						rotation = 45f;
+						break;
+					case positive45:
+						rotation = 90f;
+						break;
+				}
+
 				Matrix4f rotMat =
 					rotationMatrix(Axis.y, degtorad(lv.rotation * (360f / 8f))) *
-					rotationMatrix(Axis.x, degtorad(lv.up ? 0 : 90f)) *
+					rotationMatrix(Axis.x, degtorad(rotation)) *
 					translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
 				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
 
@@ -470,7 +481,6 @@ private final class Mesher
 			buffer.reset;
 			processor.meshBufferPool.give(buffer);
 			buffer = null;
-			//order.chunk.meshBlocking(false, processor.id_);
 
 			MeshResult mr;
 			mr.order = order;
@@ -487,7 +497,7 @@ private final class Mesher
 	}
 }
 
-private enum bufferMaxVertices = 80_192;
+private enum bufferMaxVertices = 2 ^^ 14;
 
 private final class MeshBuffer
 {
