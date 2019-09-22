@@ -15,6 +15,7 @@ import std.parallelism;
 import optional;
 import containers;
 import core.thread;
+import core.cpuid : threadsPerCPU, coresPerCPU;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -162,6 +163,11 @@ final class BasicTerrainManager
 	ChunkInteraction chunkInteraction;
 
 	uint chunksCreated, chunksHibernated, chunksRemoved, chunksCompressed, chunksDecompressed;
+	uint noiseCompleted, meshOrders;
+
+	private StopWatch oneSecondSw;
+	private uint noiseCompletedCounter;
+	uint noiseCompletedSecond;
 
 	this(Moxane moxane, BasicTMSettings settings)
 	{
@@ -172,9 +178,14 @@ final class BasicTerrainManager
 		voxelInteraction = new VoxelInteraction(this);
 		chunkInteraction = new ChunkInteraction(this);
 
-		noiseGeneratorManager = new NoiseGeneratorManager(resources, 4, () => new DefaultNoiseGenerator(moxane), 0);
+		import std.stdio;
+		writeln(threadsPerCPU, " ", coresPerCPU);
+
+		noiseGeneratorManager = new NoiseGeneratorManager(resources, coresPerCPU, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
+
+		oneSecondSw.start;
 	}
 
 	~this()
@@ -203,6 +214,13 @@ final class BasicTerrainManager
 		{
 			manageChunkState(bc);
 			removeChunkHandler(bc, cp);
+		}
+
+		if(oneSecondSw.peek.total!"seconds"() >= 1)
+		{
+			oneSecondSw.reset;
+			noiseCompletedSecond = noiseCompletedCounter;
+			noiseCompletedCounter = 0;
 		}
 	}
 
@@ -355,7 +373,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 5;
+		enum addMax = 10;
 
 		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. extensionCPLength])
 		{
@@ -392,6 +410,9 @@ final class BasicTerrainManager
 				chunk.needsMesh = true;
 				chunk.dataLoadCompleted = false;
 				chunk.hasData = true;
+
+				noiseCompleted++;
+				noiseCompletedCounter++;
 			}
 
 			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
@@ -416,6 +437,8 @@ final class BasicTerrainManager
 					}
 					foreach(int proc; 0 .. resources.processorCount)
 						resources.getProcessor(proc).meshChunk(MeshOrder(chunk, true, true, false));
+
+					meshOrders++;
 				}
 				chunk.needsMesh = false;
 			}
