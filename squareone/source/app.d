@@ -8,6 +8,9 @@ import moxane.ui;
 import squareone.scenes.dbg;
 import moxane.graphics.imgui;
 
+import core.cpuid;
+import std.conv : to;
+
 import dlib.math;
 
 extern(C) export ulong NvOptimusEnablement = 0x01;
@@ -45,6 +48,13 @@ void main()
 	entityManager.add(new UISystem(moxane, entityManager));
 
 	sceneManager.current = new DebugGameScene(moxane, sceneManager, null);
+
+	Log log = moxane.services.get!Log;
+	log.write(Log.Severity.debug_, "Vendor: " ~ vendor);
+	log.write(Log.Severity.debug_, "Processor: " ~ processor);
+	log.write(Log.Severity.debug_, "Hyperthreading: " ~ to!string(hyperThreading));
+	log.write(Log.Severity.debug_, "Threads/CPU: " ~ to!string(threadsPerCPU));
+	log.write(Log.Severity.debug_, "Cores/CPU: " ~ to!string(coresPerCPU));
 
 	moxane.run;
 }

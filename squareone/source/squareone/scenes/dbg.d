@@ -10,6 +10,8 @@ import moxane.graphics.postprocesses.fog;
 import moxane.graphics.light;
 import moxane.graphics.transformation;
 import moxane.graphics.imgui;
+import moxane.graphics.texture;
+import moxane.ui;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
@@ -66,6 +68,8 @@ final class DebugGameScene : Scene
 	DirectionalLight dl;
 
 	Renderer renderer;
+
+	Entity crosshair;
 
 	private void initialise()
 	{
@@ -155,7 +159,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 28;
+		enum extended = 20;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -205,9 +209,19 @@ final class DebugGameScene : Scene
 		playerInventory = new PlayerInventorySystem(moxane, renderer, null);
 		PlayerInventory* pi = playerEntity.createComponent!PlayerInventory;
 		PlayerInventoryLocal* pil = playerEntity.createComponent!PlayerInventoryLocal;
-		pil.isOpen = false;
+		pil.isOpen = true;
 		//renderer.uiRenderables ~= playerInventory;
 		playerInventory.target = playerEntity;
+
+		crosshair = new Entity(em);
+		Transform* crosshairT = crosshair.createComponent!Transform;
+		*crosshairT = Transform.init;
+		UIPicture* crosshairPic = crosshair.createComponent!UIPicture;
+		crosshairPic.offset = win.framebufferSize / 2 - 32;
+		crosshairPic.dimensions = Vector2i(33, 33);
+		crosshairPic.texture = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/crosshair_3.png"), Texture2D.ConstructionInfo.standard);
+	
+		em.add(crosshair);
 	}
 
 	private void setCamera(Vector2i size)

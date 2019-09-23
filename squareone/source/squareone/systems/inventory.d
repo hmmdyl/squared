@@ -27,6 +27,7 @@ import dlib.math.vector : Vector2i, Vector3f;
 	/// Encompassing family
 	@property TypeInfo family();
 
+	/// Render tile
 	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);
 
 	void onSelect(IItemType type, ItemStack stack);
