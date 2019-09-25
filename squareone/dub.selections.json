@@ -1,6 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"bindbc-loader": "0.2.1",
+		"bindbc-newton": "0.1.0",
 		"bolts": "0.11.1",
 		"cerealed": "0.6.11",
 		"colorize": "1.0.5",
