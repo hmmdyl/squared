@@ -3,6 +3,8 @@ import std.stdio;
 import moxane.core;
 import moxane.graphics.renderer;
 import moxane.graphics.sprite;
+import moxane.graphics.standard;
+import moxane.graphics.ecs;
 import moxane.io;
 import moxane.ui;
 import squareone.scenes.dbg;
@@ -46,6 +48,12 @@ void main()
 	r.uiRenderables ~= imguiRenderer;
 
 	entityManager.add(new UISystem(moxane, entityManager));
+
+	StandardRenderer sr = new StandardRenderer(moxane);
+	moxane.services.register!StandardRenderer(sr);
+	r.addSceneRenderable(sr);
+	auto ers = new EntityRenderSystem(moxane);
+	moxane.services.register!EntityRenderSystem(ers);
 
 	sceneManager.current = new DebugGameScene(moxane, sceneManager, null);
 

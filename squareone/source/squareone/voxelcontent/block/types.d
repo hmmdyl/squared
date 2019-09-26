@@ -1,5 +1,6 @@
 module squareone.voxelcontent.block.types;
 
+import moxane.physics;
 import squareone.voxel;
 import squareone.voxelcontent.block.processor;
 
@@ -36,6 +37,9 @@ struct RenderData
 
 	float chunkMax, fit10BitScale;
 
+	Body rigidBody;
+	Collider collider;
+
 	void create()
 	{
 		import derelict.opengl3.gl3 : glGenBuffers;
@@ -50,5 +54,8 @@ struct RenderData
 		import derelict.opengl3.gl3 : glDeleteBuffers;
 		glDeleteBuffers(3, buffers.ptr);
 		vertexCount = 0;
+
+		delete rigidBody;
+		delete collider;
 	}
 }

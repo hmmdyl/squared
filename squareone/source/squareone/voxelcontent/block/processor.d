@@ -10,6 +10,8 @@ import moxane.graphics.texture : Texture2DArray, Filter;
 import moxane.graphics.log;
 import moxane.utils.pool;
 
+import moxane.physics;
+
 import dlib.math;
 
 import std.container.dlist;
@@ -205,6 +207,14 @@ final class BlockProcessor : IProcessor
 				rd.create();
 				chunk.renderData[id_] = cast(void*)rd;
 			}
+
+			if(rd.collider !is null)
+			{
+				destroy(rd.collider);
+				destroy(rd.rigidBody);
+			}
+			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], false);
+			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, upItem.order.chunk.transform);
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 

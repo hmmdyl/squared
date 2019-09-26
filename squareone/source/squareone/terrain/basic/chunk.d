@@ -4,7 +4,7 @@ import squareone.voxel.chunk;
 import squareone.voxel.voxel;
 import squareone.terrain.basic.manager;
 import dlib.math.vector;
-import moxane.graphics.transformation;
+import moxane.core.transformation;
 
 struct BasicChunk 
 {

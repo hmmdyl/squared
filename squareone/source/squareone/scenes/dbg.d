@@ -3,15 +3,18 @@ module squareone.scenes.dbg;
 import moxane.core;
 import moxane.io;
 import moxane.graphics.renderer;
+import moxane.graphics.ecs;
 import moxane.graphics.firstperson;
+import moxane.graphics.standard;
 import moxane.graphics.sprite;
 import moxane.graphics.postprocess;
 import moxane.graphics.postprocesses.fog;
 import moxane.graphics.light;
-import moxane.graphics.transformation;
 import moxane.graphics.imgui;
 import moxane.graphics.texture;
+import moxane.graphics.assimp;
 import moxane.ui;
+import moxane.physics;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
@@ -70,6 +73,11 @@ final class DebugGameScene : Scene
 	Renderer renderer;
 
 	Entity crosshair;
+	Entity physicsTest;
+
+	PhysicsSystem physicsSystem;
+	Material material;
+	Vector3f[] verts, normals;
 
 	private void initialise()
 	{
@@ -159,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 20;
+		enum extended = 5;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -222,6 +230,29 @@ final class DebugGameScene : Scene
 		crosshairPic.texture = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/crosshair_3.png"), Texture2D.ConstructionInfo.standard);
 	
 		em.add(crosshair);
+
+		physicsSystem = new PhysicsSystem(moxane, em);
+		physicsSystem.gravity = Vector3f(0, -9.81, 0);
+		em.add(physicsSystem);
+		moxane.services.register!PhysicsSystem(physicsSystem);
+
+		//Collider box = new BoxCollider(physicsSystem, Vector3f(50, 1, 50));
+		//Body ground = new Body(box, Body.Mode.dynamic, physicsSystem);
+
+		auto sr = moxane.services.get!StandardRenderer;
+
+		material = new Material(sr.standardMaterialGroup);
+		material.diffuse = Vector3f(1f, 0.5f, 0.9f);
+		material.specular = Vector3f(0f, 0f, 0f);
+		material.normal = null;
+		material.depthWrite = true;
+		material.hasLighting = true;
+		material.castsShadow = true;
+
+		import std.experimental.allocator.gc_allocator;
+		loadMesh!(Vector3f, Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts, normals);
+
+		//addPhysicsTest;
 	}
 
 	private void setCamera(Vector2i size)
@@ -248,6 +279,33 @@ final class DebugGameScene : Scene
 
 	override void removedCurrent(Scene overwroteBy)
 	{}
+
+	private void addPhysicsTest()
+	{
+		auto sr = moxane.services.get!StandardRenderer;
+		StaticModel sm = new StaticModel(sr, material, verts, normals);
+		sm.localTransform = Transform.init;
+
+		auto em = moxane.services.get!EntityManager;
+		auto ers = moxane.services.get!EntityRenderSystem;
+
+		Entity pt = new Entity(em);
+		em.add(pt);
+		Transform* transform = pt.createComponent!Transform;
+		*transform = Transform.init;
+		transform.position = camera.position;
+		RenderComponent* rc = pt.createComponent!RenderComponent;
+		ers.addModel(sm, *rc);
+
+		PhysicsComponent* phys = pt.createComponent!PhysicsComponent;
+		Collider box = //new BoxCollider(physicsSystem, Vector3f(1, 1, 1));
+			new SphereCollider(physicsSystem, 1);
+		Body body_ = new Body(box, Body.Mode.dynamic, physicsSystem, *transform);
+		body_.gravity = true;
+		body_.mass(10f, Vector3f(1, 1, 1));
+		phys.collider = box;
+		phys.rigidBody = body_;
+	}
 
 	private Vector2d prevCursor = Vector2d(0, 0);
 
@@ -310,6 +368,7 @@ final class DebugGameScene : Scene
 			{
 				if(shouldPlace)
 				{
+					addPhysicsTest;
 					if(pr.side == VoxelSide.nx) pr.blockPosition.x -= toolSize;
 					if(pr.side == VoxelSide.px) pr.blockPosition.x += toolSize;
 					if(pr.side == VoxelSide.ny) pr.blockPosition.y -= toolSize;
@@ -342,6 +401,9 @@ final class DebugGameScene : Scene
 		terrainManager.update;
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
+
+		//Transform* physicsTestTransform = physicsTest.get!Transform;
+		//PhysicsComponent* pc = physicsTest.get!PhysicsComponent;
 
 		buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 

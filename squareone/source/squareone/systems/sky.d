@@ -6,7 +6,6 @@ import moxane.graphics.renderer;
 import moxane.graphics.assimp;
 import moxane.graphics.effect;
 import moxane.graphics.texture;
-import moxane.graphics.transformation;
 import moxane.graphics.imgui;
 import moxane.network.semantic;
 

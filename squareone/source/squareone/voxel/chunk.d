@@ -1,8 +1,8 @@
 module squareone.voxel.chunk;
 
+import moxane.core.transformation;
 import squareone.voxel.resources;
 import squareone.voxel.voxel;
-import moxane.graphics.transformation;
 
 import dlib.math.vector;
 import std.math : floor;

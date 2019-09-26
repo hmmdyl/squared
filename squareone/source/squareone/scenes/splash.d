@@ -2,7 +2,6 @@ module squareone.scenes.splash;
 
 import moxane.core;
 import moxane.core.asset;
-import moxane.graphics.transformation;
 import moxane.graphics.texture;
 import moxane.ui;
 import moxane.io : Window;

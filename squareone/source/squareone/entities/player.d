@@ -1,7 +1,6 @@
 module squareone.entities.player;
 
 import moxane.core;
-import moxane.graphics.transformation;
 import moxane.io;
 import moxane.graphics.renderer;
 import moxane.graphics.firstperson;
