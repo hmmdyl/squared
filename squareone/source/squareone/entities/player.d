@@ -5,12 +5,14 @@ import moxane.io;
 import moxane.graphics.renderer;
 import moxane.graphics.firstperson;
 import moxane.network.semantic;
+import moxane.physics;
 
-import std.math : cos, sin;
+import std.math : sin, cos;
+import std.algorithm.comparison : max;
 import dlib.math.vector : Vector2d, Vector3f;
 import dlib.math.utils : degtorad;
 
-@safe Entity createPlayer(EntityManager em, float walkSpeed, float headRotXMax, float headRotXMin, float headMovementSpeed, string[] bindings, Camera camera = null)
+@safe Entity createPlayer(EntityManager em, float walkSpeed, float headRotXMax, float headRotXMin, float headMovementSpeed, string[] bindings, PhysicsSystem physicsSystem, Camera camera = null)
 {
 	Entity e = new Entity(em);
 	em.add(e);
@@ -19,6 +21,7 @@ import dlib.math.utils : degtorad;
 	PlayerComponent* pc = e.createComponent!PlayerComponent;
 
 	*transform = Transform.init;
+	transform.position.y = 10;
 	pc.headRotation = transform.rotation;
 	pc.walkSpeed = walkSpeed;
 	pc.headRotXMax = headRotXMax;
@@ -26,6 +29,21 @@ import dlib.math.utils : degtorad;
 	pc.headMovementSpeed = headMovementSpeed;
 	pc.bindings = bindings;
 	pc.camera = null;
+
+	float radius = 0.5f;
+	float height = 1.9f;
+	float stepHeight = height / 3f;
+	float scale = 3.0f;
+	height = max(height - 2.0f * radius / scale, 0.1f);
+
+	float mass = 100f;
+
+	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
+	phys.collider = new CapsuleCollider(physicsSystem, radius / scale, radius / scale, height);
+	phys.collider.scale = Vector3f(1, scale, scale);
+	phys.rigidBody = new PlayerBody(phys.collider, physicsSystem, *transform);
+	phys.rigidBody.massProperties(mass);
+	phys.rigidBody.collidable = true;
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -101,10 +119,10 @@ enum PlayerBindingName
 			Vector2d cursorMovement = input.mouseMove;
 			pc.headRotation.x += cast(float)cursorMovement.y * cast(float)moxane.deltaTime * pc.headMovementSpeed;
 			pc.headRotation.y += cast(float)cursorMovement.x * cast(float)moxane.deltaTime * pc.headMovementSpeed;
-			tc.rotation = pc.headRotation;
+			//tc.rotation = pc.headRotation;
 
 			if(pc.headRotation.x > pc.headRotXMax) pc.headRotation.x = pc.headRotXMax;
-			if(pc.headRotation.x < pc.headRotXMin) pc.headRotation.x = pc.headRotXMin;
+			if(pc.headRotation.x < pc.headRotXMin) pc.headRotation.x = pc.headRotXMin; 
 
 			if(pc.headRotation.y > 360f) pc.headRotation.y -= 360f;
 			if(pc.headRotation.y < 0f) pc.headRotation.y += 360f;
@@ -121,20 +139,32 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
-			movement *= moxane.deltaTime;
+			PhysicsComponent* phys = entity.get!PhysicsComponent;
+			phys.rigidBody.freeze = false;
+
+			if(phys is null) movement *= moxane.deltaTime;
+			Vector3f force = Vector3f(0, 0, 0);
 
 			float yrot = degtorad(tc.rotation.y);
-			tc.position.x += cos(yrot) * movement.x;
-			tc.position.z += sin(yrot) * movement.x;
+			force.x += cos(yrot) * movement.x;
+			force.z += sin(yrot) * movement.x;
 
-			tc.position.x += sin(yrot) * movement.z;
-			tc.position.z -= cos(yrot) * movement.z;
+			force.x += sin(yrot) * movement.z;
+			force.z -= cos(yrot) * movement.z;
 
-			tc.position.y += movement.y;
+			force.y += movement.y;
+
+			if(phys is null)
+				tc.position = force;
+			else
+			{
+				phys.rigidBody.velo = (force * Vector3f(100, 100, 100));
+				//phys.rigidBody.setForce;
+			}
 
 			if(pc.camera !is null)
 			{
-				pc.camera.rotation = pc.headRotation;
+				pc.camera.rotation = tc.rotation;
 				pc.camera.position = tc.position;
 				pc.camera.buildView;
 			}

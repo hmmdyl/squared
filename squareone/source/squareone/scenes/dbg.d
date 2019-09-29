@@ -202,6 +202,11 @@ final class DebugGameScene : Scene
 		im.setBinding("invVoxelIncSize", Keys.equal);
 		im.setBinding("invVoxelDecSize", Keys.minus);
 
+		physicsSystem = new PhysicsSystem(moxane, em);
+		physicsSystem.gravity = Vector3f(0, -9.81, 0);
+		em.add(physicsSystem);
+		moxane.services.register!PhysicsSystem(physicsSystem);
+
 		string[] playerKeyBindings = new string[](PlayerBindingName.length);
 		playerKeyBindings[PlayerBindingName.walkForward] = "playerWalkForward";
 		playerKeyBindings[PlayerBindingName.walkBackward] = "playerWalkBackward";
@@ -209,7 +214,7 @@ final class DebugGameScene : Scene
 		playerKeyBindings[PlayerBindingName.strafeRight] = "playerStrafeRight";
 		playerKeyBindings[PlayerBindingName.debugUp] = "debugUp";
 		playerKeyBindings[PlayerBindingName.debugDown] = "debugDown";
-		playerEntity = createPlayer(em, 2f, 90f, -90f, 10f, playerKeyBindings);
+		playerEntity = createPlayer(em, 5f, 90f, -90f, 10f, playerKeyBindings, physicsSystem);
 		PlayerComponent* pc = playerEntity.get!PlayerComponent;
 		pc.camera = camera;
 		pc.allowInput = true;
@@ -230,11 +235,6 @@ final class DebugGameScene : Scene
 		crosshairPic.texture = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/crosshair_3.png"), Texture2D.ConstructionInfo.standard);
 	
 		em.add(crosshair);
-
-		physicsSystem = new PhysicsSystem(moxane, em);
-		physicsSystem.gravity = Vector3f(0, -9.81, 0);
-		em.add(physicsSystem);
-		moxane.services.register!PhysicsSystem(physicsSystem);
 
 		//Collider box = new BoxCollider(physicsSystem, Vector3f(50, 1, 50));
 		//Body ground = new Body(box, Body.Mode.dynamic, physicsSystem);
@@ -356,6 +356,12 @@ final class DebugGameScene : Scene
 
 		if(toolSize < 1) toolSize = 1;
 		if(toolSize > 4) toolSize = 4;
+
+		if(keyCapture)
+		{
+			PhysicsComponent* p = playerEntity.get!PhysicsComponent;
+			p.rigidBody.mass(80f, Vector3f(1, 1, 1));
+		}
 
 		if((shouldBreak || shouldPlace) && keyCapture)
 		{
