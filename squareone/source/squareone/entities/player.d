@@ -21,7 +21,7 @@ import dlib.math.utils : degtorad;
 	PlayerComponent* pc = e.createComponent!PlayerComponent;
 
 	*transform = Transform.init;
-	transform.position.y = 10;
+	transform.position.y = 20;
 	pc.headRotation = transform.rotation;
 	pc.walkSpeed = walkSpeed;
 	pc.headRotXMax = headRotXMax;
@@ -41,9 +41,12 @@ import dlib.math.utils : degtorad;
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
 	phys.collider = new CapsuleCollider(physicsSystem, radius / scale, radius / scale, height);
 	phys.collider.scale = Vector3f(1, scale, scale);
-	phys.rigidBody = new PlayerBody(phys.collider, physicsSystem, *transform);
+	phys.rigidBody = new Body(phys.collider, Body.Mode.dynamic, physicsSystem, *transform);
+	phys.rigidBody.upConstraint;
 	phys.rigidBody.massProperties(mass);
-	phys.rigidBody.collidable = true;
+	//phys.rigidBody.collidable = true;
+	phys.rigidBody.dampenPlayer = true;
+	//phys.rigidBody.gravity = true;
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -158,7 +161,10 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-				phys.rigidBody.velo = (force * Vector3f(100, 100, 100));
+				//phys.rigidBody.transform.position +force;
+				//phys.rigidBody.transform.rotation = Vector3f(0, 0, 0);
+				//phys.rigidBody.updateMatrix;
+				phys.rigidBody.velo = (force * Vector3f(1, 1, 1));
 				//phys.rigidBody.setForce;
 			}
 
