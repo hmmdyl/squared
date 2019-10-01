@@ -167,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 5;
+		enum extended = 8;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -293,14 +293,14 @@ final class DebugGameScene : Scene
 		em.add(pt);
 		Transform* transform = pt.createComponent!Transform;
 		*transform = Transform.init;
-		transform.position = camera.position;
+		transform.position = camera.position + Vector3f(0, 10, 0);
 		RenderComponent* rc = pt.createComponent!RenderComponent;
 		ers.addModel(sm, *rc);
 
 		PhysicsComponent* phys = pt.createComponent!PhysicsComponent;
 		Collider box = //new BoxCollider(physicsSystem, Vector3f(1, 1, 1));
 			new SphereCollider(physicsSystem, 1);
-		Body body_ = new Body(box, Body.Mode.dynamic, physicsSystem, *transform);
+		Body body_ = new Body(box, Body.Mode.dynamic, physicsSystem, AtomicTransform(*transform));
 		body_.gravity = true;
 		body_.mass(10f, Vector3f(1, 1, 1));
 		phys.collider = box;

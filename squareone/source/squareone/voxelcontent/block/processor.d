@@ -192,8 +192,17 @@ final class BlockProcessor : IProcessor
 
 			if(upItem.buffer is null)
 			{
-				removeChunk(upItem.order.chunk);
 				upItem.order.chunk.meshBlocking(false, id_);
+				if(!isRdNull(chunk))
+				{
+					RenderData* rd = getRd(chunk);
+					if(rd.collider !is null)
+					{
+						destroy(rd.collider);
+						destroy(rd.rigidBody);
+					}
+					rd.destroy;
+				}
 				continue;
 			}
 
@@ -213,8 +222,8 @@ final class BlockProcessor : IProcessor
 				destroy(rd.collider);
 				destroy(rd.rigidBody);
 			}
-			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], false);
-			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, upItem.order.chunk.transform);
+			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], true);
+			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 

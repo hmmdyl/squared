@@ -34,7 +34,7 @@ final class FluidProcessor : IProcessor
 	private Pool!(RenderData*) renderDataPool;
 	private Pool!(MeshBuffer) meshBufferPool;
 	private Channel!MeshResult meshResults;
-	private enum mesherCount = 1;
+	private enum mesherCount = 2;
 	private size_t meshBarrel;
 	private Mesher[] meshers;
 

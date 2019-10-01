@@ -41,11 +41,13 @@ import dlib.math.utils : degtorad;
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
 	phys.collider = new CapsuleCollider(physicsSystem, radius / scale, radius / scale, height);
 	phys.collider.scale = Vector3f(1, scale, scale);
-	phys.rigidBody = new Body(phys.collider, Body.Mode.dynamic, physicsSystem, *transform);
+	phys.rigidBody = new Body(phys.collider, Body.Mode.kinematic, physicsSystem, AtomicTransform(*transform));
 	phys.rigidBody.upConstraint;
-	phys.rigidBody.massProperties(mass);
-	//phys.rigidBody.collidable = true;
-	phys.rigidBody.dampenPlayer = true;
+	//phys.rigidBody.angularDamping = Vector3f(0, 0, 0);
+	//phys.rigidBody.linearDamping = 0.000000001f;
+	//phys.rigidBody.massProperties(mass);
+	phys.rigidBody.mass(mass, Vector3f(1, 1, 1));
+	phys.rigidBody.collidable = true;
 	//phys.rigidBody.gravity = true;
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
@@ -122,7 +124,6 @@ enum PlayerBindingName
 			Vector2d cursorMovement = input.mouseMove;
 			pc.headRotation.x += cast(float)cursorMovement.y * cast(float)moxane.deltaTime * pc.headMovementSpeed;
 			pc.headRotation.y += cast(float)cursorMovement.x * cast(float)moxane.deltaTime * pc.headMovementSpeed;
-			//tc.rotation = pc.headRotation;
 
 			if(pc.headRotation.x > pc.headRotXMax) pc.headRotation.x = pc.headRotXMax;
 			if(pc.headRotation.x < pc.headRotXMin) pc.headRotation.x = pc.headRotXMin; 
@@ -161,16 +162,13 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-				//phys.rigidBody.transform.position +force;
-				//phys.rigidBody.transform.rotation = Vector3f(0, 0, 0);
-				//phys.rigidBody.updateMatrix;
-				phys.rigidBody.velo = (force * Vector3f(1, 1, 1));
-				//phys.rigidBody.setForce;
+				phys.rigidBody.velocity = (force * Vector3f(1, 1, 1));
+				phys.rigidBody.integrateVelocity(moxane.deltaTime);
 			}
 
 			if(pc.camera !is null)
 			{
-				pc.camera.rotation = tc.rotation;
+				pc.camera.rotation = pc.headRotation;
 				pc.camera.position = tc.position;
 				pc.camera.buildView;
 			}

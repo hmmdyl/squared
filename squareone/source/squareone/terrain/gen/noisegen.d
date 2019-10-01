@@ -363,7 +363,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				height = icicycle;
 			else height = swamp;+/
 
-			float height = icicycle;
+			float height = mountains;
 
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
