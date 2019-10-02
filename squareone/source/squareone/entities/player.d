@@ -39,16 +39,8 @@ import dlib.math.utils : degtorad;
 	float mass = 100f;
 
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
-	phys.collider = new CapsuleCollider(physicsSystem, radius / scale, radius / scale, height);
-	phys.collider.scale = Vector3f(1, scale, scale);
-	phys.rigidBody = new Body(phys.collider, Body.Mode.kinematic, physicsSystem, AtomicTransform(*transform));
+	phys.rigidBody = new PlayerBody(physicsSystem, 0.5f, 1.9f, 100f, AtomicTransform(*transform));
 	phys.rigidBody.upConstraint;
-	//phys.rigidBody.angularDamping = Vector3f(0, 0, 0);
-	//phys.rigidBody.linearDamping = 0.000000001f;
-	//phys.rigidBody.massProperties(mass);
-	phys.rigidBody.mass(mass, Vector3f(1, 1, 1));
-	phys.rigidBody.collidable = true;
-	//phys.rigidBody.gravity = true;
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -162,8 +154,8 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-				phys.rigidBody.velocity = (force * Vector3f(1, 1, 1));
-				phys.rigidBody.integrateVelocity(moxane.deltaTime);
+				PlayerBody pb = cast(PlayerBody)phys.rigidBody;
+				pb.update(moxane.deltaTime);
 			}
 
 			if(pc.camera !is null)
