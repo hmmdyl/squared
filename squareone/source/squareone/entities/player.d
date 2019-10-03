@@ -21,6 +21,7 @@ import dlib.math.utils : degtorad;
 	PlayerComponent* pc = e.createComponent!PlayerComponent;
 
 	*transform = Transform.init;
+	transform.position.x = 10;
 	transform.position.y = 20;
 	pc.headRotation = transform.rotation;
 	pc.walkSpeed = walkSpeed;
@@ -39,8 +40,7 @@ import dlib.math.utils : degtorad;
 	float mass = 100f;
 
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
-	phys.rigidBody = new PlayerBody(physicsSystem, 0.5f, 1.9f, 100f, AtomicTransform(*transform));
-	phys.rigidBody.upConstraint;
+	phys.rigidBody = new KinematicPlayerBody(physicsSystem, 0.5f, 1.9f, 100f, AtomicTransform(*transform));
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -108,11 +108,11 @@ enum PlayerBindingName
 		PlayerComponent* pc = entity.get!PlayerComponent;
 		if(pc is null) return;
 
+		Transform* tc = entity.get!Transform;
+		if(tc is null) return;
+
 		if(pc.allowInput && input.hideCursor)
 		{
-			Transform* tc = entity.get!Transform;
-			if(tc is null) return;
-
 			Vector2d cursorMovement = input.mouseMove;
 			pc.headRotation.x += cast(float)cursorMovement.y * cast(float)moxane.deltaTime * pc.headMovementSpeed;
 			pc.headRotation.y += cast(float)cursorMovement.x * cast(float)moxane.deltaTime * pc.headMovementSpeed;
@@ -136,7 +136,6 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
 			PhysicsComponent* phys = entity.get!PhysicsComponent;
-			phys.rigidBody.freeze = false;
 
 			if(phys is null) movement *= moxane.deltaTime;
 			Vector3f force = Vector3f(0, 0, 0);
@@ -154,16 +153,24 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-				PlayerBody pb = cast(PlayerBody)phys.rigidBody;
-				pb.update(moxane.deltaTime);
-			}
+				KinematicPlayerBody kpb = cast(KinematicPlayerBody)phys.rigidBody;
 
-			if(pc.camera !is null)
-			{
-				pc.camera.rotation = pc.headRotation;
-				pc.camera.position = tc.position;
-				pc.camera.buildView;
+				Vector3f i = Vector3f(0, -9.81 * phys.rigidBody.mass[0] * moxane.deltaTime, 0);
+				kpb.impulse += i;
+				
+				kpb.update(moxane.deltaTime);
+				kpb.impulse = Vector3f(0, force.y * 100, 0);
+
+				phys.rigidBody.getTransform;
+				tc.position = phys.rigidBody.transform.position;
 			}
+		}
+	
+		if(pc.camera !is null)
+		{
+			pc.camera.rotation = pc.headRotation;
+			pc.camera.position = tc.position;
+			pc.camera.buildView;
 		}
 	}
 }

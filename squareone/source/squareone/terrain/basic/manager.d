@@ -12,7 +12,6 @@ import dlib.geometry : Frustum, Sphere;
 import std.math : sqrt;
 import std.datetime.stopwatch;
 import std.parallelism;
-import optional;
 import containers;
 import core.thread;
 import core.cpuid : threadsPerCPU, coresPerCPU;

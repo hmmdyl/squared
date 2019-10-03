@@ -224,6 +224,7 @@ final class BlockProcessor : IProcessor
 			}
 			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], true);
 			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
+			rd.rigidBody.mass(1f, Vector3f(1, 1, 1));
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 

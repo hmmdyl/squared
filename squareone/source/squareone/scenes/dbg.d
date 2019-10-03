@@ -167,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 8;
+		enum extended = 3;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -252,7 +252,7 @@ final class DebugGameScene : Scene
 		import std.experimental.allocator.gc_allocator;
 		loadMesh!(Vector3f, Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts, normals);
 
-		//addPhysicsTest;
+		addPhysicsTest;
 	}
 
 	private void setCamera(Vector2i size)
@@ -293,7 +293,7 @@ final class DebugGameScene : Scene
 		em.add(pt);
 		Transform* transform = pt.createComponent!Transform;
 		*transform = Transform.init;
-		transform.position = camera.position + Vector3f(0, 10, 0);
+		transform.position = Vector3f(10, 2, 0);
 		RenderComponent* rc = pt.createComponent!RenderComponent;
 		ers.addModel(sm, *rc);
 
@@ -357,10 +357,13 @@ final class DebugGameScene : Scene
 		if(toolSize < 1) toolSize = 1;
 		if(toolSize > 4) toolSize = 4;
 
-		if(keyCapture)
+		PhysicsComponent* phys = playerEntity.get!PhysicsComponent;
+		KinematicPlayerBody kpb;
+		kpb = cast(KinematicPlayerBody)phys.rigidBody;
+		if(!keyCapture)
 		{
-			PhysicsComponent* p = playerEntity.get!PhysicsComponent;
-			p.rigidBody.mass(80f, Vector3f(1, 1, 1));
+			phys.rigidBody.transform.position.y = 20f;
+			phys.rigidBody.updateMatrix;
 		}
 
 		if((shouldBreak || shouldPlace) && keyCapture)
@@ -421,14 +424,12 @@ Delta: %0.6fs
 Chunks: %d
 Man. time: %0.6fms
 						
-Render Time: %0.6fms
-Upload: %0.6fms
-True: %0.6fms", 
+Contacts: %d", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
 						terrainManager.numChunks, managementTime,
-						terrainRenderer.renderTime * 1_000f, terrainRenderer.prepareTime * 1000f, (terrainRenderer.renderTime - terrainRenderer.prepareTime) * 1000f);
+						kpb.contactCount);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}

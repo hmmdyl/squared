@@ -330,6 +330,8 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 			auto simplexSrc = (float x, float y) => simplex.eval(x, y);
 
+			float flat() { return 0f; }
+
 			float icicycle()
 			{
 				float i = redistributeNoise(multiNoise(simplexSrc, realPos.x, realPos.z, 16f, 16), 8f) * 8f;
@@ -363,7 +365,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				height = icicycle;
 			else height = swamp;+/
 
-			float height = mountains;
+			float height = flat;
 
 			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
 			if(outcropping)
