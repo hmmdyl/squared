@@ -159,7 +159,7 @@ enum PlayerBindingName
 				kpb.impulse += i;
 				
 				kpb.update(moxane.deltaTime);
-				kpb.impulse = Vector3f(0, force.y * 100, 0);
+				kpb.impulse = Vector3f(0, force.y * 10, 0);
 
 				phys.rigidBody.getTransform;
 				tc.position = phys.rigidBody.transform.position;
