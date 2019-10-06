@@ -37,10 +37,10 @@ import dlib.math.utils : degtorad;
 	float scale = 3.0f;
 	height = max(height - 2.0f * radius / scale, 0.1f);
 
-	float mass = 100f;
+	float mass = 10f;
 
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
-	phys.rigidBody = new KinematicPlayerBody(physicsSystem, 0.5f, 1.9f, 100f, AtomicTransform(*transform));
+	phys.rigidBody = new DynamicPlayerBody(physicsSystem, 0.5f, 1.9f, 100f, AtomicTransform(*transform));
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -55,6 +55,7 @@ enum PlayerBindingName
 	strafeRight,
 	debugUp,
 	debugDown,
+	jump,
 	length
 }
 
@@ -111,6 +112,9 @@ enum PlayerBindingName
 		Transform* tc = entity.get!Transform;
 		if(tc is null) return;
 
+		PhysicsComponent* phys = entity.get!PhysicsComponent;
+		Vector3f force = Vector3f(0, 0, 0);
+
 		if(pc.allowInput && input.hideCursor)
 		{
 			Vector2d cursorMovement = input.mouseMove;
@@ -135,12 +139,10 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
-			PhysicsComponent* phys = entity.get!PhysicsComponent;
-
 			if(phys is null) movement *= moxane.deltaTime;
-			Vector3f force = Vector3f(0, 0, 0);
+			force = Vector3f(0, 0, 0);
 
-			float yrot = degtorad(tc.rotation.y);
+			float yrot = degtorad(pc.headRotation.y);
 			force.x += cos(yrot) * movement.x;
 			force.z += sin(yrot) * movement.x;
 
@@ -153,7 +155,8 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-				KinematicPlayerBody kpb = cast(KinematicPlayerBody)phys.rigidBody;
+
+				/+KinematicPlayerBody kpb = cast(KinematicPlayerBody)phys.rigidBody;
 
 				Vector3f i = Vector3f(0, -9.81 * phys.rigidBody.mass[0] * moxane.deltaTime, 0);
 				kpb.impulse += i;
@@ -162,14 +165,22 @@ enum PlayerBindingName
 				kpb.impulse = Vector3f(0, force.y * 10, 0);
 
 				phys.rigidBody.getTransform;
-				tc.position = phys.rigidBody.transform.position;
+				tc.position = phys.rigidBody.transform.position;+/
 			}
 		}
+
+		DynamicPlayerBody dpb = cast(DynamicPlayerBody)phys.rigidBody;
+
+		dpb.yaw = pc.headRotation.y;
+		dpb.strafe = force.x;
+		dpb.vertical = 0f;
+		dpb.forward = force.z;
+		dpb.update(moxane.deltaTime);
 	
 		if(pc.camera !is null)
 		{
 			pc.camera.rotation = pc.headRotation;
-			pc.camera.position = tc.position;
+			pc.camera.position = tc.position + Vector3f(0, 1.3f, 0);
 			pc.camera.buildView;
 		}
 	}

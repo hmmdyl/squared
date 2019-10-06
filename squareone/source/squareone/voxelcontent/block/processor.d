@@ -224,7 +224,7 @@ final class BlockProcessor : IProcessor
 			}
 			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], true);
 			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
-			rd.rigidBody.mass(1f, Vector3f(1, 1, 1));
+			rd.rigidBody.collidable = true;
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 
@@ -300,7 +300,7 @@ final class BlockProcessor : IProcessor
 	Renderer currentRenderer;
 	void prepareRender(Renderer r)
 	{
-		import derelict.opengl3.gl3 : glBindVertexArray, glEnableVertexAttribArray, GL_TEXTURE0, glActiveTexture;
+		import derelict.opengl3.gl3;
 
 		performUploads;
 		glBindVertexArray(vao);
@@ -315,6 +315,9 @@ final class BlockProcessor : IProcessor
 		glActiveTexture(GL_TEXTURE0);
 		textureArray.bind;
 		effect["Diffuse"].set(0);
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
@@ -352,7 +355,7 @@ final class BlockProcessor : IProcessor
 
 	void endRender()
 	{
-		import derelict.opengl3.gl3 : glDisableVertexAttribArray, glBindVertexArray;
+		import derelict.opengl3.gl3;
 		foreach(x; 0 .. 3)
 			glDisableVertexAttribArray(x);
 		
@@ -360,6 +363,8 @@ final class BlockProcessor : IProcessor
 		effect.unbind;
 
 		glBindVertexArray(0);
+
+		glDisable(GL_CULL_FACE);
 	}
 
 	IBlockVoxelTexture getTexture(ushort id) { return textures[id]; }

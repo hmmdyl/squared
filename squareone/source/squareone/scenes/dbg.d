@@ -214,7 +214,7 @@ final class DebugGameScene : Scene
 		playerKeyBindings[PlayerBindingName.strafeRight] = "playerStrafeRight";
 		playerKeyBindings[PlayerBindingName.debugUp] = "debugUp";
 		playerKeyBindings[PlayerBindingName.debugDown] = "debugDown";
-		playerEntity = createPlayer(em, 5f, 90f, -90f, 10f, playerKeyBindings, physicsSystem);
+		playerEntity = createPlayer(em, 2f, 90f, -90f, 10f, playerKeyBindings, physicsSystem);
 		PlayerComponent* pc = playerEntity.get!PlayerComponent;
 		pc.camera = camera;
 		pc.allowInput = true;
@@ -358,12 +358,13 @@ final class DebugGameScene : Scene
 		if(toolSize > 4) toolSize = 4;
 
 		PhysicsComponent* phys = playerEntity.get!PhysicsComponent;
-		KinematicPlayerBody kpb;
-		kpb = cast(KinematicPlayerBody)phys.rigidBody;
+		DynamicPlayerBody dpb = cast(DynamicPlayerBody)phys.rigidBody;
+
 		if(!keyCapture)
 		{
-			phys.rigidBody.transform.position.y = 20f;
+			phys.rigidBody.transform.position = Vector3f(0, 10, 0);
 			phys.rigidBody.updateMatrix;
+			phys.rigidBody.velocity = Vector3f(0, 0, 0);
 		}
 
 		if((shouldBreak || shouldPlace) && keyCapture)
@@ -406,7 +407,7 @@ final class DebugGameScene : Scene
 		fog.sceneView = camera.viewMatrix;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
-		terrainManager.cameraPosition = camera.position;
+		terrainManager.cameraPosition = Vector3f(0, 0, 0);//camera.position;
 		terrainManager.update;
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
@@ -424,12 +425,21 @@ Delta: %0.6fs
 Chunks: %d
 Man. time: %0.6fms
 						
-Contacts: %d", 
+DPB
+Velocity: %0.3f, %0.3f, %0.3f
+Pos: %0.3f, %0.3f, %0.3f
+Rot: %0.3f, %0.3f, %0.3f
+H: %0.3f Rad: %0.3f
+RP: %0.3f, %0.3f, %0.3f RH: %d", 
 						camera.position.x, camera.position.y, camera.position.z,
 						camera.rotation.x, camera.rotation.y, camera.rotation.z,
 						moxane.deltaTime,
 						terrainManager.numChunks, managementTime,
-						kpb.contactCount);
+						dpb.velocity.x, dpb.velocity.y, dpb.velocity.z,
+						dpb.transform.position.x, dpb.transform.position.y, dpb.transform.position.z,
+						dpb.transform.rotation.x, dpb.transform.rotation.y, dpb.transform.rotation.z,
+						dpb.height, dpb.radius,
+						dpb.raycastHitCoord.x, dpb.raycastHitCoord.y, dpb.raycastHitCoord.z, dpb.raycastHit);
 		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}

@@ -360,24 +360,14 @@ final class DefaultNoiseGenerator : NoiseGenerator
 				return h;
 			}
 
-			/+float height;
-			if(voronoi(Vector2f(realPos.xz) / 64f, simplexSrc).y > 0.5f)
-				height = icicycle;
-			else height = swamp;+/
 
-			float height = flat;
-
-			bool outcropping = false;//simplex.eval(realPos.x / 8f + 62, realPos.z / 8f - 763) > 0.5f;
-			if(outcropping)
-				height += simplex.eval(realPos.x / 4f + 63, realPos.z / 4f + 52) * 32f;
+			float height = mountains;
 
 			MaterialID upperMat;
 			float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
-			//upperMat = mdet > 0.5f ? materials.stone : materials.dirt;
 			if(mdet < 0.333f) upperMat = materials.dirt;
 			else if(mdet >= 0.333f && mdet < 0.666f) upperMat = materials.grass;
 			else if(mdet > 0.666f) upperMat = materials.stone;
-			upperMat = outcropping ? materials.stone : upperMat;
 
 			for(int boy = s; boy < e; boy += order.chunk.blockskip)
 			{
@@ -385,11 +375,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
-				if(realPos1.y <= height)
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 && !outcropping ? materials.sand : (upperMat), (outcropping && realPos1.y >= 0.5) ? meshes.cube : meshes.cube, meshes.cube, 0));
+				float cave = simplex.eval(realPos1.x / 8f, realPos1.y / 16f, realPos1.z / 4f);
+
+				if(realPos1.y <= height && cave < 0.2f)
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : upperMat, meshes.cube, 0, 0));
 				else
 				{
-					if(realPos1.y <= 0)
+					if(realPos1.y <= 0 && cave < 0.2f)
 					{
 						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;
