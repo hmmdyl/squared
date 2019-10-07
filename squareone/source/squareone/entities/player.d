@@ -172,9 +172,10 @@ enum PlayerBindingName
 		DynamicPlayerBody dpb = cast(DynamicPlayerBody)phys.rigidBody;
 
 		dpb.yaw = pc.headRotation.y;
-		dpb.strafe = force.x;
+		/+dpb.strafe = force.x;
 		dpb.vertical = 0f;
-		dpb.forward = force.z;
+		dpb.forward = force.z;+/
+		dpb.addForce(Vector3f(force.x*10000, 0f, force.z*10000));
 		dpb.update(moxane.deltaTime);
 	
 		if(pc.camera !is null)
