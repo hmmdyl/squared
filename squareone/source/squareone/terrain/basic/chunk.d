@@ -1,12 +1,24 @@
 module squareone.terrain.basic.chunk;
 
-import squareone.voxel.chunk;
-import squareone.voxel.voxel;
+import squareone.voxel;
 import squareone.terrain.basic.manager;
 import dlib.math.vector;
 import moxane.core.transformation;
 
-struct BasicChunk 
+class BasicChunk : Chunk
+{
+	private ChunkPosition position_;
+	@property ChunkPosition position() const { return position_; }
+	@property void position(ChunkPosition n)
+	{
+		position_ = n;
+		transform = Transform(n.toVec3f);
+	}
+
+	this(Resources r) { super(r); }
+}
+
+/+struct BasicChunk 
 {
     Chunk chunk;
     private ChunkPosition _position;
@@ -25,25 +37,16 @@ struct BasicChunk
         this.chunk = chunk;
         this.position = position;
     }
-}
+}+/
 
 struct BasicChunkReadonly
 {
-	package Chunk chunk;
-	ChunkPosition position;
-	BasicTerrainManager manager;
+	package BasicChunk chunk;
 
-	this(Chunk chunk, ChunkPosition position, BasicTerrainManager manager)
+	this(BasicChunk chunk)
 	{
 		this.chunk = chunk;
-		this.position = position;
-		this.manager = manager;
 	}
-
-	/+~this()
-	{
-		manager.chunkSys.giveReadonly(this);
-	}+/
 
 	@property int dimensionsProper() { return chunk.dimensionsProper; }
 	@property int dimensionsTotal() { return chunk.dimensionsTotal; }
@@ -58,6 +61,7 @@ struct BasicChunkReadonly
 	@property int airCount() { return chunk.airCount; }
 
 	@property ref Transform transform() { return chunk.transform; }
+	@property ChunkPosition position() const { return chunk.position; }
 
 	@property int readonlyRefs() { return chunk.readonlyRefs; }
 

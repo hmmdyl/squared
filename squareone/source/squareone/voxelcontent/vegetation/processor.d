@@ -312,6 +312,9 @@ final class VegetationProcessor : IProcessor
 				return t.id;
 		return 0;
 	}
+
+	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	void returnMesher(IMesher m) {}
 }
 
 private struct MeshResult

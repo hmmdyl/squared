@@ -240,4 +240,7 @@ final class GlassProcessor : IProcessor
 		private bool isRdNull(IMeshableVoxelBuffer vb) { return vb.renderData[id_] is null; }
 	pragma(inline, true)
 		private RenderData* getRd(IMeshableVoxelBuffer vb) { return cast(RenderData*)vb.renderData[id_]; }
+
+	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	void returnMesher(IMesher m) {}
 }

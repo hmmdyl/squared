@@ -18,20 +18,13 @@ import core.cpuid : threadsPerCPU, coresPerCPU;
 
 final class BasicTerrainRenderer : IRenderable
 {
-	enum CullMode
-	{
-		none,
-		skip,
-		all
-	}
-
-	CullMode cullingMode;
+	bool culling;
 
 	BasicTerrainManager btm;
 	invariant { assert(btm !is null); }
 
-	this(BasicTerrainManager btm, CullMode cullingMode = CullMode.all)
-	{ this.btm = btm; this.cullingMode = cullingMode; }
+	this(BasicTerrainManager btm, bool culling = true)
+	{ this.btm = btm; this.culling = culling; }
 
 	float renderTime = 0f;
 	float prepareTime = 0f;
@@ -65,46 +58,17 @@ final class BasicTerrainRenderer : IRenderable
 			trueSw.stop;
 			scope(exit) p.endRender;
 
-			if(cullingMode == CullMode.none)
+			if(!culling)
 			{
 				foreach(BasicChunk chunk; btm.chunksTerrain)
-					p.render(chunk.chunk, lc, drawCalls, numVerts);
+					p.render(chunk, lc, drawCalls, numVerts);
 			}
-			else if(cullingMode == CullMode.skip)
-			{
-				enum skipSize = 2;
-				enum skipSizeHalf = skipSize / 2;
-
-				for(int cx = min.x; cx < max.x; cx += skipSize)
-				for(int cy = min.y; cy < max.y; cy += skipSize)
-				for(int cz = min.z; cz < max.z; cz += skipSize)
-				{
-					Vector3i centre = Vector3i(cx + skipSizeHalf, cy + skipSizeHalf, cz + skipSizeHalf);
-					Vector3f centreReal = Vector3f(centre.x * ChunkData.chunkDimensionsMetres, centre.y * ChunkData.chunkDimensionsMetres, centre.z * ChunkData.chunkDimensionsMetres);
-					enum float radius = sqrt(128f);
-					Sphere s = Sphere(centreReal, radius);
-
-					if(!frustum.intersectsSphere(s))
-						continue;
-
-					foreach(int cix; cx .. cx + skipSize)
-					foreach(int ciy; cy .. cy + skipSize)
-					foreach(int ciz; cz .. cz + skipSize)
-					{
-						BasicChunk* chunk = ChunkPosition(cix, ciy, ciz) in btm.chunksTerrain;
-						if(chunk is null)
-							continue;
-
-						p.render(chunk.chunk, lc, drawCalls, numVerts);
-					}
-				}
-			}
-			else if(cullingMode == CullMode.all)
+			else
 			{
 				bool shouldRender(BasicChunk chunk)
 				{
 					immutable Vector3f chunkPosReal = chunk.position.toVec3f;
-					immutable float dimReal = ChunkData.chunkDimensionsMetres * chunk.chunk.blockskip;
+					immutable float dimReal = ChunkData.chunkDimensionsMetres * chunk.blockskip;
 					immutable Vector3f center = Vector3f(chunkPosReal.x + dimReal * 0.5f, chunkPosReal.y + dimReal * 0.5f, chunkPosReal.z + dimReal * 0.5f);
 					immutable float radius = sqrt(dimReal ^^ 2 + dimReal ^^ 2);
 					Sphere s = Sphere(center, radius);
@@ -117,7 +81,7 @@ final class BasicTerrainRenderer : IRenderable
 					if(!shouldRender(chunk)) continue;
 
 					uint dc;
-					p.render(chunk.chunk, lc, dc, numVerts);
+					p.render(chunk, lc, dc, numVerts);
 					drawCallsPhys += dc;
 					drawCalls += dc;
 				}
@@ -225,13 +189,14 @@ final class BasicTerrainManager
 
 	private BasicChunk createChunk(ChunkPosition pos, bool needsData = true)
 	{
-		Chunk c = new Chunk(resources);
+		auto c = new BasicChunk(resources);
+		c.position = pos;
 		c.initialise;
 		c.needsData = needsData;
 		c.lod = 0;
 		c.blockskip = 2 ^^ c.lod;
 		c.isCompressed = false;
-		return BasicChunk(c, pos);
+		return c;
 	}
 
 	private void addChunksLocal(const ChunkPosition cp)
@@ -284,19 +249,19 @@ final class BasicTerrainManager
 	{
 		if(!isChunkInBounds(camera, chunk.position))
 		{
-			if(chunk.chunk.needsData || chunk.chunk.dataLoadBlocking || chunk.chunk.dataLoadCompleted ||
-			   chunk.chunk.needsMesh || chunk.chunk.isAnyMeshBlocking || chunk.chunk.readonlyRefs > 0)
-				chunk.chunk.pendingRemove = true;
+			if(chunk.needsData || chunk.dataLoadBlocking || chunk.dataLoadCompleted ||
+			   chunk.needsMesh || chunk.isAnyMeshBlocking || chunk.readonlyRefs > 0)
+				chunk.pendingRemove = true;
 			else
 			{
 				foreach(int proc; 0 .. resources.processorCount)
-					resources.getProcessor(proc).removeChunk(chunk.chunk);
+					resources.getProcessor(proc).removeChunk(chunk);
 
 				chunksTerrain.remove(chunk.position);
 				chunkStates.remove(chunk.position);
-				chunk.chunk.deinitialise();
+				chunk.deinitialise();
 
-				destroy(chunk.chunk);
+				destroy(chunk);
 
 				chunksRemoved++;
 			}
@@ -395,66 +360,63 @@ final class BasicTerrainManager
 		}
 	}
 
-	private void manageChunkState(ref BasicChunk bc)
+	private void manageChunkState(ref BasicChunk chunk)
 	{
-		with(bc)
+		if(chunk.needsData && !chunk.isAnyMeshBlocking && chunk.readonlyRefs == 0) 
 		{
-			if(chunk.needsData && !chunk.isAnyMeshBlocking && chunk.readonlyRefs == 0) 
-			{
-				chunkLoadNeighbours(bc);
-			}
-			if(chunk.dataLoadCompleted)
-			{
-				chunkStates[position] = ChunkState.active;
-				chunk.needsMesh = true;
-				chunk.dataLoadCompleted = false;
-				chunk.hasData = true;
+			chunkLoadNeighbours(chunk);
+		}
+		if(chunk.dataLoadCompleted)
+		{
+			chunkStates[chunk.position] = ChunkState.active;
+			chunk.needsMesh = true;
+			chunk.dataLoadCompleted = false;
+			chunk.hasData = true;
 
-				noiseCompleted++;
-				noiseCompletedCounter++;
-			}
+			noiseCompleted++;
+			noiseCompletedCounter++;
+		}
 
-			if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
+		if(chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0)
+		{
+			if((chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
+				chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed ||
+				chunk.fluidCount == ChunkData.chunkOverrunDimensionsCubed) && !isInPlayerLocalBounds(cameraPositionChunk, chunk.position)) 
 			{
-				if((chunk.airCount == ChunkData.chunkOverrunDimensionsCubed || 
-				   chunk.solidCount == ChunkData.chunkOverrunDimensionsCubed ||
-				   chunk.fluidCount == ChunkData.chunkOverrunDimensionsCubed) && !isInPlayerLocalBounds(cameraPositionChunk, bc.position)) 
+				chunksTerrain.remove(chunk.position);
+				chunk.deinitialise();
+				chunkStates[chunk.position] = ChunkState.hibernated;
+				chunksHibernated++;
+				return;
+			}
+			else
+			{
+				if(chunk.isCompressed)
 				{
-					chunksTerrain.remove(position);
-					chunk.deinitialise();
-					chunkStates[position] = ChunkState.hibernated;
-					chunksHibernated++;
-					return;
+					import squareone.terrain.basic.rle;
+					decompressChunk(chunk);
+					chunksDecompressed++;
 				}
-				else
-				{
-					if(bc.chunk.isCompressed)
-					{
-						import squareone.terrain.basic.rle;
-						decompressChunk(bc.chunk);
-						chunksDecompressed++;
-					}
-					foreach(int proc; 0 .. resources.processorCount)
-						resources.getProcessor(proc).meshChunk(MeshOrder(chunk, true, true, false));
+				foreach(int proc; 0 .. resources.processorCount)
+					resources.getProcessor(proc).meshChunk(MeshOrder(chunk, true, true, false));
 
-					meshOrders++;
-				}
-				chunk.needsMesh = false;
+				meshOrders++;
 			}
+			chunk.needsMesh = false;
+		}
 
-			if(isInPlayerLocalBounds(cameraPositionChunk, bc.position) && chunk.isCompressed)
-			{
-				import squareone.terrain.basic.rle;
-				decompressChunk(bc.chunk);
-				chunksDecompressed++;
-			}
+		if(isInPlayerLocalBounds(cameraPositionChunk, chunk.position) && chunk.isCompressed)
+		{
+			import squareone.terrain.basic.rle;
+			decompressChunk(chunk);
+			chunksDecompressed++;
+		}
 
-			if(!chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0 && !chunk.isAnyMeshBlocking && !isInPlayerLocalBounds(cameraPositionChunk, bc.position) && !chunk.isCompressed)
-			{
-				import squareone.terrain.basic.rle;
-				compressChunk(bc.chunk);
-				chunksCompressed++;
-			}
+		if(!chunk.needsMesh && !chunk.needsData && !chunk.dataLoadBlocking && !chunk.dataLoadCompleted && chunk.readonlyRefs == 0 && !chunk.isAnyMeshBlocking && !isInPlayerLocalBounds(cameraPositionChunk, chunk.position) && !chunk.isCompressed)
+		{
+			import squareone.terrain.basic.rle;
+			compressChunk(chunk);
+			chunksCompressed++;
 		}
 	}
 
@@ -467,7 +429,7 @@ final class BasicTerrainManager
 			noise
 		}
 
-		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc.chunk, bc.position, null, true, true);
+		NoiseGeneratorOrder noiseOrder = NoiseGeneratorOrder(bc, bc.position, null, true, true);
 		/*CSource[26] neighbourSources;
 		foreach(n; 0 .. cast(int)ChunkNeighbours.last)
 		{
@@ -551,15 +513,15 @@ final class VoxelInteraction
 		BasicChunk* bc = cp in manager.chunksTerrain;
 		if(bc is null)
 			return Maybe!Voxel();
-		if(!bc.chunk.hasData) 
+		if(!bc.hasData) 
 			return Maybe!Voxel();
 
 		// does not collide with readonly refs, meshers
-		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
-		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed)
+		if(bc.needsData || bc.dataLoadBlocking || 
+		   bc.dataLoadCompleted || bc.isCompressed)
 			return Maybe!Voxel();
 
-		return Maybe!Voxel(bc.chunk.get(off.x, off.y, off.z));
+		return Maybe!Voxel(bc.get(off.x, off.y, off.z));
 	}
 
 	/// Set a voxel at BlockPosition position
@@ -601,7 +563,7 @@ final class VoxelInteraction
 			BasicChunk bc = chunksToMesh.front;
 			chunksToMesh.popFront;
 
-			bc.chunk.needsMesh = true;
+			bc.needsMesh = true;
 		}
 	}
 
@@ -626,24 +588,24 @@ final class VoxelInteraction
 			if(bc is null)
 				continue;
 
-			if(!bc.chunk.hasData)
+			if(!bc.hasData)
 			{
 				voxelSetCommands.insertBack(order);
 				continue;
 			}
 
-			if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
-			   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
-			   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
-			   bc.chunk.isAnyMeshBlocking)
+			if(bc.needsData || bc.dataLoadBlocking || 
+			   bc.dataLoadCompleted || bc.isCompressed ||
+			   bc.readonlyRefs > 0 || bc.needsMesh ||
+			   bc.isAnyMeshBlocking)
 			{
 				voxelSetCommands.insertBack(order);
 				continue;
 			}
 
-			bc.chunk.dataLoadBlocking = true;
-			bc.chunk.set(order.offset.x, order.offset.y, order.offset.z, order.voxel);
-			bc.chunk.dataLoadBlocking = false;
+			bc.dataLoadBlocking = true;
+			bc.set(order.offset.x, order.offset.y, order.offset.z, order.voxel);
+			bc.dataLoadBlocking = false;
 
 			distributeOverruns(*bc, order.offset, order.voxel);
 
@@ -843,18 +805,18 @@ final class VoxelInteraction
 		BasicChunk* bc = cp in manager.chunksTerrain;
 		if(bc is null) 
 			return false;
-		if(!bc.chunk.hasData)
+		if(!bc.hasData)
 			return deferComm;
 
-		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
-		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
-		   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
-		   bc.chunk.isAnyMeshBlocking)
+		if(bc.needsData || bc.dataLoadBlocking || 
+		   bc.dataLoadCompleted || bc.isCompressed ||
+		   bc.readonlyRefs > 0 || bc.needsMesh ||
+		   bc.isAnyMeshBlocking)
 			return deferComm;
 
-		bc.chunk.dataLoadBlocking = true;
-		bc.chunk.set(pos.x, pos.y, pos.z, voxel);
-		bc.chunk.dataLoadBlocking = false;
+		bc.dataLoadBlocking = true;
+		bc.set(pos.x, pos.y, pos.z, voxel);
+		bc.dataLoadBlocking = false;
 
 		chunksToMesh.insertBack(*bc);
 
@@ -885,26 +847,26 @@ final class ChunkInteraction
 		this.manager = manager;
 	}
 
-	Maybe!BasicChunk borrow(ChunkPosition cp)
+	BasicChunk borrow(ChunkPosition cp)
 	{
 		ChunkState* state = cp in manager.chunkStates;
 		if(state is null)
-			return Maybe!BasicChunk();
+			return null;
 		if(*state == ChunkState.notLoaded || *state == ChunkState.deallocated)
-			return Maybe!BasicChunk();
+			return null;
 
 		BasicChunk* bc = cp in manager.chunksTerrain;
 		if(bc is null)
-			return Maybe!BasicChunk();
-		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
-		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed ||
-		   bc.chunk.readonlyRefs > 0 || bc.chunk.needsMesh ||
-		   bc.chunk.isAnyMeshBlocking)
-			return Maybe!BasicChunk();
+			return null;
+		if(bc.needsData || bc.dataLoadBlocking || 
+		   bc.dataLoadCompleted || bc.isCompressed ||
+		   bc.readonlyRefs > 0 || bc.needsMesh ||
+		   bc.isAnyMeshBlocking)
+			return null;
 
-		bc.chunk.dataLoadBlocking = true;
+		bc.dataLoadBlocking = true;
 
-		return Maybe!BasicChunk(*bc);
+		return *bc;
 	}
 
 	Maybe!BasicChunkReadonly borrowReadonly(ChunkPosition cp)
@@ -918,22 +880,22 @@ final class ChunkInteraction
 		BasicChunk* bc = cp in manager.chunksTerrain;
 		if(bc is null)
 			return Maybe!BasicChunkReadonly();
-		if(bc.chunk.needsData || bc.chunk.dataLoadBlocking || 
-		   bc.chunk.dataLoadCompleted || bc.chunk.isCompressed)
+		if(bc.needsData || bc.dataLoadBlocking || 
+		   bc.dataLoadCompleted || bc.isCompressed)
 			return Maybe!BasicChunkReadonly();
 
-		BasicChunkReadonly ro = BasicChunkReadonly(bc.chunk, bc.position, manager);
-		bc.chunk.incrementReadonlyRef;
+		BasicChunkReadonly ro = BasicChunkReadonly(*bc);
+		bc.incrementReadonlyRef;
 
 		return Maybe!BasicChunkReadonly(ro);
 	}
 
 	void give(BasicChunk bc)
 	{
-		if(bc.chunk.dataLoadBlocking)
+		if(bc.dataLoadBlocking)
 		{
-			bc.chunk.dataLoadBlocking = false;
-			bc.chunk.dataLoadCompleted = true;
+			bc.dataLoadBlocking = false;
+			bc.dataLoadCompleted = true;
 		}
 	}
 

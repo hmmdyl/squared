@@ -348,6 +348,9 @@ final class FluidProcessor : IProcessor
 
 		glBindVertexArray(0);
 	}
+
+	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	void returnMesher(IMesher m) {}
 }
 
 struct RenderData

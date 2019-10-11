@@ -293,7 +293,7 @@ final class DebugGameScene : Scene
 		em.add(pt);
 		Transform* transform = pt.createComponent!Transform;
 		*transform = Transform.init;
-		transform.position = Vector3f(10, 2, 0);
+		transform.position = playerEntity.get!Transform().position + Vector3f(0, 7, 0);
 		RenderComponent* rc = pt.createComponent!RenderComponent;
 		ers.addModel(sm, *rc);
 
@@ -503,9 +503,9 @@ private final class SceneDebugAttachment : IImguiRenderable
 
 			igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);
 
-			int ci = cast(int)scene.terrainRenderer.cullingMode;
-			igComboStr("Cull Mode", &ci, "None\0Skip\0All", -1);
-			scene.terrainRenderer.cullingMode = cast(BasicTerrainRenderer.CullMode)ci;
+			int ci = cast(int)scene.terrainRenderer.culling;
+			igComboStr("Cull Mode", &ci, "None\0All", -1);
+			scene.terrainRenderer.culling = cast(bool)ci;
 
 			igText("Render time: %7.3fms", scene.terrainRenderer.renderTime * 1000f);
 			igText("Render prepare time: %7.3fms", scene.terrainRenderer.prepareTime * 1000f);

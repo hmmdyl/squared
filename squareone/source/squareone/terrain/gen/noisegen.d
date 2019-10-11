@@ -329,6 +329,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			//float height = multiNoise(simplex, realPos.x, realPos.z, 16f, 16);
 
 			auto simplexSrc = (float x, float y) => simplex.eval(x, y);
+			auto simplexSrc3D = (float x, float y, float z) => simplex.eval(x, y, z);
 
 			float flat() { return 0f; }
 
@@ -361,7 +362,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 			}
 
 
-			float height = mountains;
+			float height = archipelago;
 
 			MaterialID upperMat;
 			float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
@@ -375,13 +376,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
-				float cave = simplex.eval(realPos1.x / 8f, realPos1.y / 16f, realPos1.z / 4f);
+				float cave = multiNoise(simplexSrc3D, realPos1.x, realPos1.y, realPos1.z, 32f, 8);
 
-				if(realPos1.y <= height && cave < 0.2f)
+				if(realPos1.y <= height && cave < 0.7f)
 					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : upperMat, meshes.cube, 0, 0));
 				else
 				{
-					if(realPos1.y <= 0 && cave < 0.2f)
+					if(realPos1.y <= 0 && cave < 0.7f)
 					{
 						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;

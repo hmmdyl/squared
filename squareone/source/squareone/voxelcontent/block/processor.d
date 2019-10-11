@@ -315,9 +315,6 @@ final class BlockProcessor : IProcessor
 		glActiveTexture(GL_TEXTURE0);
 		textureArray.bind;
 		effect["Diffuse"].set(0);
-
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
 	}
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
@@ -363,8 +360,6 @@ final class BlockProcessor : IProcessor
 		effect.unbind;
 
 		glBindVertexArray(0);
-
-		glDisable(GL_CULL_FACE);
 	}
 
 	IBlockVoxelTexture getTexture(ushort id) { return textures[id]; }
@@ -376,6 +371,9 @@ final class BlockProcessor : IProcessor
 	}
 
 	IBlockVoxelMesh getMesh(MeshID id) { return blockMeshes[id]; }
+
+	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	void returnMesher(IMesher m) {}
 }
 
 private class Mesher
