@@ -54,6 +54,7 @@ interface IProcessor : IVoxelContent
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts);
 	void endRender();
 
+	@property size_t minMeshers() const;
 	IMesher requestMesher(IChannel!MeshOrder);
 	void returnMesher(IMesher);
 }
@@ -64,6 +65,8 @@ interface IMesher
 
 	float averageMeshTime();
 	void terminate();
+
+	void managerUpdate(float time);
 }
 
 interface IVoxelMaterial : IVoxelContent {
