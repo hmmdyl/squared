@@ -261,7 +261,9 @@ final class BasicTerrainManager
 				chunkStates.remove(chunk.position);
 				chunk.deinitialise();
 
-				destroy(chunk);
+				//destroy(chunk);
+
+				delete chunk;
 
 				chunksRemoved++;
 			}

@@ -19,6 +19,7 @@ import std.datetime.stopwatch;
 import core.thread;
 import core.sync.mutex;
 import core.sync.condition;
+import std.parallelism;
 
 final class BlockProcessor : IProcessor
 {
@@ -222,9 +223,17 @@ final class BlockProcessor : IProcessor
 				destroy(rd.collider);
 				destroy(rd.rigidBody);
 			}
-			rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0 .. upItem.buffer.vertexCount], true);
-			rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
-			rd.rigidBody.collidable = true;
+
+			Vector3f[] verts = upItem.buffer.vertices[0..upItem.buffer.vertexCount].dup;
+			void createPhys()
+			{
+				rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, verts, true);
+				rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
+				rd.rigidBody.collidable = true;
+				delete verts;
+			}
+
+			taskPool.put(task(&createPhys));
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 

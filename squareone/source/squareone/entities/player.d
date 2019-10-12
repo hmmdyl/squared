@@ -178,7 +178,8 @@ enum PlayerBindingName
 		dpb.strafe = 0f;
 		dpb.vertical = 0f;
 		dpb.forward = 0f;
-		dpb.addForce(Vector3f(force.x*3000, 0f, force.z*3000));
+		dpb.gravity = false;
+		dpb.addForce(Vector3f(force.x*3000, force.y * 3000, force.z*3000));
 		dpb.update(moxane.deltaTime);
 	
 		if(pc.camera !is null)

@@ -167,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 3;
+		enum extended = 10;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -407,7 +407,7 @@ final class DebugGameScene : Scene
 		fog.sceneView = camera.viewMatrix;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
-		terrainManager.cameraPosition = Vector3f(0, 0, 0);//camera.position;
+		terrainManager.cameraPosition = camera.position;
 		terrainManager.update;
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;

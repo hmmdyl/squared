@@ -16,6 +16,8 @@ class BasicChunk : Chunk
 	}
 
 	this(Resources r) { super(r); }
+
+	//~this() { import std.stdio; writeln("Call"); }
 }
 
 /+struct BasicChunk 

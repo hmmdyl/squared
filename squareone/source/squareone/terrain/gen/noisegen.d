@@ -376,13 +376,13 @@ final class DefaultNoiseGenerator : NoiseGenerator
 					if(box >= 1 && boz >= 1 && boy >= 1 && box < order.chunk.dimensionsProper - 1 && boz < order.chunk.dimensionsProper - 1 && boy < order.chunk.dimensionsProper - 1)
 						continue;
 				Vector3d realPos1 = order.chunkPosition.toVec3dOffset(BlockOffset(box, boy, boz));
-				float cave = multiNoise(simplexSrc3D, realPos1.x, realPos1.y, realPos1.z, 32f, 8);
+				float cave = 0f;//multiNoise(simplexSrc3D, realPos1.x, realPos1.y, realPos1.z, 32f, 8);
 
 				if(realPos1.y <= height && cave < 0.7f)
 					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : upperMat, meshes.cube, 0, 0));
 				else
 				{
-					if(realPos1.y <= 0 && cave < 0.7f)
+					if(realPos1.y <= 0)
 					{
 						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;
