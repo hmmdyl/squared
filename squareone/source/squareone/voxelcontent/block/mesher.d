@@ -2,13 +2,17 @@ module squareone.voxelcontent.block.mesher;
 
 import squareone.voxel;
 import squareone.voxelcontent.block.processor;
+import squareone.voxelcontent.block.types;
 
 import moxane.core;
+import moxane.utils.maybe;
 
 import dlib.math.vector;
-import core.thread : Thread;
-import core.sync.condition : Condition, Mutex;
+import std.datetime.stopwatch;
+import std.concurrency;
 import std.container.dlist;
+import std.algorithm.comparison : clamp;
+import core.atomic;
 
 package final class Mesher : IMesher
 {
@@ -128,177 +132,205 @@ package final class Mesher : IMesher
 	private float averageMeshTime_ = 0f;
 	@property float averageMeshTime() { return averageMeshTime_; }
 
-	bool allowRestarts = false;
+	private bool parked_ = true, terminated_ = false;
+	@property bool parked() const { return parked_; }
+	@property bool terminated() const { return terminated_; }
 
-	BlockProcessor processor;
-	Resources resources;
-	MeshBufferHost host;
-	Log log;
+	private Tid thread;
 
-	Object uploadSyncObj;
-	DList!(BlockProcessor.MeshResult)* uploadQueue;
-
-
-	this(BlockProcessor processor, Resources resources, MeshBufferHost meshBufferHost, DList!(BlockProcessor.MeshResult)* results, Object uploadSyncObj, IChannel!MeshOrder source)
-	in(processor !is null) in(resources !is null) in(meshBufferHost !is null)
-	in(uploadSyncObj !is null) in(source !is null)
+	this(BlockProcessor processor, Resources resources, MeshBufferHost meshBufferHost, IChannel!MeshOrder source)
+	in(processor !is null) in(resources !is null) in(meshBufferHost !is null) in(source !is null)
 	{
-		this.processor = processor;
-		this.resources = resources;
-		this.host = meshBufferHost;
-		this.uploadQueue = result;
-		this.uploadSyncObj = uploadSyncObj;
 		this.source_ = source;
-
-		log = processor.moxane.services.getAOrB!(VoxelLog, Log);
-		
-
+		thread = spawn(&worker, cast(shared)processor, cast(shared)resources, cast(shared)meshBufferHost, cast(shared)source,
+					   cast(shared)&parked_, cast(shared)&terminated_, cast(shared)&averageMeshTime_);
 	}
 
-	void terminate()
-	{
+	void kick() { send(thread, true); }
+	void terminate() { send(thread, false); }
+}
 
+private void worker(shared BlockProcessor processor_, shared Resources resources_, shared MeshBufferHost host_, shared IChannel!MeshOrder source_,
+					shared bool* parked, shared bool* terminated, shared float* averageMeshTime)
+{
+	BlockProcessor processor = cast(BlockProcessor)processor_;
+	Resources resources = cast(Resources)resources_;
+	MeshBufferHost host = cast(MeshBufferHost)host_;
+	IChannel!MeshOrder source = cast(IChannel!MeshOrder)source_;
+
+	Log log = processor.moxane.services.getAOrB!(VoxelLog, Log);
+
+	auto uploadSyncObj = processor.uploadSyncObj;
+	auto uploadQueue = &processor.uploadQueue;
+
+	enum threadName = BlockProcessor.stringof ~ " " ~ Mesher.stringof;
+	log.write(Log.Severity.info, threadName ~ " started");
+	scope(failure) log.write(Log.Severity.panic, "Panic in " ~ threadName);
+	scope(success) log.write(Log.Severity.info, threadName ~ " terminated");
+
+	while(!*terminated)
+	{
+		receive(
+				(bool m)
+				{
+					if(!m)
+					{
+						*terminated = true;
+						return;
+					}
+
+					*parked = false;
+					scope(exit) *parked = true;
+
+					bool consuming = true;
+					while(consuming)
+					{
+						Maybe!MeshOrder order = source.tryGet;
+						if(order.isNull)
+							consuming = false;
+						else
+						{
+							MeshBuffer buffer;
+							do buffer = host.request(MeshSize.small);
+							while(buffer is null);
+
+							operateOnChunk(*order.unwrap, buffer, resources, host, log, uploadSyncObj, uploadQueue, averageMeshTime);
+						}
+					}
+				}
+			);
 	}
-	
-	void managerUpdate(float time)
+}
+
+private void operateOnChunk(MeshOrder order, MeshBuffer buffer, Resources resources, MeshBufferHost host, Log log, Object uploadSyncObj, DList!(BlockProcessor.MeshResult)* uploadQueue, shared float* averageMeshTime_)
+{
+	IMeshableVoxelBuffer chunk = order.chunk;
+
+	void addVert(Vector3f vert, Vector3f normal, uint meta)
 	{
-
-	}
-
-	private void operateOnChunk()
-	{
-		void addVert(Vector3f vert, Vector3f normal, uint meta)
+		if(buffer.ms == MeshSize.small) 
 		{
-			if(buffer.ms == MeshSize.small) 
+			if(buffer.vertexCount + 1 >= vertsSmall) 
 			{
-				if(buffer.vertexCount + 1 >= vertsSmall) 
-				{
-					MeshBuffer nbmb;
-					while(nbmb is null)
-						nbmb = host.request(MeshSize.medium);
-					buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
+				MeshBuffer nbmb;
+				while(nbmb is null)
+					nbmb = host.request(MeshSize.medium);
+				buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
 
-					copyBuffer(buffer, nbmb);
+				copyBuffer(buffer, nbmb);
 
-					host.give(buffer);
-					buffer = nbmb;
-				}
-			}
-			else if(buffer.ms == MeshSize.medium) 
-			{
-				if(buffer.vertexCount + 1 >= vertsMedium) 
-				{
-					MeshBuffer nbmb;
-					while(nbmb is null)
-						nbmb = host.request(MeshSize.full);
-					buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
-
-					copyBuffer(buffer, nbmb);
-
-					host.give(buffer);
-					buffer = nbmb;
-				}
-			}
-			else 
-			{
-				if(buffer.vertexCount + 1 >= vertsFull) 
-				{
-					string exp = "Chunk (" ~ "" ~ ") is too complex to mesh. Error: too many vertices for buffer.";
-					throw new Exception(exp);
-				}
-			}
-
-			import std.conv : to;
-			if(buffer.vertexCount + 1 == vertsSmall) { processor.moxane.services.get!Log().write(Log.Severity.panic, "Requires more than " ~ to!string(vertsSmall) ~ " vertices."); }
-
-			buffer.add(vert, normal, meta);
-		}
-
-		Vector3f[64] verts, normals;
-		ushort[64] textureIDs;
-
-		immutable int blkskp = chunk.blockskip;
-		immutable int chunkDimLod = chunk.dimensionsProper * chunk.blockskip;
-
-		buffer.chunkMax = chunkDimLod * chunk.voxelScale;
-
-		StopWatch sw = StopWatch(AutoStart.yes);
-
-		for(int x = 0; x < chunkDimLod; x += blkskp) 
-		{
-			for(int y = 0; y < chunkDimLod; y += blkskp)  
-			{
-				for(int z = 0; z < chunkDimLod; z += blkskp)  
-				{
-					Voxel v = chunk.get(x, y, z);
-
-					IBlockVoxelMesh bvm = cast(IBlockVoxelMesh)resources.getMesh(v.mesh);
-					if(bvm is null) continue;
-
-					Voxel[6] neighbours;
-					SideSolidTable[6] isSidesSolid;
-
-					neighbours[VoxelSide.nx] = chunk.get(x - blkskp, y, z);
-					neighbours[VoxelSide.px] = chunk.get(x + blkskp, y, z);
-					neighbours[VoxelSide.ny] = chunk.get(x, y - blkskp, z);
-					neighbours[VoxelSide.py] = chunk.get(x, y + blkskp, z);
-					neighbours[VoxelSide.nz] = chunk.get(x, y, z - blkskp);
-					neighbours[VoxelSide.pz] = chunk.get(x, y, z + blkskp);
-
-					isSidesSolid[VoxelSide.nx] = resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
-					isSidesSolid[VoxelSide.px] = resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
-					isSidesSolid[VoxelSide.ny] = resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
-					isSidesSolid[VoxelSide.py] = resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
-					isSidesSolid[VoxelSide.nz] = resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
-					isSidesSolid[VoxelSide.pz] = resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
-
-					int vertCount;
-					bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, Vector3i(x, y, z), verts, normals, vertCount);
-
-					IBlockVoxelMaterial bvMat = cast(IBlockVoxelMaterial)resources.getMaterial(v.material);
-					if(bvMat is null) continue;
-					bvMat.generateTextureIDs(vertCount, verts, normals, textureIDs);
-
-					foreach(int i; 0 .. vertCount)
-						addVert(verts[i] * ChunkData.voxelScale, normals[i], textureIDs[i] & 2047);
-				}
-			}
-		}
-
-		synchronized(uploadSyncObj)
-		{
-			if(buffer.vertexCount == 0)
-			{
-				buffer.reset;
 				host.give(buffer);
-				buffer = null;
-				//chunk.meshBlocking(false, processor.id_);
-
-				BlockProcessor.MeshResult mr;
-				mr.order = order;
-				mr.buffer = null;
-				uploadQueue.insert(mr);
-			}
-			else
-			{
-				BlockProcessor.MeshResult mr;
-				mr.order = order;
-				mr.buffer = buffer;
-				uploadQueue.insert(mr);
+				buffer = nbmb;
 			}
 		}
-
-		sw.stop;
-		if(processor.averageMeshTime == 0f) processor.averageMeshTime = sw.peek.total!"nsecs" * (1f / 1_000_000f);
-		else
+		else if(buffer.ms == MeshSize.medium) 
 		{
-			processor.averageMeshTime += sw.peek.total!"nsecs" * (1f / 1_000_000f);
-			processor.averageMeshTime *= 0.5f;
+			if(buffer.vertexCount + 1 >= vertsMedium) 
+			{
+				MeshBuffer nbmb;
+				while(nbmb is null)
+					nbmb = host.request(MeshSize.full);
+				buffer.chunkMax = chunk.dimensionsProper * chunk.voxelScale;
+
+				copyBuffer(buffer, nbmb);
+
+				host.give(buffer);
+				buffer = nbmb;
+			}
+		}
+		else 
+		{
+			if(buffer.vertexCount + 1 >= vertsFull) 
+			{
+				string exp = "Chunk (" ~ "" ~ ") is too complex to mesh. Error: too many vertices for buffer.";
+				throw new Exception(exp);
+			}
 		}
 
+		import std.conv : to;
+		if(buffer.vertexCount + 1 == vertsSmall) { log.write(Log.Severity.panic, "Requires more than " ~ to!string(vertsSmall) ~ " vertices."); }
+
+		buffer.add(vert, normal, meta);
+	}
+
+	Vector3f[64] verts, normals;
+	ushort[64] textureIDs;
+
+	immutable int blkskp = chunk.blockskip;
+	immutable int chunkDimLod = chunk.dimensionsProper * chunk.blockskip;
+
+	buffer.chunkMax = chunkDimLod * chunk.voxelScale;
+
+	StopWatch sw = StopWatch(AutoStart.yes);
+
+	for(int x = 0; x < chunkDimLod; x += blkskp) 
+	{
+		for(int y = 0; y < chunkDimLod; y += blkskp)  
+		{
+			for(int z = 0; z < chunkDimLod; z += blkskp)  
+			{
+				Voxel v = chunk.get(x, y, z);
+
+				IBlockVoxelMesh bvm = cast(IBlockVoxelMesh)resources.getMesh(v.mesh);
+				if(bvm is null) continue;
+
+				Voxel[6] neighbours;
+				SideSolidTable[6] isSidesSolid;
+
+				neighbours[VoxelSide.nx] = chunk.get(x - blkskp, y, z);
+				neighbours[VoxelSide.px] = chunk.get(x + blkskp, y, z);
+				neighbours[VoxelSide.ny] = chunk.get(x, y - blkskp, z);
+				neighbours[VoxelSide.py] = chunk.get(x, y + blkskp, z);
+				neighbours[VoxelSide.nz] = chunk.get(x, y, z - blkskp);
+				neighbours[VoxelSide.pz] = chunk.get(x, y, z + blkskp);
+
+				isSidesSolid[VoxelSide.nx] = resources.getMesh(neighbours[VoxelSide.nx].mesh).isSideSolid(neighbours[VoxelSide.nx], VoxelSide.px);
+				isSidesSolid[VoxelSide.px] = resources.getMesh(neighbours[VoxelSide.px].mesh).isSideSolid(neighbours[VoxelSide.px], VoxelSide.nx);
+				isSidesSolid[VoxelSide.ny] = resources.getMesh(neighbours[VoxelSide.ny].mesh).isSideSolid(neighbours[VoxelSide.ny], VoxelSide.py);
+				isSidesSolid[VoxelSide.py] = resources.getMesh(neighbours[VoxelSide.py].mesh).isSideSolid(neighbours[VoxelSide.py], VoxelSide.ny);
+				isSidesSolid[VoxelSide.nz] = resources.getMesh(neighbours[VoxelSide.nz].mesh).isSideSolid(neighbours[VoxelSide.nz], VoxelSide.pz);
+				isSidesSolid[VoxelSide.pz] = resources.getMesh(neighbours[VoxelSide.pz].mesh).isSideSolid(neighbours[VoxelSide.pz], VoxelSide.nz);
+
+				int vertCount;
+				bvm.generateMesh(v, chunk.blockskip, neighbours, isSidesSolid, Vector3i(x, y, z), verts, normals, vertCount);
+
+				IBlockVoxelMaterial bvMat = cast(IBlockVoxelMaterial)resources.getMaterial(v.material);
+				if(bvMat is null) continue;
+				bvMat.generateTextureIDs(vertCount, verts, normals, textureIDs);
+
+				foreach(int i; 0 .. vertCount)
+					addVert(verts[i] * ChunkData.voxelScale, normals[i], textureIDs[i] & 2047);
+			}
+		}
+	}
+
+	if(buffer.vertexCount == 0)
+	{
+		buffer.reset;
+		host.give(buffer);
 		buffer = null;
-		chunk = null;
-		order = MeshOrder.init;
+
+		BlockProcessor.MeshResult mr;
+		mr.order = order;
+		mr.buffer = null;
+		synchronized(uploadSyncObj)
+			uploadQueue.insert(mr);
+	}
+	else
+	{
+		BlockProcessor.MeshResult mr;
+		mr.order = order;
+		mr.buffer = buffer;
+		synchronized(uploadSyncObj)
+			uploadQueue.insert(mr);
+	}
+
+	sw.stop;
+	if(atomicLoad(*averageMeshTime_) == 0f) atomicStore(*averageMeshTime_, sw.peek.total!"nsecs" * (1f / 1_000_000f));
+	else
+	{
+		atomicOp!"+="(*averageMeshTime_, sw.peek.total!"nsecs" * (1f / 1_000_000f));
+		atomicOp!"*="(*averageMeshTime_, 0.5f);
 	}
 }
 
@@ -420,7 +452,7 @@ class MeshBuffer
 	{ vertexCount = 0; }
 }
 
-private class MeshBufferHost
+package class MeshBufferHost
 {
 	enum int smallMeshCount = 20;
 	enum int mediumMeshCount = 0;

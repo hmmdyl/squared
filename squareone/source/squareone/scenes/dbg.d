@@ -137,11 +137,11 @@ final class DebugGameScene : Scene
 		blockProcessor = new BlockProcessor(moxane, bvts);
 		resources.add(blockProcessor);
 		fluidProcessor = new FluidProcessor(moxane, [resources.getMesh(Invisible.technicalStatic)]);
-		resources.add(fluidProcessor);
+		//resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
-		resources.add(veggieProcessor);
+		//resources.add(veggieProcessor);
 		glassProcessor = new GlassProcessor(moxane, blockProcessor);
-		resources.add(glassProcessor);
+		//resources.add(glassProcessor);
 
 		FluidProcessorDebugAttachment fluidDA = new FluidProcessorDebugAttachment(fluidProcessor);
 		imgui.renderables ~= fluidDA;
@@ -167,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 10;
+		enum extended = 25;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -501,7 +501,7 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Meshes ordered: %d", scene.terrainManager.meshOrders);
 			igText("Manage time: %6.3fms", scene.managementTime);
 
-			igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);
+			//igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);
 
 			int ci = cast(int)scene.terrainRenderer.culling;
 			igComboStr("Cull Mode", &ci, "None\0All", -1);

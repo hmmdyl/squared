@@ -29,16 +29,11 @@ final class BlockProcessor : IProcessor
 
 	private Pool!(RenderData*) renderDataPool;
 	private MeshBufferHost meshBufferHost;
-	private DList!MeshResult uploadQueue;
-	private Object uploadSyncObj;
+	package DList!MeshResult uploadQueue;
+	package Object uploadSyncObj;
 
 	Resources resources;
 	Moxane moxane;
-
-	private enum mesherCount = 2;
-	private int meshBarrel;
-	private Mesher[] meshers;
-	float averageMeshTime = 0f;
 
 	private uint vao;
 	private Effect effect;
@@ -92,10 +87,6 @@ final class BlockProcessor : IProcessor
 			bm.loadTextures(this);
 		}
 
-		meshers.length = mesherCount;
-		foreach(int x; 0 .. mesherCount) 
-			meshers[x] = new Mesher(uploadSyncObj, &uploadQueue, this, resources, meshBufferHost);
-
 		import std.file : readText;
 		import derelict.opengl3.gl3 : GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, glGenVertexArrays;
 
@@ -128,21 +119,6 @@ final class BlockProcessor : IProcessor
 		MeshBuffer buffer;
 	}
 	EventWaiter!MeshResult onCustomCompletion;
-
-	void meshChunk(MeshOrder mb)
-	{
-		synchronized(meshers[meshBarrel].meshSyncObj)
-		{
-			mb.chunk.meshBlocking(true, id_);
-			meshers[meshBarrel].meshQueue.insert(mb);
-
-			synchronized(meshers[meshBarrel].meshQueueMutex)
-				meshers[meshBarrel].meshQueueWaiter.notify;
-		}
-
-		meshBarrel++;
-		if(meshBarrel >= mesherCount) meshBarrel = 0;
-	}
 
 	void removeChunk(IMeshableVoxelBuffer c)
 	{
@@ -183,7 +159,7 @@ final class BlockProcessor : IProcessor
 
 		uploadItemSw.start();
 
-		while(uploadItemSw.peek().total!"msecs" < 4 && !isEmpty()){
+		/+while(uploadItemSw.peek().total!"msecs" < 4 && !isEmpty())+/{
 			if(isEmpty) return;
 
 			MeshResult upItem = getFromUploadQueue();
@@ -202,7 +178,8 @@ final class BlockProcessor : IProcessor
 					}
 					rd.destroy;
 				}
-				continue;
+				//continue;
+				return;
 			}
 
 			bool hasRd = !isRdNull(chunk);
@@ -251,8 +228,8 @@ final class BlockProcessor : IProcessor
 			meshBufferHost.give(upItem.buffer);
 		}
 
-		uploadItemSw.stop();
-		uploadItemSw.reset();
+		//uploadItemSw.stop();
+		//uploadItemSw.reset();
 	}
 
 	Renderer currentRenderer;
@@ -329,7 +306,8 @@ final class BlockProcessor : IProcessor
 
 	IBlockVoxelMesh getMesh(MeshID id) { return blockMeshes[id]; }
 
-	@property size_t minMeshers() const { return 2; }
-	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	enum minimumMeshers = 2;
+	@property size_t minMeshers() const { return minimumMeshers; }
+	IMesher requestMesher(IChannel!MeshOrder source) { return new Mesher(this, resources, meshBufferHost, source); }
 	void returnMesher(IMesher m) {}
 }

@@ -45,7 +45,6 @@ interface IProcessor : IVoxelContent
 
 	void finaliseResources(Resources res);
 
-	void meshChunk(MeshOrder c);
 	void removeChunk(IMeshableVoxelBuffer c);
 
 	void updateFromManager();
@@ -64,9 +63,11 @@ interface IMesher
 	@property IChannel!MeshOrder source();
 
 	float averageMeshTime();
-	void terminate();
 
-	void managerUpdate(float time);
+	@property bool parked() const;
+	@property bool terminated() const;
+	void kick();
+	void terminate();
 }
 
 interface IVoxelMaterial : IVoxelContent {

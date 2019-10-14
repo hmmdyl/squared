@@ -139,7 +139,7 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
-			if(phys is null) movement *= moxane.deltaTime;
+			//if(phys is null) movement *= moxane.deltaTime;
 			force = Vector3f(0, 0, 0);
 
 			float yrot = degtorad(pc.headRotation.y);
@@ -155,17 +155,6 @@ enum PlayerBindingName
 				tc.position = force;
 			else
 			{
-
-				/+KinematicPlayerBody kpb = cast(KinematicPlayerBody)phys.rigidBody;
-
-				Vector3f i = Vector3f(0, -9.81 * phys.rigidBody.mass[0] * moxane.deltaTime, 0);
-				kpb.impulse += i;
-				
-				kpb.update(moxane.deltaTime);
-				kpb.impulse = Vector3f(0, force.y * 10, 0);
-
-				phys.rigidBody.getTransform;
-				tc.position = phys.rigidBody.transform.position;+/
 			}
 		}
 

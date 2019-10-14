@@ -14,7 +14,6 @@ import std.datetime.stopwatch;
 import std.parallelism;
 import containers;
 import core.thread;
-import core.cpuid : threadsPerCPU, coresPerCPU;
 
 final class BasicTerrainRenderer : IRenderable
 {
@@ -132,19 +131,28 @@ final class BasicTerrainManager
 	private uint noiseCompletedCounter;
 	uint noiseCompletedSecond;
 
+	private ExposedChannel!MeshOrder[IProcessor] meshQueues;
+	private IMesher[][IProcessor] meshers;
+
 	this(Moxane moxane, BasicTMSettings settings)
 	{
 		this.moxane = moxane;
 		this.settings = settings;
 		resources = settings.resources;
 
+		foreach(procID; 0 .. resources.processorCount)
+		{
+			IProcessor processor = resources.getProcessor(procID);
+			meshQueues[processor] = new ExposedChannel!MeshOrder;
+			meshers[processor] = new IMesher[](processor.minMeshers);
+			foreach(mesherID; 0 .. processor.minMeshers)
+				meshers[processor][mesherID] = processor.requestMesher(meshQueues[processor]);
+		}
+
 		voxelInteraction = new VoxelInteraction(this);
 		chunkInteraction = new ChunkInteraction(this);
 
-		import std.stdio;
-		writeln(threadsPerCPU, " ", coresPerCPU);
-
-		noiseGeneratorManager = new NoiseGeneratorManager(resources, coresPerCPU, () => new DefaultNoiseGenerator(moxane), 0);
+		noiseGeneratorManager = new NoiseGeneratorManager(resources, 4, () => new DefaultNoiseGenerator(moxane), 0);
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
 
@@ -166,6 +174,9 @@ final class BasicTerrainManager
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
 		cameraPositionPreviousChunk = cameraPositionChunk;
 		cameraPositionChunk = cp;
+
+		kickMeshers;
+		scope(success) kickMeshers;
 
 		//addChunksLocal(cp);
 		addChunksExtension(cp);
@@ -247,6 +258,8 @@ final class BasicTerrainManager
 
 	private void removeChunkHandler(ref BasicChunk chunk, const ChunkPosition camera)
 	{
+		if(chunk is null) return;
+
 		if(!isChunkInBounds(camera, chunk.position))
 		{
 			if(chunk.needsData || chunk.dataLoadBlocking || chunk.dataLoadCompleted ||
@@ -339,7 +352,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 10;
+		enum addMax = 100000;
 
 		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. extensionCPLength])
 		{
@@ -389,6 +402,9 @@ final class BasicTerrainManager
 				chunk.deinitialise();
 				chunkStates[chunk.position] = ChunkState.hibernated;
 				chunksHibernated++;
+
+				delete chunk;
+
 				return;
 			}
 			else
@@ -399,9 +415,8 @@ final class BasicTerrainManager
 					decompressChunk(chunk);
 					chunksDecompressed++;
 				}
-				foreach(int proc; 0 .. resources.processorCount)
-					resources.getProcessor(proc).meshChunk(MeshOrder(chunk, true, true, false));
-
+				meshChunks(MeshOrder(chunk, true, true, false));
+					
 				meshOrders++;
 			}
 			chunk.needsMesh = false;
@@ -419,6 +434,47 @@ final class BasicTerrainManager
 			import squareone.terrain.basic.rle;
 			compressChunk(chunk);
 			chunksCompressed++;
+		}
+	}
+
+	private void kickMeshers()
+	{
+		foreach(IProcessor processor, IMesher[] meshersForProcessor; meshers)
+		{
+			foreach(size_t id, IMesher mesher; meshersForProcessor)
+			{
+				if(mesher.parked)
+					mesher.kick;
+				if(mesher.terminated)
+				{
+					import std.algorithm.mutation : remove;
+					remove(meshersForProcessor, id);
+					processor.returnMesher(mesher);
+				}
+			}
+		}
+	}
+
+	private void terminateMeshers()
+	{
+		foreach(IProcessor processor, IMesher[] meshersForProcessor; meshers)
+		{
+			foreach(size_t id, IMesher mesher; meshersForProcessor)
+			{
+				mesher.terminate;
+				processor.returnMesher(mesher);
+				import std.algorithm.mutation : remove;
+				remove(meshersForProcessor, id);
+			}
+		}
+	}
+
+	private void meshChunks(MeshOrder order)
+	{
+		foreach(processor, channel; meshQueues)
+		{
+			order.chunk.meshBlocking(true, processor.id);
+			channel.send(order);
 		}
 	}
 

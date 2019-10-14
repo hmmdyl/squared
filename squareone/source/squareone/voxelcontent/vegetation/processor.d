@@ -313,6 +313,7 @@ final class VegetationProcessor : IProcessor
 		return 0;
 	}
 
+	@property size_t minMeshers() const { return 0; }
 	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
 	void returnMesher(IMesher m) {}
 }

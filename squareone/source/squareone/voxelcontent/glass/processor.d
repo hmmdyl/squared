@@ -241,6 +241,7 @@ final class GlassProcessor : IProcessor
 	pragma(inline, true)
 		private RenderData* getRd(IMeshableVoxelBuffer vb) { return cast(RenderData*)vb.renderData[id_]; }
 
+	@property size_t minMeshers() const { return 0; }
 	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
 	void returnMesher(IMesher m) {}
 }
