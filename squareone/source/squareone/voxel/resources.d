@@ -58,9 +58,9 @@ interface IProcessor : IVoxelContent
 	void returnMesher(IMesher);
 }
 
-interface IMesher
+interface IWorkerThread(T)
 {
-	@property IChannel!MeshOrder source();
+	@property IChannel!T source();
 
 	float averageMeshTime();
 
@@ -69,6 +69,9 @@ interface IMesher
 	void kick();
 	void terminate();
 }
+
+interface IMesher : IWorkerThread!MeshOrder
+{}
 
 interface IVoxelMaterial : IVoxelContent {
 	@property ushort id();

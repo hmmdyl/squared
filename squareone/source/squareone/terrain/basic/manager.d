@@ -2,6 +2,7 @@ module squareone.terrain.basic.manager;
 
 import squareone.terrain.basic.chunk;
 import squareone.terrain.gen.noisegen;
+import squareone.terrain.gen.generators;
 import squareone.voxel;
 import moxane.core;
 import moxane.graphics.renderer;
@@ -119,7 +120,7 @@ final class BasicTerrainManager
 
 	Vector3f cameraPosition;
 	ChunkPosition cameraPositionChunk, cameraPositionPreviousChunk;
-	NoiseGeneratorManager noiseGeneratorManager;
+	NoiseGeneratorManager2 noiseGeneratorManager;
 
 	VoxelInteraction voxelInteraction;
 	ChunkInteraction chunkInteraction;
@@ -131,8 +132,9 @@ final class BasicTerrainManager
 	private uint noiseCompletedCounter;
 	uint noiseCompletedSecond;
 
-	private ExposedChannel!MeshOrder[IProcessor] meshQueues;
+	private Channel!MeshOrder[IProcessor] meshQueues;
 	private IMesher[][IProcessor] meshers;
+	private bool shouldKickMesher;
 
 	this(Moxane moxane, BasicTMSettings settings)
 	{
@@ -143,7 +145,7 @@ final class BasicTerrainManager
 		foreach(procID; 0 .. resources.processorCount)
 		{
 			IProcessor processor = resources.getProcessor(procID);
-			meshQueues[processor] = new ExposedChannel!MeshOrder;
+			meshQueues[processor] = new Channel!MeshOrder;
 			meshers[processor] = new IMesher[](processor.minMeshers);
 			foreach(mesherID; 0 .. processor.minMeshers)
 				meshers[processor][mesherID] = processor.requestMesher(meshQueues[processor]);
@@ -152,7 +154,9 @@ final class BasicTerrainManager
 		voxelInteraction = new VoxelInteraction(this);
 		chunkInteraction = new ChunkInteraction(this);
 
-		noiseGeneratorManager = new NoiseGeneratorManager(resources, 4, () => new DefaultNoiseGenerator(moxane), 0);
+		Log log = moxane.services.getAOrB!(VoxelLog, Log);
+
+		noiseGeneratorManager = new NoiseGeneratorManager2(resources, log, (NoiseGeneratorManager2 m, Resources r, IChannel!NoiseGeneratorOrder o) => new DefaultNoiseGeneratorV1(m, r, o));
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
 
@@ -166,11 +170,14 @@ final class BasicTerrainManager
 
 	void update()
 	{
+		noiseGeneratorManager.managerTick(moxane.deltaTime);
 		manageChunks;
 	}
 
-	void manageChunks()
+	private void manageChunks()
 	{
+		shouldKickMesher = false;
+
 		const ChunkPosition cp = ChunkPosition.fromVec3f(cameraPosition);
 		cameraPositionPreviousChunk = cameraPositionChunk;
 		cameraPositionChunk = cp;
@@ -179,16 +186,14 @@ final class BasicTerrainManager
 		scope(success) kickMeshers;
 
 		//addChunksLocal(cp);
-		addChunksExtension(cp);
+		addChunksExtension(cp, cameraPosition);
 
 		voxelInteraction.run;
 
-		//noiseGeneratorManager.pumpCompletedQueue;
 		foreach(ref BasicChunk bc; chunksTerrain)
-		{
 			manageChunkState(bc);
+		foreach(ref BasicChunk bc; chunksTerrain)
 			removeChunkHandler(bc, cp);
-		}
 
 		if(oneSecondSw.peek.total!"seconds"() >= 1)
 		{
@@ -233,8 +238,6 @@ final class BasicTerrainManager
 			{
 				for(int z = lower.z; z < upper.z; z += cs)
 				{
-					//if(numChunksAdded > 1000) return;
-
 					auto newCp = ChunkPosition(x, y, z);
 
 					ChunkState* getter = newCp in chunkStates;
@@ -246,9 +249,6 @@ final class BasicTerrainManager
 						auto chunk = createChunk(newCp);
 						chunksTerrain[newCp] = chunk;
 						chunkStates[newCp] = ChunkState.notLoaded;
-						//chunkDefer.addition(newCp, chunk);
-
-						//numChunksAdded++;
 						chunksCreated++;
 					}
 				}
@@ -258,8 +258,6 @@ final class BasicTerrainManager
 
 	private void removeChunkHandler(ref BasicChunk chunk, const ChunkPosition camera)
 	{
-		if(chunk is null) return;
-
 		if(!isChunkInBounds(camera, chunk.position))
 		{
 			if(chunk.needsData || chunk.dataLoadBlocking || chunk.dataLoadCompleted ||
@@ -288,7 +286,7 @@ final class BasicTerrainManager
 	private ChunkPosition[] extensionCPCache;
 	private size_t extensionCPBias, extensionCPLength;
 
-	private void addChunksExtension(const ChunkPosition cam)
+	private void addChunksExtension(const ChunkPosition cam, const Vector3f camReal)
 	{
 		bool doSort;
 
@@ -313,7 +311,7 @@ final class BasicTerrainManager
 				import std.algorithm.sorting : sort;
 
 				ChunkPosition lc = cam;
-				immutable camf = lc.toVec3f().lengthsqr;
+				immutable camf = camReal.lengthsqr;
 
 				auto cdCmp(ChunkPosition x, ChunkPosition y)
 				{
@@ -352,7 +350,7 @@ final class BasicTerrainManager
 		if(!isExtensionCacheSorted) return;
 
 		int doAddNum;
-		enum addMax = 100000;
+		enum addMax = 10;
 
 		foreach(ChunkPosition pos; extensionCPCache[extensionCPBias .. extensionCPLength])
 		{
@@ -416,6 +414,11 @@ final class BasicTerrainManager
 					chunksDecompressed++;
 				}
 				meshChunks(MeshOrder(chunk, true, true, false));
+				if(!shouldKickMesher)
+				{
+					shouldKickMesher = true;
+					kickMeshers;
+				}
 					
 				meshOrders++;
 			}
@@ -522,7 +525,7 @@ final class BasicTerrainManager
 			noiseOrder.loadNeighbour(nn, true);
 		}*/
 
-		noiseGeneratorManager.generate(noiseOrder);
+		noiseGeneratorManager.generateChunk(noiseOrder);
 	}
 
 	private bool isInPlayerLocalBounds(ChunkPosition camera, ChunkPosition position)

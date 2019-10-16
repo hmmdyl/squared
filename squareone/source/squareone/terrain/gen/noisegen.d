@@ -1,6 +1,6 @@
 module squareone.terrain.gen.noisegen;
 
-import moxane.core : Moxane, Log, Channel;
+import moxane.core : Moxane, Log, IChannel, Channel;
 import moxane.utils.maybe;
 import squareone.voxel;
 import squareone.util.procgen.simplex;
@@ -14,6 +14,8 @@ import std.math;
 import core.thread;
 import core.sync.condition;
 import core.atomic;
+
+import std.algorithm.mutation : remove;
 
 struct NoiseGeneratorOrder
 {
@@ -33,7 +35,88 @@ struct NoiseGeneratorOrder
 	}
 }
 
-class NoiseGeneratorManager 
+class NoiseGeneratorManager2
+{
+	alias createThreadDel = NoiseGenerator2 delegate(NoiseGeneratorManager2, Resources, IChannel!NoiseGeneratorOrder);
+	private createThreadDel createThread_;
+	@property createThreadDel createThread() { return createThread_; }
+
+	Resources resources;
+	Log log;
+
+	enum initialNumWorkers = 2;
+
+	private Channel!NoiseGeneratorOrder work;
+	private NoiseGenerator2[] workers;
+
+	this(Resources resources, Log log, createThreadDel createThread)
+	in(resources !is null) in(createThread !is null)
+	{
+		this.resources = resources;
+		this.log = log;
+		this.createThread_ = createThread;
+		work = new Channel!NoiseGeneratorOrder;
+		workers = new NoiseGenerator2[](0);
+
+		foreach(x; 0 .. initialNumWorkers)
+			workers ~= createThread_(this, resources, work);
+	}
+
+	~this()
+	{
+		foreach(worker; workers)
+			worker.terminate;
+	}
+
+	void managerTick(float timestep) 
+	{
+		manageWorkers;
+
+		if(work.length > 100)
+		{
+			if(log !is null) log.write(Log.Severity.info, "Created new noise generator worker");
+			workers ~= createThread_(this, resources, work);
+		}
+		if(work.length < 25 && workers.length > initialNumWorkers)
+		{
+			if(log !is null) log.write(Log.Severity.info, "Deleted noise generator worker");
+			workers[workers.length - 1].terminate;
+		}
+	}
+
+	void generateChunk(NoiseGeneratorOrder order)
+	{
+		order.chunk.dataLoadBlocking = true;
+		order.chunk.needsData = false;
+		work.send(order);
+	}
+
+	private void manageWorkers()
+	{
+		foreach(ref NoiseGenerator2 worker; workers)
+		{
+			if(worker.parked && !worker.terminated)
+				worker.kick;
+			if(worker.terminated)
+				workers = workers[0..$-1];
+		}
+	}
+}
+
+abstract class NoiseGenerator2 : IWorkerThread!NoiseGeneratorOrder
+{
+	NoiseGeneratorManager2 manager;
+	Resources resources;
+
+	this(NoiseGeneratorManager2 manager, Resources resources)
+	in(manager !is null) in(resources !is null)
+	{
+		this.manager = manager;
+		this.resources = resources;
+	}
+}
+
+/+class NoiseGeneratorManager 
 {
 	protected CyclicBuffer!(NoiseGenerator) generators;
 
@@ -614,4 +697,4 @@ final class DefaultNoiseGenerator : NoiseGenerator
 	}
 	private Materials materials;
 	private SmootherConfig smootherCfg;
-}
+}+/

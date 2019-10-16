@@ -129,8 +129,8 @@ package final class Mesher : IMesher
 	private IChannel!MeshOrder source_;
 	@property IChannel!MeshOrder source() { return source_; }
 
-	private float averageMeshTime_ = 0f;
-	@property float averageMeshTime() { return averageMeshTime_; }
+	private shared float averageMeshTime_ = 0f;
+	@property float averageMeshTime() { return atomicLoad(averageMeshTime_); }
 
 	private bool parked_ = true, terminated_ = false;
 	@property bool parked() const { return parked_; }
