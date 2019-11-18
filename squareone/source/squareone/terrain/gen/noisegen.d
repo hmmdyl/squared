@@ -44,7 +44,7 @@ class NoiseGeneratorManager2
 	Resources resources;
 	Log log;
 
-	enum initialNumWorkers = 8;
+	enum initialNumWorkers = 2;
 
 	private Channel!NoiseGeneratorOrder work;
 	private NoiseGenerator2[] workers;
@@ -72,12 +72,12 @@ class NoiseGeneratorManager2
 	{
 		manageWorkers;
 
-		/+if(work.length > 1000)
+		/+if(work.length > 100)
 		{
 			if(log !is null) log.write(Log.Severity.info, "Created new noise generator worker");
 			workers ~= createThread_(this, resources, work);
-		}+/
-		/+if(work.length < 5 && workers.length > initialNumWorkers)
+		}
+		if(work.length < 25 && workers.length > initialNumWorkers)
 		{
 			if(log !is null) log.write(Log.Severity.info, "Deleted noise generator worker");
 			workers[workers.length - 1].terminate;
