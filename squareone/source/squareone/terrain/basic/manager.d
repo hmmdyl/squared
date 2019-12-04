@@ -665,7 +665,7 @@ final class VoxelInteraction
 			}
 
 			bc.dataLoadBlocking = true;
-			bc.set(order.offset.x, order.offset.y, order.offset333.z, order.voxel);
+			bc.set(order.offset.x, order.offset.y, order.offset.z, order.voxel);
 			bc.dataLoadBlocking = false;
 
 			distributeOverruns(*bc, order.offset, order.voxel);

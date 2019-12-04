@@ -72,7 +72,7 @@ class NoiseGeneratorManager2
 	{
 		manageWorkers;
 
-		if(work.length > 100)
+		/+if(work.length > 100)
 		{
 			if(log !is null) log.write(Log.Severity.info, "Created new noise generator worker");
 			workers ~= createThread_(this, resources, work);
@@ -81,7 +81,7 @@ class NoiseGeneratorManager2
 		{
 			if(log !is null) log.write(Log.Severity.info, "Deleted noise generator worker");
 			workers[workers.length - 1].terminate;
-		}
+		}+/
 	}
 
 	void generateChunk(NoiseGeneratorOrder order)

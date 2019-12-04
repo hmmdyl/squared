@@ -222,11 +222,6 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
-		float voronoi2()
-		{
-			return (voronoi2nd(Vector2f(realPos.xz) / 32f, simplexSrc).x) * 4f;
-		}
-
 		float height = mountains;
 
 		MaterialID upperMat = materials.grass;

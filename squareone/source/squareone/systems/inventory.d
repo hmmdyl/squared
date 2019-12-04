@@ -11,14 +11,16 @@ import derelict.opengl3.gl3;
 import std.exception : enforce;
 import std.conv : to;
 import dlib.math.vector : Vector2i, Vector3f;
+import std.algorithm;
+import std.range;
 
 /// Represents a distinct family of IItemTypes. This can be used for common data between all types.
 @safe interface IItemFamily
 {
 	/// An item belonging to this family was selected.
-	void onSelect(IItemType type, ItemStack stack);
+	void onSelect(IItemType type, ref ItemStack stack);
 	/// An item belonging to this family was deselected.
-	void onDeselect(IItemType type, ItemStack stack);
+	void onDeselect(IItemType type, ref ItemStack stack);
 }
 
 /// Represents a type of item.
@@ -30,8 +32,10 @@ import dlib.math.vector : Vector2i, Vector3f;
 	/// Render tile
 	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);
 
-	void onSelect(IItemType type, ItemStack stack);
-	void onDeselect(IItemType type, ItemStack stack);
+	void onSelect(IItemType type, ref ItemStack stack);
+	void onDeselect(IItemType type, ref ItemStack stack);
+
+	@property ushort maxPerSlot() const;
 }
 
 @safe struct ItemInstance
@@ -48,6 +52,8 @@ import dlib.math.vector : Vector2i, Vector3f;
 
 @safe struct PlayerInventory
 {
+	ClientID client;
+
 	int width, height;
 	bool hotbar;
 
@@ -55,74 +61,44 @@ import dlib.math.vector : Vector2i, Vector3f;
 	ItemStack[][] slots;
 }
 
-struct PlayerInventoryLocal
+@safe struct PlayerInventoryLocal
 {
 	bool isOpen;
 	int hotbarSel;
 	int meshSel;
 }
 
-class InventoryRegister
+@safe class PlayerInventoryRenderer : IRenderable
 {
-	private IItemFamily[TypeInfo] families;
-	//private IItemType
-
-	IItemFamily getFamily(TypeInfo ti) nothrow 
-	{ 
-		IItemFamily* fam = ti in families;
-		if(ti is null) return null;
-		else return *fam;
-	}
-}
-
-class PlayerInventorySystem : IRenderable
-{
-	Moxane moxane;
-	Renderer renderer;
-
-	private IItemType[] itemTypes_;
-	@property IItemType[] itemTypes() { return itemTypes; }
-	private Texture2D[] renderedItems;
+	private PlayerInventorySystem system_;
+	@property PlayerInventorySystem system() { return system_; }
 
 	private PiRenderTexture canvas;
 
-	Vector2i slotRenderSize;
-
-	this(Moxane moxane, Renderer renderer, IItemType[] itemTypesIn)
+	this(PlayerInventorySystem system) in(system !is null)
 	{
-		assert(moxane !is null && renderer !is null);
-		this.moxane = moxane;
-		this.renderer = renderer;
-		this.itemTypes_ = itemTypesIn;
-
-		enforce(renderer.uiCamera !is null);
-		canvas = new PiRenderTexture(renderer.uiCamera.width, renderer.uiCamera.height, renderer.gl);
-
-		//this.renderer.passHook.addCallback(&renderHookCallback);
+		this.system_ = system;	
 	}
-
-	Entity target;
 
 	private void renderHookCallback(ref RendererHook hook) @trusted
 	{
 		if(hook.pass != RendererHookPass.beginningGlobal) return;
-		if(target is null) return;
+		if(system_.target is null) return;
 
-		if(renderer.uiCamera.height != canvas.height || renderer.uiCamera.width != canvas.width)
-			canvas.createTextures(renderer.uiCamera.width, renderer.uiCamera.height);
-		
+		if(system_.renderer.uiCamera.height != canvas.height || system_.renderer.uiCamera.width != canvas.width)
+			canvas.createTextures(system_.renderer.uiCamera.width, system_.renderer.uiCamera.height);
 	}
 
-	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv)
+	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv) @trusted
 	{
-		if(target is null) return;
+		if(system_.target is null) return;
 
-		PlayerInventory* pi = target.get!PlayerInventory;
+		PlayerInventory* pi = system.target.get!PlayerInventory;
 		if(pi is null) return;
-		PlayerInventoryLocal* pil = target.get!PlayerInventoryLocal;
+		PlayerInventoryLocal* pil = system.target.get!PlayerInventoryLocal;
 		if(pil is null) return;
 
-		SpriteRenderer sprite = moxane.services.get!SpriteRenderer;
+		SpriteRenderer sprite = system_.moxane.services.get!SpriteRenderer;
 		uint w = lc.camera.width;
 		uint h = lc.camera.height;
 
@@ -133,8 +109,8 @@ class PlayerInventorySystem : IRenderable
 				// background
 				int startX = lc.camera.width / 5;
 				int startY = lc.camera.height / 5;
-				int endX = lc.camera.width / 5;
-				int endY = lc.camera.height / 5;
+				int endX = lc.camera.width / 5 * 3;
+				int endY = lc.camera.height / 10 * 7;
 				sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 			}
 		}
@@ -148,6 +124,53 @@ class PlayerInventorySystem : IRenderable
 			int endY = lc.camera.height / 15;
 			sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 		}
+	}
+}
+
+@safe class PlayerInventorySystem : System
+{
+	Renderer renderer;
+
+	private Entity target_;
+	@property Entity target() { return target_; }
+
+	PlayerInventoryRenderer inventoryRenderer;
+
+	this(Moxane moxane, Renderer renderer, EntityManager manager, bool addRenderer = true)
+	in(moxane !is null) in(manager !is null)
+	{
+		super(moxane, manager);
+		this.renderer = renderer;
+
+		if(renderer !is null)
+		{
+			inventoryRenderer = new PlayerInventoryRenderer(this);
+			if(addRenderer)
+				renderer.uiRenderables ~= inventoryRenderer;
+		}
+
+		seekTarget;
+	}
+
+	~this() @trusted
+	{
+		if(canFind(renderer.uiRenderables, inventoryRenderer))
+			remove!(a => a == inventoryRenderer)(renderer.uiRenderables);
+		destroy(inventoryRenderer);
+		inventoryRenderer = null;
+	}
+
+	void seekTarget()
+	{
+		// NOTE: optimise this? Don't need to check *every* frame 
+		auto candidates = entityManager.entitiesWith!(PlayerInventory, PlayerInventoryLocal)
+			.filter!(a => a.get!PlayerInventory().client == entityManager.clientID);
+		target_ = candidates.empty ? null : candidates.front;
+	}
+
+	override void update()
+	{
+		seekTarget;
 	}
 }
 
