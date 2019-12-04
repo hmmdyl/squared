@@ -318,6 +318,12 @@ final class VegetationProcessor : IProcessor
 	void returnMesher(IMesher m) {}
 }
 
+private struct MeshResult
+{
+	MeshOrder order;
+	MeshBuffer buffer;
+}
+
 private final class Mesher
 {
 	VegetationProcessor processor;
@@ -492,5 +498,32 @@ private final class Mesher
 			mr.buffer = buffer;
 			processor.meshResults.send(mr);
 		}
+	}
+}
+
+private enum bufferMaxVertices = 2 ^^ 14;
+
+private final class MeshBuffer
+{
+	Vector3f[] vertices;
+	ubyte[] colours;
+	Vector2f[] texCoords;
+	ushort vertexCount;
+
+	this()
+	{
+		vertices.length = bufferMaxVertices;
+		colours.length = bufferMaxVertices * 4;
+		texCoords.length = bufferMaxVertices;
+	}
+
+	void reset() { vertexCount = 0; }
+
+	void add(Vector3f vertex, ubyte[4] colour, Vector2f texCoord)
+	{
+		vertices[vertexCount] = vertex;
+		colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour[];
+		texCoords[vertexCount] = texCoord;
+		vertexCount++;
 	}
 }

@@ -199,15 +199,14 @@ final class BlockProcessor : IProcessor
 				destroy(rd.rigidBody);
 			}
 
-			/+Vector3f[] verts = upItem.buffer.vertices[0..upItem.buffer.vertexCount].dup;
+			Vector3f[] verts;// = upItem.buffer.vertices[0..upItem.buffer.vertexCount].dup;
 			void createPhys()
 			{
-				rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, verts, false);
+				rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, verts, true);
 				rd.rigidBody = new Body(rd.collider, Body.Mode.dynamic, moxane.services.get!PhysicsSystem, AtomicTransform(upItem.order.chunk.transform));
 				rd.rigidBody.collidable = true;
 				delete verts;
 			}
-			createPhys;+/
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 

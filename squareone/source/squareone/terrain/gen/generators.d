@@ -9,7 +9,6 @@ import moxane.core;
 import moxane.utils.maybe;
 
 import dlib.math.vector;
-import dlib.math.utils;
 
 import std.concurrency;
 import core.atomic;
@@ -123,19 +122,6 @@ private void operate(NoiseGeneratorOrder order, DefaultNoiseGeneratorV1 ng, Open
 	countAir(order, meshes);
 }
 
-private int generateNoiseBiome(NoiseGeneratorOrder order, OpenSimplexNoise!float, int s, int e, const ref Materials materials, const ref Meshes meshes, ref VoxelBuffer voxels)
-{
-	int preliminaryCount = 0;
-
-	for(int box = s; box < e; box += order.chunk.blockskip)
-	{
-		//for()
-		//for()
-	}
-
-	return preliminaryCount;
-}
-
 private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simplex, int s, int e, const ref Materials materials, const ref Meshes meshes, ref VoxelBuffer raw)
 {
 	int premC = 0;
@@ -167,7 +153,6 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 
 		auto simplexSrc = (float x, float y) => simplex.eval(x, y);
 		auto simplexSrc3D = (float x, float y, float z) => simplex.eval(x, y, z);
-		auto voronoiSrc = (float x, float y) => voronoi(Vector2f(x, y), simplexSrc).x;
 
 		float flat() { return 0f; }
 
@@ -199,41 +184,14 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
-		float canyon()
-		{
-			enum voronoiScale = 128;
-			enum voronoiPower = 2;
-			enum voronoiOffsetPosScale = 32f;
-			enum voronoiOffsetScale = 0.1f;
-			enum cutoffBase = 0.2f, cutoffUpper = cutoffBase * 1.5f;
-			enum canyonBottomHeight = 0;
-			enum canyonPlateauHeight = 4;
 
-			import std.math;
-			float factor = redistributeNoise(voronoi(Vector2f(realPos.xz) / voronoiScale, simplexSrc).x, voronoiPower);
-			factor += multiNoise(simplexSrc, realPos.x, realPos.z, voronoiOffsetPosScale, 8) * voronoiOffsetScale;
+		float height = archipelago;
 
-			//float h = (factor) * 1;// > 0.4f ? 0f : 5f;
-
-			float h;
-			if(factor > cutoffBase && factor < cutoffUpper)
-				h = canyonBottomHeight + multiNoise(simplexSrc, realPos.x, realPos.z, 8f, 1) * 0.5f;
-			else h = canyonPlateauHeight + multiNoise(simplexSrc, realPos.x, realPos.z, 8f, 4) * 2;
-			return h;
-		}
-
-		float voronoi2()
-		{
-			return (voronoi2nd(Vector2f(realPos.xz) / 32f, simplexSrc).x) * 4f;
-		}
-
-		float height = canyon;
-
-		MaterialID upperMat = materials.grass;
-		/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
+		MaterialID upperMat;
+		float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
 		if(mdet < 0.333f) upperMat = materials.dirt;
 		else if(mdet >= 0.333f && mdet < 0.666f) upperMat = materials.grass;
-		else if(mdet > 0.666f) upperMat = materials.stone;+/
+		else if(mdet > 0.666f) upperMat = materials.stone;
 
 		for(int boy = s; boy < e; boy += order.chunk.blockskip)
 		{
