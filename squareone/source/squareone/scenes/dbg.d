@@ -139,7 +139,7 @@ final class DebugGameScene : Scene
 		fluidProcessor = new FluidProcessor(moxane, [resources.getMesh(Invisible.technicalStatic)]);
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
-		//resources.add(veggieProcessor);
+		resources.add(veggieProcessor);
 		glassProcessor = new GlassProcessor(moxane, blockProcessor);
 		//resources.add(glassProcessor);
 
