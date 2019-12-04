@@ -50,7 +50,7 @@ import moxane.io.input;
 		im.boundKeys[decToolSizeBinding] -= &onInput;
 	}
 
-	void onSelect(IItemType type, ItemStack stack)
+	void onSelect(IItemType type, ref ItemStack stack)
 	{
 		IVoxelItemType vt = cast(IVoxelItemType)type;
 		assert(vt !is null);
@@ -61,7 +61,7 @@ import moxane.io.input;
 		type = vt;
 	}
 
-	void onDeselect(IItemType type, ItemStack stack)
+	void onDeselect(IItemType type, ref ItemStack stack)
 	{
 		anyToolSelected = false;
 		type = null;

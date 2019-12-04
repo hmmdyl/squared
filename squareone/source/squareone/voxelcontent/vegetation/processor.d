@@ -2,10 +2,10 @@ module squareone.voxelcontent.vegetation.processor;
 
 import squareone.voxelcontent.vegetation.precalc;
 import squareone.voxelcontent.vegetation.types;
+import squareone.voxelcontent.vegetation.mesher;
 
 import squareone.voxel;
 import squareone.util.spec;
-import squareone.util.procgen.simplex;
 
 import moxane.core;
 import moxane.utils.pool;
@@ -32,10 +32,7 @@ final class VegetationProcessor : IProcessor
 	Resources resources;
 
 	package Pool!MeshBuffer meshBufferPool;
-	package Channel!MeshResult meshResults;
-	private enum mesherCount = 1;
-	private Mesher[] meshers;
-	private int meshBarrel;
+    package Channel!MeshResult meshResults;
 	private Pool!(RenderData*) renderDataPool;
 
 	package IVegetationVoxelTexture[] textures;
@@ -64,13 +61,6 @@ final class VegetationProcessor : IProcessor
 	{
 		import derelict.opengl3.gl3 : glDeleteVertexArrays;
 		glDeleteVertexArrays(1, &vao);
-
-		foreach(x; 0 .. meshers.length)
-		{
-			Mesher m = meshers[x];
-			destroy(m);
-			meshers[x] = null;
-		}
 	}
 
 	void finaliseResources(Resources resources)
@@ -103,9 +93,6 @@ final class VegetationProcessor : IProcessor
 		}
 		materials.rehash;
 
-		foreach(x; 0 .. mesherCount)
-			meshers ~= new Mesher(this);
-
 		import std.file : readText;
 		import derelict.opengl3.gl3 : glGenVertexArrays, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER;
 		glGenVertexArrays(1, &vao);
@@ -130,13 +117,6 @@ final class VegetationProcessor : IProcessor
 
 	private bool isRdNull(IMeshableVoxelBuffer vb) { return vb.renderData[id_] is null; }
 	private RenderData* getRD(IMeshableVoxelBuffer vb) { return cast(RenderData*)vb.renderData[id_]; }
-
-	void meshChunk(MeshOrder o)
-	{
-		o.chunk.meshBlocking(true, id_);
-		meshers[meshBarrel++].orders.send(o);
-		if(meshBarrel >= mesherCount) meshBarrel = 0;
-	}
 
 	void removeChunk(IMeshableVoxelBuffer c)
 	{
@@ -264,7 +244,7 @@ final class VegetationProcessor : IProcessor
 
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
 	{
-		if(!(lc.type == PassType.scene || lc.type == PassType.shadow)) return;
+		if(!(lc.type == PassType.scene || lc.type == PassType.scene)) return;
 
 		RenderData* rd = getRD(chunk);
 		if(rd is null) return;
@@ -313,217 +293,8 @@ final class VegetationProcessor : IProcessor
 		return 0;
 	}
 
-	@property size_t minMeshers() const { return 0; }
-	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	enum minMeshersCount = 1;
+	@property size_t minMeshers() const { return minMeshersCount; }
+	IMesher requestMesher(IChannel!MeshOrder source) {return new Mesher(this, source);}
 	void returnMesher(IMesher m) {}
-}
-
-private struct MeshResult
-{
-	MeshOrder order;
-	MeshBuffer buffer;
-}
-
-private final class Mesher
-{
-	VegetationProcessor processor;
-
-	Channel!MeshOrder orders;
-	private bool terminate;
-	private Thread thread;
-
-	private OpenSimplexNoise!float simplex;
-
-	this(VegetationProcessor processor)
-	in(processor !is null)
-	do {
-		this.processor = processor;
-		orders = new Channel!MeshOrder;
-		simplex = new OpenSimplexNoise!float;
-		thread = new Thread(&worker);
-		thread.name = VegetationProcessor.stringof ~ " " ~ Mesher.stringof;
-		thread.isDaemon = true;
-		thread.start;
-	}
-
-	~this()
-	{
-		if(thread !is null && thread.isRunning)
-		{
-			terminate = true;
-			orders.notifyUnsafe;
-			thread.join;
-		}
-	}
-
-	private void worker()
-	{
-		try
-		{
-			while(!terminate)
-			{
-				Maybe!MeshOrder order = orders.await;
-				if(MeshOrder* o = order.unwrap)
-					execute(*o);
-				else return;
-			}
-		}
-		catch(Throwable t)
-		{
-			import std.conv : to;
-			Log log = processor.moxane.services.get!Log;
-			log.write(Log.Severity.error, "Exception in " ~ thread.name ~ "\n\tMessage: " ~ to!string(t.message) ~ "\n\tLine: " ~ to!string(t.line) ~ "\n\tStacktrace: " ~ t.info.toString);
-			log.write(Log.Severity.error, "Thread will not be restarted.");
-		}
-	}
-
-	private void execute(MeshOrder order)
-	{
-		MeshBuffer buffer;
-		do buffer = processor.meshBufferPool.get;
-		while(buffer is null);
-
-		immutable int blockskip = order.chunk.blockskip;
-		immutable int chunkDimLod = order.chunk.dimensionsProper * order.chunk.blockskip;
-
-		for(int x = 0; x < chunkDimLod; x += blockskip)
-		for(int y = 0; y < chunkDimLod; y += blockskip)
-		for(int z = 0; z < chunkDimLod; z += blockskip)
-		{
-			Voxel voxel = order.chunk.get(x, y, z);
-			
-			IVegetationVoxelMesh* meshPtr = voxel.mesh in processor.meshes;
-			if(meshPtr is null) continue;
-			IVegetationVoxelMesh mesh = *meshPtr;
-
-			Voxel ny = order.chunk.get(x, y - blockskip, z);
-			const bool shiftDown = processor.resources.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
-
-			const Vector3f colour = voxel.extractColour;
-			ubyte[4] colourBytes = [
-				cast(ubyte)(colour.x * 255),
-				cast(ubyte)(colour.y * 255),
-				cast(ubyte)(colour.z * 255),
-				0
-			];
-
-			IVegetationVoxelMaterial* materialPtr = voxel.material in processor.materials;
-			if(materialPtr is null) throw new Exception("Yeetus");
-			IVegetationVoxelMaterial material = *materialPtr;
-
-			if(mesh.meshType == MeshType.grass)
-			{
-				GrassVoxel gv = GrassVoxel(voxel);
-				float height = gv.blockHeight;
-				colourBytes[3] = material.grassTexture;
-
-				Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((360f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
-				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
-				
-				foreach(size_t vid, immutable Vector3f v; grassBundle2)
-				{
-					size_t tid = vid % grassPlane.length;
-					Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
-					Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
-
-					import std.math;
-					ubyte offset = gv.offset;
-					float xOffset = offset == 0 ? 0f : cos(degtorad((360f / 7f) * (offset-1))) * 0.25f;
-					float yOffset = offset == 0 ? 0f : sin(degtorad((360f / 7f) * (offset-1))) * 0.25f;
-
-					vertex += Vector3f(xOffset, 0f, yOffset);
-					
-					vertex = (vertex * Vector3f(1f, height + (height * gv.heightOffset), 1f)) * order.chunk.blockskip + Vector3f(x, y, z);
-					if(shiftDown) vertex.y -= order.chunk.blockskip;
-					vertex *= order.chunk.voxelScale;
-					buffer.add(vertex, colourBytes, texCoord);
-				}
-			}
-			else if(mesh.meshType == MeshType.leaf)
-			{
-				LeafVoxel lv = LeafVoxel(voxel);
-
-				float rotation;
-				final switch(lv.direction) with(LeafVoxel.Direction)
-				{
-					case negative90:
-						rotation = -45f;
-						break;
-					case negative45:
-						rotation = 0f;
-						break;
-					case zero:
-						rotation = 45f;
-						break;
-					case positive45:
-						rotation = 90f;
-						break;
-				}
-
-				Matrix4f rotMat =
-					rotationMatrix(Axis.y, degtorad(lv.rotation * (360f / 8f))) *
-					rotationMatrix(Axis.x, degtorad(rotation)) *
-					translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
-				Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
-
-				foreach(size_t vid, immutable Vector3f v; leafPlane)
-				{
-					size_t texCoordID = vid % leafPlaneTexCoords.length;
-					Vector2f texCoord = Vector2f(leafPlaneTexCoords[texCoordID]);
-					Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
-
-					vertex = vertex * order.chunk.blockskip + Vector3f(x, y, z);
-					vertex *= order.chunk.voxelScale;
-
-					buffer.add(vertex, colourBytes, texCoord);
-				}
-			}
-		}
-
-		if(buffer.vertexCount == 0)
-		{
-			buffer.reset;
-			processor.meshBufferPool.give(buffer);
-			buffer = null;
-
-			MeshResult mr;
-			mr.order = order;
-			mr.buffer = null;
-			processor.meshResults.send(mr);
-		}
-		else
-		{
-			MeshResult mr;
-			mr.order = order;
-			mr.buffer = buffer;
-			processor.meshResults.send(mr);
-		}
-	}
-}
-
-private enum bufferMaxVertices = 2 ^^ 14;
-
-private final class MeshBuffer
-{
-	Vector3f[] vertices;
-	ubyte[] colours;
-	Vector2f[] texCoords;
-	ushort vertexCount;
-
-	this()
-	{
-		vertices.length = bufferMaxVertices;
-		colours.length = bufferMaxVertices * 4;
-		texCoords.length = bufferMaxVertices;
-	}
-
-	void reset() { vertexCount = 0; }
-
-	void add(Vector3f vertex, ubyte[4] colour, Vector2f texCoord)
-	{
-		vertices[vertexCount] = vertex;
-		colours[vertexCount * 4 .. vertexCount * 4 + 4] = colour[];
-		texCoords[vertexCount] = texCoord;
-		vertexCount++;
-	}
 }

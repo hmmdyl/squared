@@ -2,6 +2,7 @@ module squareone.voxelcontent.fluid.processor;
 
 import squareone.voxel;
 import squareone.util.spec;
+import squareone.voxelcontent.fluid.meshers;
 
 import moxane.core;
 import moxane.graphics.renderer;
@@ -11,13 +12,7 @@ import moxane.graphics.log;
 import moxane.graphics.texture;
 import moxane.utils.maybe;
 
-import core.thread : Thread;
-import dlib.math.matrix;
-import dlib.math.vector;
-import dlib.math.transformation;
-import dlib.math.utils : clamp;
-import std.random;
-import std.algorithm;
+import dlib.math;
 import std.datetime.stopwatch;
 
 final class FluidProcessor : IProcessor
@@ -32,11 +27,8 @@ final class FluidProcessor : IProcessor
 	Resources resources;
 
 	private Pool!(RenderData*) renderDataPool;
-	private Pool!(MeshBuffer) meshBufferPool;
-	private Channel!MeshResult meshResults;
-	private enum mesherCount = 2;
-	private size_t meshBarrel;
-	private Mesher[] meshers;
+	package Pool!(MeshBuffer) meshBufferPool;
+	package Channel!MeshResult meshResults;
 
 	FluidMesh fluidMesh;
 
@@ -55,6 +47,7 @@ final class FluidProcessor : IProcessor
 	private Texture2D normalMap;
 
 	private IVoxelMesh[] meshOn;
+	private MeshID[] meshOnIDs;
 
 	this(Moxane moxane, IVoxelMesh[] meshOn)
 	in(moxane !is null) in(meshOn !is null)
@@ -64,6 +57,9 @@ final class FluidProcessor : IProcessor
 		meshBufferPool = Pool!(MeshBuffer)(() => new MeshBuffer(), 24, false);
 		renderDataPool = Pool!(RenderData*)(() => new RenderData(), 64);
 		this.meshOn = meshOn;
+		meshOnIDs = new MeshID[](meshOn.length);
+		foreach(size_t i, ref MeshID meshID; meshOnIDs)
+			meshID = meshOn[i].id;
 	}
 
 	void finaliseResources(Resources res)
@@ -72,11 +68,6 @@ final class FluidProcessor : IProcessor
 		resources = res;
 
 		fluidMesh = cast(FluidMesh)res.getMesh(FluidMesh.technicalStatic);
-
-		meshers = new Mesher[](mesherCount);
-		foreach(x; 0 .. mesherCount)
-			meshers[x] = new Mesher(this, &meshBufferPool, meshResults, fluidMesh.id_);
-
 		import std.file : readText;
 		import derelict.opengl3.gl3 : GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, glGenVertexArrays;
 
@@ -147,21 +138,6 @@ final class FluidProcessor : IProcessor
 	{
 		import derelict.opengl3.gl3 : glDeleteVertexArrays;
 		glDeleteVertexArrays(1, &vao);
-
-		foreach(x; 0 .. meshers.length)
-		{
-			Mesher m = meshers[x];
-			destroy(m);
-			meshers[x] = null;
-		}
-	}
-
-	void meshChunk(MeshOrder c)
-	{
-		c.chunk.meshBlocking(true, id_);
-		meshers[meshBarrel].orders.send(c);
-		meshBarrel++;
-		if(meshBarrel >= mesherCount) meshBarrel = 0;
 	}
 
 	void removeChunk(IMeshableVoxelBuffer c)
@@ -349,8 +325,8 @@ final class FluidProcessor : IProcessor
 		glBindVertexArray(0);
 	}
 
-	@property size_t minMeshers() const { return 0; }
-	IMesher requestMesher(IChannel!MeshOrder source) {return null;}
+	@property size_t minMeshers() const { return 2; }
+	IMesher requestMesher(IChannel!MeshOrder source) { return new Mesher(this, resources, fluidMesh.id, source, meshOnIDs.idup); }
 	void returnMesher(IMesher m) {}
 }
 
@@ -389,7 +365,7 @@ final class FluidMesh : IVoxelMesh
 	SideSolidTable isSideSolid(Voxel voxel, VoxelSide side) { return SideSolidTable.notSolid; }
 }
 
-private struct MeshResult
+/+package struct MeshResult
 {
 	MeshOrder order;
 	MeshBuffer buffer;
@@ -625,7 +601,7 @@ private class MeshBuffer
 	}
 
 	void reset() { vertexCount = 0; }
-}
+}+/
 
 import cimgui;
 import moxane.graphics.imgui;
