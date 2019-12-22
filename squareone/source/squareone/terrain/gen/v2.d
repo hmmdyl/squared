@@ -10,6 +10,7 @@ import moxane.utils.maybe;
 
 import dlib.math;
 
+import std.concurrency;
 import core.atomic;
 
 class GenV2 : NoiseGenerator2
@@ -86,7 +87,7 @@ private void worker(shared GenV2 ngs)
 						if(order.isNull)
 							consuming = false;
 						else
-							operate(*order.unwrap, ng, simplex, meshes, materials, smootherCfg, raw, smootherOutput);
+						{}//operate(*order.unwrap, ng, simplex, meshes, materials, smootherCfg, raw, smootherOutput);
 					}
 				}
 			);
