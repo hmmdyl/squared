@@ -301,7 +301,7 @@ final class DebugGameScene : Scene
 		PhysicsComponent* phys = pt.createComponent!PhysicsComponent;
 		Collider box = //new BoxCollider(physicsSystem, Vector3f(1, 1, 1));
 			new SphereCollider(physicsSystem, 1);
-		Body body_ = new Body(box, Body.Mode.dynamic, physicsSystem, AtomicTransform(*transform));
+		BodyMT body_ = new BodyMT(box, Body.Mode.dynamic, physicsSystem, AtomicTransform(*transform));
 		body_.gravity = true;
 		body_.mass(10f, Vector3f(1, 1, 1));
 		phys.collider = box;
@@ -359,7 +359,7 @@ final class DebugGameScene : Scene
 		if(toolSize > 4) toolSize = 4;
 
 		PhysicsComponent* phys = playerEntity.get!PhysicsComponent;
-		DynamicPlayerBody dpb = cast(DynamicPlayerBody)phys.rigidBody;
+		DynamicPlayerBodyMT dpb = cast(DynamicPlayerBodyMT)phys.rigidBody;
 
 		if(!keyCapture)
 		{

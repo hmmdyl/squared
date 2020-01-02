@@ -40,7 +40,7 @@ import dlib.math.utils : degtorad;
 	float mass = 10f;
 
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
-	phys.rigidBody = new DynamicPlayerBody(physicsSystem, 0.5f, 1.9f, 10f, AtomicTransform(*transform));
+	phys.rigidBody = new DynamicPlayerBodyMT(physicsSystem, 0.5f, 1.9f, 10f, AtomicTransform(*transform));
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -158,7 +158,7 @@ enum PlayerBindingName
 			}
 		}
 
-		DynamicPlayerBody dpb = cast(DynamicPlayerBody)phys.rigidBody;
+		DynamicPlayerBodyMT dpb = cast(DynamicPlayerBodyMT)phys.rigidBody;
 
 		dpb.yaw = pc.headRotation.y;
 		/+dpb.strafe = force.x;
