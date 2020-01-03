@@ -281,6 +281,8 @@ final class DebugGameScene : Scene
 	override void removedCurrent(Scene overwroteBy)
 	{}
 
+	PhysicsComponent* phys;
+
 	private void addPhysicsTest()
 	{
 		auto sr = moxane.services.get!StandardRenderer;
@@ -298,12 +300,13 @@ final class DebugGameScene : Scene
 		RenderComponent* rc = pt.createComponent!RenderComponent;
 		ers.addModel(sm, *rc);
 
-		PhysicsComponent* phys = pt.createComponent!PhysicsComponent;
+		/+PhysicsComponent*+/ phys = pt.createComponent!PhysicsComponent;
 		Collider box = //new BoxCollider(physicsSystem, Vector3f(1, 1, 1));
 			new SphereCollider(physicsSystem, 1);
-		BodyMT body_ = new BodyMT(box, Body.Mode.dynamic, physicsSystem, AtomicTransform(*transform));
+		BodyMT body_ = new BodyMT(physicsSystem, BodyMT.Mode.dynamic, box, AtomicTransform(*transform));
 		body_.gravity = true;
-		body_.mass(10f, Vector3f(1, 1, 1));
+		body_.mass = 10f;
+		body_.massMatrix = Vector3f(1, 1, 1);
 		phys.collider = box;
 		phys.rigidBody = body_;
 	}
@@ -363,8 +366,8 @@ final class DebugGameScene : Scene
 
 		if(!keyCapture)
 		{
-			phys.rigidBody.transform.position = Vector3f(0, 10, 0);
-			phys.rigidBody.updateMatrix;
+			phys.rigidBody.transform.position = Vector3f(0, 10, 5);
+			//phys.rigidBody.updateMatrix;
 			phys.rigidBody.velocity = Vector3f(0, 0, 0);
 		}
 
@@ -480,6 +483,13 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Delta: %7.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
+			
+			import std.stdio;
+			writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
+			Vector3f pp = scene.playerEntity.get!PhysicsComponent().rigidBody.transform.position;
+			Vector3f f = scene.playerEntity.get!PhysicsComponent().rigidBody.sumForce;
+			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);
+			igText("Force: %f %f %f", f.x, f.y, f.z);
 
 			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
 			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");
