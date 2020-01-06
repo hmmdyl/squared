@@ -167,7 +167,7 @@ final class DebugGameScene : Scene
 
 		resources.finaliseResources;
 		enum immediate = 3;
-		enum extended = 3;
+		enum extended = 5;
 		enum remove = extended + 2;
 		enum local = 3;
 		BasicTMSettings settings = BasicTMSettings(Vector3i(immediate, immediate, immediate), Vector3i(extended, immediate, extended), Vector3i(remove, immediate+2, remove), Vector3i(local, local, local), resources);
@@ -253,7 +253,7 @@ final class DebugGameScene : Scene
 		import std.experimental.allocator.gc_allocator;
 		loadMesh!(Vector3f, Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts, normals);
 
-		addPhysicsTest;
+		//addPhysicsTest();
 	}
 
 	private void setCamera(Vector2i size)
@@ -283,7 +283,7 @@ final class DebugGameScene : Scene
 
 	PhysicsComponent* phys;
 
-	private void addPhysicsTest()
+	private void addPhysicsTest(Vector3f pos = playerEntity.get!Transform().position + Vector3f(0, 7, 0))
 	{
 		auto sr = moxane.services.get!StandardRenderer;
 		StaticModel sm = new StaticModel(sr, material, verts, normals);
@@ -296,7 +296,7 @@ final class DebugGameScene : Scene
 		em.add(pt);
 		Transform* transform = pt.createComponent!Transform;
 		*transform = Transform.init;
-		transform.position = playerEntity.get!Transform().position + Vector3f(0, 7, 0);
+		transform.position = pos;
 		RenderComponent* rc = pt.createComponent!RenderComponent;
 		ers.addModel(sm, *rc);
 
@@ -366,10 +366,11 @@ final class DebugGameScene : Scene
 
 		if(!keyCapture)
 		{
-			phys.rigidBody.transform.position = Vector3f(0, 10, 5);
-			//phys.rigidBody.updateMatrix;
-			phys.rigidBody.velocity = Vector3f(0, 0, 0);
+			phys.rigidBody.freeze = true;
+			phys.rigidBody.transform.position = Vector3f(0, 10, 0);
+			//phys.rigidBody.velocity = Vector3f(0, 0, 0);
 		}
+		else phys.rigidBody.freeze = false;
 
 		if((shouldBreak || shouldPlace) && keyCapture)
 		{
@@ -382,7 +383,7 @@ final class DebugGameScene : Scene
 			{
 				if(shouldPlace)
 				{
-					addPhysicsTest;
+					addPhysicsTest(pr.realPosition + Vector3f(0, 10, 0));
 					if(pr.side == VoxelSide.nx) pr.blockPosition.x -= toolSize;
 					if(pr.side == VoxelSide.px) pr.blockPosition.x += toolSize;
 					if(pr.side == VoxelSide.ny) pr.blockPosition.y -= toolSize;
@@ -482,10 +483,11 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Rotation: %0.3f, %0.3f, %0.3f", scene.camera.rotation.x, scene.camera.rotation.y, scene.camera.rotation.z);
 			igText("Delta: %7.3fms", scene.moxane.deltaTime * 1000f);
 			igText("Frames: %d", scene.moxane.frames);
+			igText("Physics delta: %7.3fms", scene.physicsSystem.deltaTime * 1000f);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
 			
 			import std.stdio;
-			writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
+			//writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
 			Vector3f pp = scene.playerEntity.get!PhysicsComponent().rigidBody.transform.position;
 			Vector3f f = scene.playerEntity.get!PhysicsComponent().rigidBody.sumForce;
 			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);

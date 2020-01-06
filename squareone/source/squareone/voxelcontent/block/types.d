@@ -37,7 +37,7 @@ struct RenderData
 
 	float chunkMax, fit10BitScale;
 
-	Body rigidBody;
+	BodyMT rigidBody;
 	Collider collider;
 
 	void create()
@@ -54,8 +54,5 @@ struct RenderData
 		import derelict.opengl3.gl3 : glDeleteBuffers;
 		glDeleteBuffers(3, buffers.ptr);
 		vertexCount = 0;
-
-		delete rigidBody;
-		delete collider;
 	}
 }
