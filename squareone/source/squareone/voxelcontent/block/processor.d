@@ -202,7 +202,7 @@ final class BlockProcessor : IProcessor
 			void createPhys()
 			{
 				rd.collider = new StaticMeshCollider(moxane.services.get!PhysicsSystem, upItem.buffer.vertices[0..upItem.buffer.vertexCount], true, false);
-				rd.rigidBody = new BodyMT(moxane.services.get!PhysicsSystem, BodyMT.Mode.kinematic, rd.collider, AtomicTransform(upItem.order.chunk.transform));
+				rd.rigidBody = new BodyMT(moxane.services.get!PhysicsSystem, BodyMT.Mode.dynamic, rd.collider, AtomicTransform(upItem.order.chunk.transform));
 				rd.rigidBody.collidable = true;
 			}
 			createPhys;
