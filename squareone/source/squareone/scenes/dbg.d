@@ -223,7 +223,7 @@ final class DebugGameScene : Scene
 		em.add(playerInventory);
 		PlayerInventory* pi = playerEntity.createComponent!PlayerInventory;
 		PlayerInventoryLocal* pil = playerEntity.createComponent!PlayerInventoryLocal;
-		pil.isOpen = true;
+		pil.isOpen = false;
 		renderer.uiRenderables ~= new PlayerInventoryRenderer(playerInventory);
 		//playerInventory.target = playerEntity;
 
@@ -305,7 +305,7 @@ final class DebugGameScene : Scene
 			new SphereCollider(physicsSystem, 1);
 		BodyMT body_ = new BodyMT(physicsSystem, BodyMT.Mode.dynamic, box, AtomicTransform(*transform));
 		body_.gravity = true;
-		body_.mass = 10f;
+		body_.mass = 1f;
 		body_.massMatrix = Vector3f(1, 1, 1);
 		phys.collider = box;
 		phys.rigidBody = body_;
@@ -445,7 +445,7 @@ RP: %0.3f, %0.3f, %0.3f RH: %d",
 						dpb.transform.rotation.x, dpb.transform.rotation.y, dpb.transform.rotation.z,
 						dpb.height, dpb.radius,
 						dpb.raycastHitCoord.x, dpb.raycastHitCoord.y, dpb.raycastHitCoord.z, dpb.raycastHit);
-		moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
+		//moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}
 

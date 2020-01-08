@@ -160,7 +160,7 @@ enum PlayerBindingName
 
 		DynamicPlayerBodyMT dpb = cast(DynamicPlayerBodyMT)phys.rigidBody;
 		dpb.gravity = true;
-		dpb.addForce(Vector3f(force.x*3000, force.y * 3000, force.z*3000));
+		dpb.addForce(Vector3f(force.x*30000, force.y * 30000, force.z*30000));
 	
 		if(pc.camera !is null)
 		{

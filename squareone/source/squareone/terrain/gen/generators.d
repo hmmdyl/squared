@@ -222,9 +222,9 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
-		float height = archipelago;
+		float height = icicycle;
 
-		MaterialID upperMat = materials.grass;
+		MaterialID upperMat = materials.stone;
 		/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
 		if(mdet < 0.333f) upperMat = materials.dirt;
 		else if(mdet >= 0.333f && mdet < 0.666f) upperMat = materials.grass;
