@@ -97,7 +97,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		ci.magnification = Filter.linear;
 		ci.minification = Filter.linear;
 		ci.mipMaps = false;
-		ci.srgb = false;
+		ci.srgb = true;
 		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, ci);
 
 		Log log = moxane.services.get!Log;

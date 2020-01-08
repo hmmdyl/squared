@@ -488,10 +488,13 @@ private final class SceneDebugAttachment : IImguiRenderable
 			
 			import std.stdio;
 			//writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
+			auto playerRb = cast(DynamicPlayerBodyMT)scene.playerEntity.get!PhysicsComponent().rigidBody;
 			Vector3f pp = scene.playerEntity.get!PhysicsComponent().rigidBody.transform.position;
 			Vector3f f = scene.playerEntity.get!PhysicsComponent().rigidBody.sumForce;
 			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);
 			igText("Force: %f %f %f", f.x, f.y, f.z);
+			igText("Velocity: %f %f %f", playerRb.velocity.x, playerRb.velocity.y, playerRb.velocity.z);
+			igText("Inputs: %f %f %f", playerRb.strafe, playerRb.vertical, playerRb.forward);
 
 			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
 			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");
