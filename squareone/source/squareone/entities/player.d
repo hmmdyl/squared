@@ -31,16 +31,8 @@ import dlib.math.utils : degtorad;
 	pc.bindings = bindings;
 	pc.camera = null;
 
-	float radius = 0.5f;
-	float height = 1.9f;
-	float stepHeight = height / 3f;
-	float scale = 3.0f;
-	height = max(height - 2.0f * radius / scale, 0.1f);
-
-	float mass = 10f;
-
 	PhysicsComponent* phys = e.createComponent!PhysicsComponent;
-	phys.rigidBody = new DynamicPlayerBodyMT(physicsSystem, 0.5f, 1.9f, AtomicTransform(*transform));
+	phys.rigidBody = new DynamicPlayerBodyMT(physicsSystem, 0.05f, 1.9f, 0.6f, AtomicTransform(*transform));
 
 	e.attachScript(new PlayerMovementScript(em.moxane, em.moxane.services.get!InputManager));
 
@@ -136,7 +128,7 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.strafeLeft])) movement.x -= pc.walkSpeed;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.strafeRight])) movement.x += pc.walkSpeed;
 
-			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed;
+			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed * 3;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
 			//if(phys is null) movement *= moxane.deltaTime;
@@ -149,6 +141,7 @@ enum PlayerBindingName
 			force.x += sin(yrot) * movement.z;
 			force.z -= cos(yrot) * movement.z;
 
+			force.y -= pc.walkSpeed;
 			force.y += movement.y;
 
 			if(phys is null)
@@ -159,15 +152,12 @@ enum PlayerBindingName
 		}
 
 		DynamicPlayerBodyMT dpb = cast(DynamicPlayerBodyMT)phys.rigidBody;
-		dpb.gravity = true;
-		dpb.strafe = force.x * 30;
-		dpb.vertical = force.y * 30;
-		dpb.forward = force.z * 30;
+		dpb.velocity = force;
 	
 		if(pc.camera !is null)
 		{
 			pc.camera.rotation = pc.headRotation;
-			pc.camera.position = tc.position + Vector3f(0, 1.3f, 0);
+			pc.camera.position = tc.position + Vector3f(0, 1.9f, 0);
 			pc.camera.buildView;
 		}
 	}

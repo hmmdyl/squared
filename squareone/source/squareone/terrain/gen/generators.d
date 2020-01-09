@@ -13,6 +13,7 @@ import dlib.math.utils;
 
 import std.concurrency;
 import core.atomic;
+import std.math;
 
 class DefaultNoiseGeneratorV1 : NoiseGenerator2
 {
@@ -171,6 +172,10 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 
 		float flat() { return 0f; }
 
+		float ridgenoise(float n) {
+			return 2 * (0.5f - abs(0.5f - n));
+		}
+
 		float icicycle()
 		{
 			float i = redistributeNoise(multiNoise(simplexSrc, realPos.x, realPos.z, 16f, 16), 8f) * 8f;
@@ -210,21 +215,23 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			enum canyonPlateauHeight = 4;
 
 			import std.math;
-			float factor = redistributeNoise(voronoi(Vector2f(realPos.xz) / voronoiScale, simplexSrc).x, voronoiPower);
-			factor += multiNoise(simplexSrc, realPos.x, realPos.z, voronoiOffsetPosScale, 8) * voronoiOffsetScale;
+			//float factor = redistributeNoise(voronoi(Vector2f(realPos.xz) / voronoiScale, simplexSrc).x, voronoiPower);
+			//float factor = voronoi(Vector2f(realPos.xz) / voronoiScale, simplexSrc).x;
+			float factor = multiNoise(simplexSrc, realPos.x, realPos.z, voronoiOffsetPosScale, 8);
+			factor = ridgenoise(factor);
 
 			//float h = (factor) * 1;// > 0.4f ? 0f : 5f;
 
 			float h;
-			if(factor > cutoffBase && factor < cutoffUpper)
+			if(factor > 0.7f)
 				h = canyonBottomHeight + multiNoise(simplexSrc, realPos.x, realPos.z, 8f, 1) * 0.5f;
 			else h = canyonPlateauHeight + multiNoise(simplexSrc, realPos.x, realPos.z, 8f, 4) * 2;
 			return h;
 		}
 
-		float height = icicycle;
+		float height = canyon;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
 
-		MaterialID upperMat = materials.stone;
+		MaterialID upperMat = materials.grass;
 		/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
 		if(mdet < 0.333f) upperMat = materials.dirt;
 		else if(mdet >= 0.333f && mdet < 0.666f) upperMat = materials.grass;

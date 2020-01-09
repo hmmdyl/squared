@@ -366,11 +366,10 @@ final class DebugGameScene : Scene
 
 		if(!keyCapture)
 		{
-			phys.rigidBody.freeze = true;
 			phys.rigidBody.transform.position = Vector3f(0, 10, 0);
-			//phys.rigidBody.velocity = Vector3f(0, 0, 0);
+			(cast(DynamicPlayerBodyMT)phys.rigidBody).velocity = Vector3f(0, 0, 0);
 		}
-		else phys.rigidBody.freeze = false;
+		//else phys.rigidBody.freeze = false;
 
 		if((shouldBreak || shouldPlace) && keyCapture)
 		{
@@ -420,7 +419,7 @@ final class DebugGameScene : Scene
 		//Transform* physicsTestTransform = physicsTest.get!Transform;
 		//PhysicsComponent* pc = physicsTest.get!PhysicsComponent;
 
-		buffer[] = char.init;
+		/+buffer[] = char.init;
 		int l = sprintf(buffer.ptr, 
 "Camera position: %0.3f %0.3f %0.3f
 Camera rotation: %0.3f %0.3f %0.3f
@@ -445,7 +444,7 @@ RP: %0.3f, %0.3f, %0.3f RH: %d",
 						dpb.transform.rotation.x, dpb.transform.rotation.y, dpb.transform.rotation.z,
 						dpb.height, dpb.radius,
 						dpb.raycastHitCoord.x, dpb.raycastHitCoord.y, dpb.raycastHitCoord.z, dpb.raycastHit);
-		//moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
+		+///moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}
 
@@ -489,12 +488,10 @@ private final class SceneDebugAttachment : IImguiRenderable
 			import std.stdio;
 			//writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
 			auto playerRb = cast(DynamicPlayerBodyMT)scene.playerEntity.get!PhysicsComponent().rigidBody;
-			Vector3f pp = scene.playerEntity.get!PhysicsComponent().rigidBody.transform.position;
-			Vector3f f = scene.playerEntity.get!PhysicsComponent().rigidBody.sumForce;
+			Vector3f pp = playerRb.transform.position;
 			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);
-			igText("Force: %f %f %f", f.x, f.y, f.z);
 			igText("Velocity: %f %f %f", playerRb.velocity.x, playerRb.velocity.y, playerRb.velocity.z);
-			igText("Inputs: %f %f %f", playerRb.strafe, playerRb.vertical, playerRb.forward);
+			igText("Foot hit: %d | Dir hit: %d", playerRb.footHit, playerRb.dirHit);
 
 			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
 			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");
