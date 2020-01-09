@@ -491,7 +491,7 @@ private final class SceneDebugAttachment : IImguiRenderable
 			Vector3f pp = playerRb.transform.position;
 			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);
 			igText("Velocity: %f %f %f", playerRb.velocity.x, playerRb.velocity.y, playerRb.velocity.z);
-			igText("Foot hit: %d | Dir hit: %d", playerRb.footHit, playerRb.dirHit);
+			igText("Foot hit: %d | Dir hit: %d", playerRb.onFoot, playerRb.onFront);
 
 			igSliderFloat("Min bias", &scene.renderer.lights.biasSmall, 0f, 0.01f, "%.9f");
 			igSliderFloat("Max bias", &scene.renderer.lights.biasLarge, 0f, 0.02f, "%.9f");

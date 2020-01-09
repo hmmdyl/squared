@@ -128,7 +128,7 @@ enum PlayerBindingName
 			if(input.getBindingState(pc.bindings[PlayerBindingName.strafeLeft])) movement.x -= pc.walkSpeed;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.strafeRight])) movement.x += pc.walkSpeed;
 
-			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed * 3;
+			if(input.getBindingState(pc.bindings[PlayerBindingName.debugUp])) movement.y += pc.walkSpeed * 7;
 			if(input.getBindingState(pc.bindings[PlayerBindingName.debugDown])) movement.y -= pc.walkSpeed;
 
 			//if(phys is null) movement *= moxane.deltaTime;
@@ -141,7 +141,7 @@ enum PlayerBindingName
 			force.x += sin(yrot) * movement.z;
 			force.z -= cos(yrot) * movement.z;
 
-			force.y -= pc.walkSpeed;
+			force.y -= pc.walkSpeed * 5;
 			force.y += movement.y;
 
 			if(phys is null)
