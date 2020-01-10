@@ -67,6 +67,9 @@ final class DebugGameScene : Scene
 	
 	private Entity playerEntity;
 
+	private Material blockSelectMaterial;
+	private Entity blockSelector;
+
 	PointLight pl;
 	DirectionalLight dl;
 
@@ -140,8 +143,6 @@ final class DebugGameScene : Scene
 		resources.add(fluidProcessor);
 		veggieProcessor = new VegetationProcessor(moxane, vvts);
 		resources.add(veggieProcessor);
-		glassProcessor = new GlassProcessor(moxane, blockProcessor);
-		//resources.add(glassProcessor);
 
 		FluidProcessorDebugAttachment fluidDA = new FluidProcessorDebugAttachment(fluidProcessor);
 		imgui.renderables ~= fluidDA;
@@ -237,9 +238,6 @@ final class DebugGameScene : Scene
 	
 		em.add(crosshair);
 
-		//Collider box = new BoxCollider(physicsSystem, Vector3f(50, 1, 50));
-		//Body ground = new Body(box, Body.Mode.dynamic, physicsSystem);
-
 		auto sr = moxane.services.get!StandardRenderer;
 
 		material = new Material(sr.standardMaterialGroup);
@@ -250,10 +248,51 @@ final class DebugGameScene : Scene
 		material.hasLighting = true;
 		material.castsShadow = true;
 
+		{
+			blockSelectMaterial = new Material(sr.standardMaterialGroup);
+			with(blockSelectMaterial)
+			{
+				diffuse = Vector3f(0.9f, 0f, 0f);
+				specular = Vector3f(0, 0, 0);
+				normal = null;
+				depthWrite = false;
+				hasLighting = false;
+				castsShadow = false;
+			}
+
+			Vector3f[] vertices = [
+				Vector3f(0, 0, 0), Vector3f(1, 0, 0),
+				Vector3f(1, 0, 0), Vector3f(1, 0, 1),
+				Vector3f(1, 0, 1), Vector3f(0, 0, 1),
+				Vector3f(0, 0, 1), Vector3f(0, 0, 0),
+
+				Vector3f(0, 0, 0), Vector3f(0, 1, 0),
+				Vector3f(1, 0, 0), Vector3f(1, 1, 0),
+				Vector3f(1, 0, 1), Vector3f(1, 1, 1),
+				Vector3f(0, 0, 1), Vector3f(0, 1, 1),
+
+				Vector3f(0, 1, 0), Vector3f(1, 1, 0),
+				Vector3f(1, 1, 0), Vector3f(1, 1, 1),
+				Vector3f(1, 1, 1), Vector3f(0, 1, 1),
+				Vector3f(0, 1, 1), Vector3f(0, 1, 0),
+			];
+			Vector3f[] normals = new Vector3f[](vertices.length);
+			normals[] = Vector3f(0, 0, 0);
+			StaticModel sm = new StaticModel(sr, blockSelectMaterial, vertices, normals, null, PrimitiveType.lines);
+			sm.localTransform = Transform.init;
+			sm.renderConfig = LinesConfig(12f);
+
+			blockSelector = new Entity(em);
+			em.add(blockSelector);
+			Transform* t = blockSelector.createComponent!Transform;
+			*t = Transform.init;
+			EntityRenderSystem ers = moxane.services.get!EntityRenderSystem;
+			RenderComponent* r = blockSelector.createComponent!RenderComponent;
+			ers.addModel(sm, *r);
+		}
+
 		import std.experimental.allocator.gc_allocator;
 		loadMesh!(Vector3f, Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts, normals);
-
-		//addPhysicsTest();
 	}
 
 	private void setCamera(Vector2i size)
@@ -283,7 +322,7 @@ final class DebugGameScene : Scene
 
 	PhysicsComponent* phys;
 
-	private void addPhysicsTest(Vector3f pos = playerEntity.get!Transform().position + Vector3f(0, 7, 0))
+	/+private void addPhysicsTest(Vector3f pos = playerEntity.get!Transform().position + Vector3f(0, 7, 0))
 	{
 		auto sr = moxane.services.get!StandardRenderer;
 		StaticModel sm = new StaticModel(sr, material, verts, normals);
@@ -309,11 +348,11 @@ final class DebugGameScene : Scene
 		body_.massMatrix = Vector3f(1, 1, 1);
 		phys.collider = box;
 		phys.rigidBody = body_;
-	}
+	}+/
 
 	private Vector2d prevCursor = Vector2d(0, 0);
 
-	private char[1024] buffer;
+	//private char[1024] buffer;
 
 	private bool clickPrev = false, placePrev = false;
 	private bool keyCapture = false, f1Prev = false;
@@ -371,7 +410,7 @@ final class DebugGameScene : Scene
 		}
 		//else phys.rigidBody.freeze = false;
 
-		if((shouldBreak || shouldPlace) && keyCapture)
+		if(keyCapture)
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 
@@ -380,19 +419,6 @@ final class DebugGameScene : Scene
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 			{
-				if(shouldPlace)
-				{
-					addPhysicsTest(pr.realPosition + Vector3f(0, 10, 0));
-					if(pr.side == VoxelSide.nx) pr.blockPosition.x -= toolSize;
-					if(pr.side == VoxelSide.px) pr.blockPosition.x += toolSize;
-					if(pr.side == VoxelSide.ny) pr.blockPosition.y -= toolSize;
-					if(pr.side == VoxelSide.py) pr.blockPosition.y += toolSize;
-					if(pr.side == VoxelSide.nz) pr.blockPosition.z -= toolSize;
-					if(pr.side == VoxelSide.pz) pr.blockPosition.z += toolSize;
-				}
-
-				properBP = pr.blockPosition;
-
 				auto mx = pr.blockPosition.x % toolSize;
 				pr.blockPosition.x = pr.blockPosition.x < 0 ? pr.blockPosition.x + mx : pr.blockPosition.x - mx;
 				auto my = pr.blockPosition.y % toolSize;
@@ -400,11 +426,29 @@ final class DebugGameScene : Scene
 				auto mz = pr.blockPosition.z % toolSize;
 				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
 
-				snappedBP = pr.blockPosition;
-				foreach(x; 0 .. toolSize)
-					foreach(y; 0 .. toolSize)
-						foreach(z; 0 .. toolSize)
-							terrainManager.voxelInteraction.set(shouldPlace ? Voxel(7, 1, 0, 0) : Voxel(), pr.blockPosition + BlockPosition(x, y, z));
+				blockSelector.get!Transform().position = ChunkPosition.blockPosRealCoord(pr.blockPosition);
+				blockSelector.get!Transform().scale = Vector3f(ChunkData.voxelScale * toolSize, ChunkData.voxelScale * toolSize, ChunkData.voxelScale * toolSize);
+
+				if(shouldBreak || shouldPlace)
+				{
+					if(shouldPlace)
+					{
+						if(pr.side == VoxelSide.nx) pr.blockPosition.x -= toolSize;
+						if(pr.side == VoxelSide.px) pr.blockPosition.x += toolSize;
+						if(pr.side == VoxelSide.ny) pr.blockPosition.y -= toolSize;
+						if(pr.side == VoxelSide.py) pr.blockPosition.y += toolSize;
+						if(pr.side == VoxelSide.nz) pr.blockPosition.z -= toolSize;
+						if(pr.side == VoxelSide.pz) pr.blockPosition.z += toolSize;
+					}
+
+					properBP = pr.blockPosition;
+
+					snappedBP = pr.blockPosition;
+					foreach(x; 0 .. toolSize)
+						foreach(y; 0 .. toolSize)
+							foreach(z; 0 .. toolSize)
+								terrainManager.voxelInteraction.set(shouldPlace ? Voxel(7, 1, 0, 0) : Voxel(), pr.blockPosition + BlockPosition(x, y, z));
+				}
 			}
 		}
 
@@ -416,35 +460,6 @@ final class DebugGameScene : Scene
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
 
-		//Transform* physicsTestTransform = physicsTest.get!Transform;
-		//PhysicsComponent* pc = physicsTest.get!PhysicsComponent;
-
-		/+buffer[] = char.init;
-		int l = sprintf(buffer.ptr, 
-"Camera position: %0.3f %0.3f %0.3f
-Camera rotation: %0.3f %0.3f %0.3f
-						
-Delta: %0.6fs
-						
-Chunks: %d
-Man. time: %0.6fms
-						
-DPB
-Velocity: %0.3f, %0.3f, %0.3f
-Pos: %0.3f, %0.3f, %0.3f
-Rot: %0.3f, %0.3f, %0.3f
-H: %0.3f Rad: %0.3f
-RP: %0.3f, %0.3f, %0.3f RH: %d", 
-						camera.position.x, camera.position.y, camera.position.z,
-						camera.rotation.x, camera.rotation.y, camera.rotation.z,
-						moxane.deltaTime,
-						terrainManager.numChunks, managementTime,
-						dpb.velocity.x, dpb.velocity.y, dpb.velocity.z,
-						dpb.transform.position.x, dpb.transform.position.y, dpb.transform.position.z,
-						dpb.transform.rotation.x, dpb.transform.rotation.y, dpb.transform.rotation.z,
-						dpb.height, dpb.radius,
-						dpb.raycastHitCoord.x, dpb.raycastHitCoord.y, dpb.raycastHitCoord.z, dpb.raycastHit);
-		+///moxane.services.get!SpriteRenderer().drawText(cast(string)buffer[0..l], font, Vector2i(0, 10), Vector3f(0, 0, 0));
 		terrainRenderer.renderTime = 0f;
 	}
 
@@ -485,8 +500,6 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Physics delta: %7.3fms", scene.physicsSystem.deltaTime * 1000f);
 			igText("Size: %dx%d", scene.camera.width, scene.camera.height);
 			
-			import std.stdio;
-			//writeln(scene.phys.rigidBody.transform.position.x, " ", scene.phys.rigidBody.transform.position.y, " ", scene.phys.rigidBody.transform.position.z);
 			auto playerRb = cast(DynamicPlayerBodyMT)scene.playerEntity.get!PhysicsComponent().rigidBody;
 			Vector3f pp = playerRb.transform.position;
 			igText("Player phys pos: %f %f %f", pp.x, pp.y, pp.z);
@@ -513,8 +526,6 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Noise completed last second: %d", scene.terrainManager.noiseCompletedSecond);
 			igText("Meshes ordered: %d", scene.terrainManager.meshOrders);
 			igText("Manage time: %6.3fms", scene.managementTime);
-
-			//igText("Block mesh time: %.3fms", scene.blockProcessor.averageMeshTime);
 
 			int ci = cast(int)scene.terrainRenderer.culling;
 			igComboStr("Cull Mode", &ci, "None\0All", -1);
