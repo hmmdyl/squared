@@ -1,4 +1,4 @@
-module squareone.voxelutils.picker;
+module squareone.terrain.basic.picker;
 
 import squareone.terrain.basic.chunk;
 import squareone.terrain.basic.manager;
