@@ -27,7 +27,7 @@ import std.range;
 @safe interface IItemType
 {
 	/// Encompassing family
-	@property TypeInfo family();
+	//@property TypeInfo family();
 
 	/// Render tile
 	void renderTile(PlayerInventorySystem pis, Renderer renderer, ref LocalContext lc, ref uint dc, ref uint nv);

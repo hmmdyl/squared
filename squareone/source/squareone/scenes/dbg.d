@@ -18,10 +18,10 @@ import moxane.physics;
 
 import squareone.terrain.basic.manager;
 import squareone.voxel;
-import squareone.voxelcontent.block;
-import squareone.voxelcontent.fluid.processor;
-import squareone.voxelcontent.vegetation;
-import squareone.voxelcontent.glass;
+import squareone.content.voxel.block;
+import squareone.content.voxel.fluid.processor;
+import squareone.content.voxel.vegetation;
+import squareone.content.voxel.glass;
 import squareone.systems.sky;
 import squareone.systems.gametime;
 import squareone.entities.player;
@@ -414,16 +414,16 @@ final class DebugGameScene : Scene
 		{
 			PlayerComponent* pc = playerEntity.get!PlayerComponent;
 
-			import squareone.voxelutils.picker;
+			import squareone.terrain.basic.picker;
 			PickerIgnore pickerIgnore = PickerIgnore([0], [0]);
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 			{
-				auto mx = pr.blockPosition.x % toolSize;
+				auto mx = (pr.blockPosition.x / toolSize) * toolSize;
 				pr.blockPosition.x = pr.blockPosition.x < 0 ? pr.blockPosition.x + mx : pr.blockPosition.x - mx;
-				auto my = pr.blockPosition.y % toolSize;
+				auto my = (pr.blockPosition.y % toolSize) * toolSize;
 				pr.blockPosition.y = pr.blockPosition.y < 0 ? pr.blockPosition.y + my : pr.blockPosition.y - my;
-				auto mz = pr.blockPosition.z % toolSize;
+				auto mz = (pr.blockPosition.z % toolSize) * toolSize;
 				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
 
 				blockSelector.get!Transform().position = ChunkPosition.blockPosRealCoord(pr.blockPosition);

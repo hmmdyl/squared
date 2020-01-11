@@ -5,12 +5,45 @@ import squareone.systems.inventory;
 import moxane.core;
 import moxane.io.input;
 
-@safe interface IVoxelItemType : IItemType
+@safe abstract class VoxelItemType : IItemType
 {
-	int updateToolSize(int currentSize, bool change, bool up);
+	private Moxane moxane_;
+	@property Moxane moxane() { return moxane_; }
+
+	enum string incToolSizeBinding = typeof(this).stringof ~ ":incTool";
+	enum string decToolSizeBinding = typeof(this).stringof ~ ":decTool";
+	enum incToolDefault = Keys.equal;
+	enum decToolDefault = Keys.minus;
+
+	this(Moxane moxane) in(moxane !is null)
+	{
+		this.moxane_ = moxane;
+		InputManager im = moxane.services.get!InputManager;
+		if(!im.hasBinding(incToolSizeBinding))
+			im.setBinding(incToolSizeBinding, incToolDefault);
+		if(!im.hasBinding(decToolSizeBinding))
+			im.setBinding(decToolSizeBinding, decToolDefault);
+
+		im.boundKeys[incToolSizeBinding] ~= &onInput;
+		im.boundKeys[decToolSizeBinding] ~= &onInput;
+	}
+
+	~this()
+	{
+		InputManager im = moxane.services.get!InputManager;
+		im.boundKeys[incToolSizeBinding] -= &onInput;
+		im.boundKeys[decToolSizeBinding] -= &onInput;
+	}
+
+	protected abstract void onInput(ref InputEvent ie) {}
 }
 
-@safe class VoxelItemFamily : IItemFamily
+/+@safe interface IVoxelItemType : IItemType
+{
+	int updateToolSize(int currentSize, bool change, bool up);
+}+/
+
+/+@safe class VoxelItemFamily : IItemFamily
 {
 	int toolSize; /// not in block size
 	private bool anyToolSelected = false;
@@ -76,4 +109,4 @@ import moxane.io.input;
 		if(ie.bindingName == decToolSizeBinding)
 			toolSize = type.updateToolSize(toolSize, true, false);
 	}
-}
+}+/

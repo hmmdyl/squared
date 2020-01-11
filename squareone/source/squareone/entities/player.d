@@ -51,7 +51,7 @@ enum PlayerBindingName
 	length
 }
 
-@safe struct PlayerComponent
+@safe @Component struct PlayerComponent
 {
 	//Vector3f headOffset;
 	Vector3f headRotation;

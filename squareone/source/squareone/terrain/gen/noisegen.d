@@ -4,7 +4,7 @@ import moxane.core : Moxane, Log, IChannel, Channel;
 import moxane.utils.maybe;
 import squareone.voxel;
 import squareone.util.procgen.simplex;
-import squareone.voxelutils.smoother;
+import squareone.util.voxel.smoother;
 import squareone.util.procgen.voronoi;
 import squareone.util.procgen.compose;
 
@@ -488,7 +488,7 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 	private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC)
 	{
-		import squareone.voxelcontent.vegetation;
+		import squareone.content.voxel.vegetation;
 		import std.math : floor;
 
 		foreach(x; s..e)
@@ -644,10 +644,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 		static Meshes get(Resources resources)
 		{
-			import squareone.voxelcontent.block.meshes;
-			import squareone.voxelcontent.fluid.processor;
-			import squareone.voxelcontent.vegetation;
-			import squareone.voxelcontent.glass;
+			import squareone.content.voxel.block.meshes;
+			import squareone.content.voxel.fluid.processor;
+			import squareone.content.voxel.vegetation;
+			import squareone.content.voxel.glass;
 
 			Meshes meshes;
 			meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
@@ -677,10 +677,10 @@ final class DefaultNoiseGenerator : NoiseGenerator
 
 		static Materials get(Resources resources)
 		{
-			import squareone.voxelcontent.block.materials;
-			import squareone.voxelcontent.fluid.processor;
-			import squareone.voxelcontent.vegetation.materials;
-			import squareone.voxelcontent.glass;
+			import squareone.content.voxel.block.materials;
+			import squareone.content.voxel.fluid.processor;
+			import squareone.content.voxel.vegetation.materials;
+			import squareone.content.voxel.glass;
 
 			Materials m;
 			m.air =			resources.getMaterial(Air.technicalStatic).id;
