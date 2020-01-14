@@ -8,6 +8,7 @@ import dlib.math.vector;
 
 import std.experimental.allocator.mallocator;
 import std.algorithm : count;
+import std.conv : to;
 
 @safe:
 
@@ -62,6 +63,11 @@ final class InventorySystem : System
 
 		im.boundKeys[primaryUse] ~= &onInput!PrimaryUse;
 		im.boundKeys[secondaryUse] ~= &onInput!SecondaryUse;
+
+		string[10] selectorBindingNames;
+		Keys[10] selectorKeys;
+		selectionBindings(selectorBindingNames, selectorKeys);
+		im.boundKeys[selectorBindingNames] ~= &onSelect;
 	}
 
 	~this()
@@ -69,6 +75,20 @@ final class InventorySystem : System
 		InputManager im = moxane.services.get!InputManager;
 		im.boundKeys[primaryUse] -= &onInput!PrimaryUse;
 		im.boundKeys[secondaryUse] -= &onInput!SecondaryUse;
+
+		string[10] selectorBindingNames;
+		Keys[10] selectorKeys;
+		selectionBindings(selectorBindingNames, selectorKeys);
+		im.boundKeys[selectorBindingNames] ~= &onSelect;
+	}
+
+	private void selectionBindings(out string[10] bindingNames, out Keys[10] keys) pure
+	{
+		foreach(x; 0 .. 10) 
+		{
+			keys[x] = Keys.zero + x;
+			bindingNames[x] = InventorySystem.stringof ~ ":selector" ~ to!string(x);
+		}
 	}
 
 	override void update()
@@ -94,5 +114,10 @@ final class InventorySystem : System
 		if(component is null) return;
 
 		component.invoke();
+	}
+
+	private void onSelect(ref InputEvent ie)
+	{
+		int key = ie.key - Keys.zero;
 	}
 }
