@@ -12,11 +12,22 @@ import dlib.math;
 
 import std.concurrency;
 import core.atomic;
+import std.exception;
+import std.experimental.allocator.mallocator : Mallocator;
 
-class GenV2 : NoiseGenerator2
+struct V2GenOrder
 {
-	private IChannel!NoiseGeneratorOrder source_;
-	@property IChannel!NoiseGeneratorOrder source() { return source_; }
+	NoiseGeneratorOrder order;
+	alias order this;
+
+	GenerationState* generateState;
+	ILoadableVoxelBuffer[3][3][3] neighbours;
+}
+
+class GenV2 : NoiseGenerator2!V2GenOrder
+{
+	private IChannel!V2GenOrder source_;
+	@property IChannel!V2GenOrder source() { return source_; }
 
 	private shared float averageMeshTime_ = 0f;
 	@property float averageMeshTime() { return atomicLoad(averageMeshTime_); }
@@ -29,7 +40,7 @@ class GenV2 : NoiseGenerator2
 
 	private Tid thread;
 
-	this(NoiseGeneratorManager2 manager, Resources resources, IChannel!NoiseGeneratorOrder source)
+	this(NoiseGeneratorManager2!V2GenOrder manager, Resources resources, IChannel!V2GenOrder source)
 	in(manager !is null) in(resources !is null) in(source !is null)
 	{
 		super(manager, resources);
@@ -83,7 +94,7 @@ private void worker(shared GenV2 ngs)
 					bool consuming = true;
 					while(consuming)
 					{
-						Maybe!NoiseGeneratorOrder order = ng.source.tryGet;
+						Maybe!V2GenOrder order = ng.source.tryGet;
 						if(order.isNull)
 							consuming = false;
 						else
@@ -92,6 +103,35 @@ private void worker(shared GenV2 ngs)
 				}
 			);
 	}
+}
+
+void distribute(V2GenOrder order)
+{
+	enforce(!(order.generateState.firstPass && order.generateState.secondPass),
+			"Error. Both state flags cannot be true");
+
+}
+
+private struct FirstPass
+{
+	private float[] lowResHeightmap;
+
+	this(int dimensions, int lowResSkip = 2)
+	{
+	}
+
+	void firstPass(V2GenOrder order)
+	{
+
+	}
+}
+
+enum secondPassRadius = 1;
+
+struct GenerationState
+{
+	bool firstPass;
+	bool secondPass;
 }
 
 private struct Meshes

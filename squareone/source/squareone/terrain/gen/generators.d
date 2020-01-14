@@ -15,7 +15,7 @@ import std.concurrency;
 import core.atomic;
 import std.math;
 
-class DefaultNoiseGeneratorV1 : NoiseGenerator2
+class DefaultNoiseGeneratorV1 : NoiseGenerator2!NoiseGeneratorOrder
 {
 	private IChannel!NoiseGeneratorOrder source_;
 	@property IChannel!NoiseGeneratorOrder source() { return source_; }
@@ -31,7 +31,7 @@ class DefaultNoiseGeneratorV1 : NoiseGenerator2
 
 	private Tid thread;
 
-	this(NoiseGeneratorManager2 manager, Resources resources, IChannel!NoiseGeneratorOrder source)
+	this(NoiseGeneratorManager2!NoiseGeneratorOrder manager, Resources resources, IChannel!NoiseGeneratorOrder source)
 	in(manager !is null) in(resources !is null) in(source !is null)
 	{
 		super(manager, resources);
@@ -299,7 +299,7 @@ private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e,
 
 			GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
 			gv.offset = offset;
-			gv.blockHeightCode = 3;
+			gv.blockHeightCode = 1;
 			Vector3f colour;
 			colour.x = 27 / 255f;
 			colour.y = 191 / 255f;

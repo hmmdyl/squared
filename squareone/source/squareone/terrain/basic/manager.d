@@ -120,7 +120,7 @@ final class BasicTerrainManager
 
 	Vector3f cameraPosition;
 	ChunkPosition cameraPositionChunk, cameraPositionPreviousChunk;
-	NoiseGeneratorManager2 noiseGeneratorManager;
+	NoiseGeneratorManager2!NoiseGeneratorOrder noiseGeneratorManager;
 
 	VoxelInteraction voxelInteraction;
 	ChunkInteraction chunkInteraction;
@@ -156,7 +156,7 @@ final class BasicTerrainManager
 
 		Log log = moxane.services.getAOrB!(VoxelLog, Log);
 
-		noiseGeneratorManager = new NoiseGeneratorManager2(resources, log, (NoiseGeneratorManager2 m, Resources r, IChannel!NoiseGeneratorOrder o) => new DefaultNoiseGeneratorV1(m, r, o));
+		noiseGeneratorManager = new NoiseGeneratorManager2!NoiseGeneratorOrder(resources, log, (NoiseGeneratorManager2!NoiseGeneratorOrder m, Resources r, IChannel!NoiseGeneratorOrder o) => new DefaultNoiseGeneratorV1(m, r, o));
 		auto ecpcNum = (settings.extendedAddRange.x * 2 + 1) * (settings.extendedAddRange.y * 2 + 1) * (settings.extendedAddRange.z * 2 + 1);
 		extensionCPCache = new ChunkPosition[ecpcNum];
 

@@ -220,12 +220,12 @@ final class DebugGameScene : Scene
 		pc.camera = camera;
 		pc.allowInput = true;
 
-		playerInventory = new PlayerInventorySystem(moxane, renderer, em);
+		/+playerInventory = new PlayerInventorySystem(moxane, renderer, em);
 		em.add(playerInventory);
 		PlayerInventory* pi = playerEntity.createComponent!PlayerInventory;
 		PlayerInventoryLocal* pil = playerEntity.createComponent!PlayerInventoryLocal;
 		pil.isOpen = false;
-		renderer.uiRenderables ~= new PlayerInventoryRenderer(playerInventory);
+		renderer.uiRenderables ~= new PlayerInventoryRenderer(playerInventory);+/
 		//playerInventory.target = playerEntity;
 
 		crosshair = new Entity(em);

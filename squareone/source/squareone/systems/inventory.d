@@ -50,6 +50,7 @@ import std.range;
 	ushort count;
 }
 
+@Component
 @safe struct PlayerInventory
 {
 	ClientID client;
@@ -61,6 +62,7 @@ import std.range;
 	ItemStack[][] slots;
 }
 
+@Component
 @safe struct PlayerInventoryLocal
 {
 	bool isOpen;

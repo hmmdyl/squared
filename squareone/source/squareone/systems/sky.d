@@ -292,6 +292,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 	}
 }
 
+@Component
 struct SkyComponent
 {
 	float horizScale;

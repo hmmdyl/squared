@@ -35,9 +35,9 @@ struct NoiseGeneratorOrder
 	}
 }
 
-class NoiseGeneratorManager2
+class NoiseGeneratorManager2(CommandType)
 {
-	alias createThreadDel = NoiseGenerator2 delegate(NoiseGeneratorManager2, Resources, IChannel!NoiseGeneratorOrder);
+	alias createThreadDel = NoiseGenerator2!CommandType delegate(NoiseGeneratorManager2!CommandType, Resources, IChannel!CommandType);
 	private createThreadDel createThread_;
 	@property createThreadDel createThread() { return createThread_; }
 
@@ -46,8 +46,8 @@ class NoiseGeneratorManager2
 
 	enum initialNumWorkers = 2;
 
-	private Channel!NoiseGeneratorOrder work;
-	private NoiseGenerator2[] workers;
+	private Channel!CommandType work;
+	private NoiseGenerator2!CommandType[] workers;
 
 	this(Resources resources, Log log, createThreadDel createThread)
 	in(resources !is null) in(createThread !is null)
@@ -55,8 +55,8 @@ class NoiseGeneratorManager2
 		this.resources = resources;
 		this.log = log;
 		this.createThread_ = createThread;
-		work = new Channel!NoiseGeneratorOrder;
-		workers = new NoiseGenerator2[](0);
+		work = new Channel!CommandType;
+		workers = new NoiseGenerator2!CommandType[](0);
 
 		foreach(x; 0 .. initialNumWorkers)
 			workers ~= createThread_(this, resources, work);
@@ -84,7 +84,7 @@ class NoiseGeneratorManager2
 		}+/
 	}
 
-	void generateChunk(NoiseGeneratorOrder order)
+	void generateChunk(CommandType order)
 	{
 		order.chunk.dataLoadBlocking = true;
 		order.chunk.needsData = false;
@@ -93,7 +93,7 @@ class NoiseGeneratorManager2
 
 	private void manageWorkers()
 	{
-		foreach(ref NoiseGenerator2 worker; workers)
+		foreach(ref NoiseGenerator2!CommandType worker; workers)
 		{
 			if(worker.parked && !worker.terminated)
 				worker.kick;
@@ -103,12 +103,12 @@ class NoiseGeneratorManager2
 	}
 }
 
-abstract class NoiseGenerator2 : IWorkerThread!NoiseGeneratorOrder
+abstract class NoiseGenerator2(CommandType) : IWorkerThread!CommandType
 {
-	NoiseGeneratorManager2 manager;
+	NoiseGeneratorManager2!CommandType manager;
 	Resources resources;
 
-	this(NoiseGeneratorManager2 manager, Resources resources)
+	this(NoiseGeneratorManager2!CommandType manager, Resources resources)
 	in(manager !is null) in(resources !is null)
 	{
 		this.manager = manager;

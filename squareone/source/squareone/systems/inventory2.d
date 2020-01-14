@@ -1,9 +1,13 @@
 module squareone.systems.inventory2;
 
 import moxane.core;
+import moxane.io;
 import moxane.utils.math;
 
+import dlib.math.vector;
+
 import std.experimental.allocator.mallocator;
+import std.algorithm : count;
 
 @safe:
 
@@ -22,65 +26,73 @@ import std.experimental.allocator.mallocator;
 @Component struct PrimaryUse { void delegate() invoke; }
 @Component struct SecondaryUse { void delegate() invoke; }
 
-@Component
-struct ItemInventory
+@Component struct ItemInventory
 {
 	Entity[] slots;
+	Vector!(ubyte, 2) dimensions;
 
-	private ubyte width_, height_;
-	@property ubyte width() const { return width_; }
-	@property ubyte height() const { return height_; }
+	ubyte selectionX;
 
-	this(ubyte width, ubyte height)
-	{
-		//resize(width, height);
-	}
-
-	/+void resize(uint width, uint height)
-	in { assert(width > 0, "0 width inventory invalid");
-		 assert(height > 0, "0 height inventory invalid"); }
-	out { assert(slots !is null, slots.stringof ~ " not allocated!"); }
-	do {
-		ItemStack[] newSlots = new ItemStack[](width * height);
-		if(slots !is null)
-		{
-			foreach(x; 0 .. width_)
-			{
-				if(x > width) continue;
-				foreach(y; 0 .. height_)
-				{
-					if(y > height) continue;
-					newSlots[flattenIndex2D(x, y, width)] = slots[flattenIndex2D(x, y, width_)];
-				}
-			}
-		}
-		width_ = width;
-		height_ = height;
-		slots = newSlots;
-	}+/
+	Entity getSelected() { return slots[flattenIndex2D(selectionX, dimensions.y - 1, dimensions.x)]; }
 }
 
-@Component
-struct InventoryLocal
-{
+@Component struct InventoryLocal { bool open; }
 
-}
+@Component struct SecondaryInventory { Vector!(ubyte, 2) dimensions; bool active; }
 
-@Component
-struct SecondaryInventory
-{
-	ubyte width, height;
-}
+enum primaryUse = InventorySystem.stringof ~ ":primaryUse";
+enum primaryUseDefault = MouseButton.left;
+enum secondaryUse = InventorySystem.stringof ~ ":secondaryUse";
+enum secondaryUseDefault = MouseButton.right;
 
 final class InventorySystem : System
 {
+	private Entity target_;
+	@property Entity target() { return target_; }
+
 	this(Moxane moxane, EntityManager manager)
 	{
 		super(moxane, manager);
+
+		InputManager im = moxane.services.get!InputManager;
+		if(!im.hasBinding(primaryUse))
+			im.setBinding(primaryUse, primaryUseDefault);
+		if(!im.hasBinding(secondaryUse))
+			im.setBinding(secondaryUse, secondaryUseDefault);
+
+		im.boundKeys[primaryUse] ~= &onInput!PrimaryUse;
+		im.boundKeys[secondaryUse] ~= &onInput!SecondaryUse;
+	}
+
+	~this()
+	{
+		InputManager im = moxane.services.get!InputManager;
+		im.boundKeys[primaryUse] -= &onInput!PrimaryUse;
+		im.boundKeys[secondaryUse] -= &onInput!SecondaryUse;
 	}
 
 	override void update()
 	{
+		auto candidates = entityManager.entitiesWith!(ItemInventory, InventoryLocal)();
+		if(candidates.count == 0) return;
+		target_ = candidates.front;
 
+
+	}
+
+	private void onInput(alias T)(ref InputEvent ie)
+	{
+		if(target_ is null) return;
+
+		ItemInventory* inv = target_.get!ItemInventory;
+		if(inv is null) return;
+
+		Entity item = inv.getSelected;
+		if(item is null) return;
+
+		T* component = item.get!T;
+		if(component is null) return;
+
+		component.invoke();
 	}
 }
