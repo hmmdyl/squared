@@ -67,7 +67,8 @@ final class InventorySystem : System
 		string[10] selectorBindingNames;
 		Keys[10] selectorKeys;
 		selectionBindings(selectorBindingNames, selectorKeys);
-		im.boundKeys[selectorBindingNames] ~= &onSelect;
+		foreach(x; 0 .. selectorBindingNames.length)
+			im.boundKeys[selectorBindingNames[x]] ~= &onSelect;
 	}
 
 	~this()
@@ -79,14 +80,19 @@ final class InventorySystem : System
 		string[10] selectorBindingNames;
 		Keys[10] selectorKeys;
 		selectionBindings(selectorBindingNames, selectorKeys);
-		im.boundKeys[selectorBindingNames] ~= &onSelect;
+		foreach(x; 0 .. selectorBindingNames.length)
+		{
+			if(!im.hasBinding(selectorBindingNames[x]))
+				im.setBinding(selectorBindingNames[x], selectorKeys[x]);
+			im.boundKeys[selectorBindingNames[x]] ~= &onSelect;
+		}
 	}
 
 	private void selectionBindings(out string[10] bindingNames, out Keys[10] keys) pure
 	{
 		foreach(x; 0 .. 10) 
 		{
-			keys[x] = Keys.zero + x;
+			keys[x] = cast(Keys)(cast(int)Keys.zero + x);
 			bindingNames[x] = InventorySystem.stringof ~ ":selector" ~ to!string(x);
 		}
 	}

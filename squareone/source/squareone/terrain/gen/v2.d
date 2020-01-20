@@ -82,7 +82,7 @@ private void worker(shared GenV2 ngs)
 		receive(
 				(bool status)
 				{
-					if(status == false)
+					if(!status)
 					{
 						ng.terminated = true;
 						return;
@@ -118,6 +118,7 @@ private struct FirstPass
 
 	this(int dimensions, int lowResSkip = 2)
 	{
+		lowResHeightmap = cast(float[])Mallocator.instance.allocate(float.sizeof * dimensions ^^ 2);
 	}
 
 	void firstPass(V2GenOrder order)
