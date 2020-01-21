@@ -77,6 +77,8 @@ private void worker(shared GenV2 ngs)
 	VoxelBuffer raw = VoxelBuffer(overrunDimensions, overrun), 
 		smootherOutput = VoxelBuffer(overrunDimensions, overrun);
 
+	auto firstPass = FirstPass(ChunkData.chunkDimensions + 2 * ChunkData.voxelOffset);
+
 	while(!ng.terminated)
 	{
 		receive(
@@ -98,18 +100,19 @@ private void worker(shared GenV2 ngs)
 						if(order.isNull)
 							consuming = false;
 						else
-						{}//operate(*order.unwrap, ng, simplex, meshes, materials, smootherCfg, raw, smootherOutput);
+							distribute(*order.unwrap, firstPass);
 					}
 				}
 			);
 	}
 }
 
-void distribute(V2GenOrder order)
+void distribute(V2GenOrder order, ref FirstPass first)
 {
-	enforce(!(order.generateState.firstPass && order.generateState.secondPass),
-			"Error. Both state flags cannot be true");
+	enforce(!(order.generateState.firstPass && order.generateState.secondPass), "Error. Both state flags cannot be true");
 
+	if(order.generateState.firstPass && !order.generateState.secondPass)
+		first.execute(order);
 }
 
 private struct FirstPass
@@ -121,9 +124,9 @@ private struct FirstPass
 		lowResHeightmap = cast(float[])Mallocator.instance.allocate(float.sizeof * dimensions ^^ 2);
 	}
 
-	void firstPass(V2GenOrder order)
+	void execute(V2GenOrder order)
 	{
-
+		
 	}
 }
 
