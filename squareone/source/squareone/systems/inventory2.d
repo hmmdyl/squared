@@ -46,6 +46,7 @@ import std.conv : to;
 
 @Component struct SecondaryInventory 
 { 
+	Entity[] slots;
 	Vector!(ubyte, 2) dimensions; 
 	bool active; 
 	ubyte selectionX; 
@@ -182,8 +183,6 @@ final class InventoryRenderer : IRenderable
 
 	private void renderTilesToCanvas(RendererHook hook)
 	{
-		uint tileX, tileY;
-
 		canvas.bindDraw;
 		canvas.clear;
 		scope(exit) canvas.unbindDraw;
@@ -208,6 +207,8 @@ final class InventoryRenderer : IRenderable
 		lc.camera = tileCameraOrtho;
 		lc.type = PassType.ui;
 
+		uint tileX, tileY;
+
 		void renderPrimaryInventory()
 		{
 			foreach(x; 0 .. primaryInven.dimensions.x)
@@ -222,13 +223,22 @@ final class InventoryRenderer : IRenderable
 					if(definition.onRender is null) continue;
 					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
+				tileX = x;
 			}
-
 		}
 
 		void renderSecondaryInventory()
 		{
+			if(secondaryInven is null) return;
 
+			foreach(x; 0 .. secondaryInven.dimensions.x)
+			{
+				foreach(y; 0 .. secondaryInven.dimensions.y)
+				{
+					lc.view = translationMatrix(Vector3f((x + tileX) * invenWidth, y * invenHeight, 0));
+					Entity item = secondaryInven.get();
+				}
+			}
 		}
 	}
 
