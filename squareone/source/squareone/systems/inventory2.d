@@ -237,6 +237,11 @@ final class InventoryRenderer : IRenderable
 				{
 					lc.view = translationMatrix(Vector3f((x + tileX) * invenWidth, y * invenHeight, 0));
 					Entity item = secondaryInven.get();
+					if(item is null) continue;
+					ItemDefinition* definition = item.get!ItemDefinition;
+					if(definition is null) continue;
+					if(definition.onRender is null) continue;
+					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 			}
 		}
