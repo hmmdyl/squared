@@ -3,9 +3,7 @@ module squareone.systems.inventory2;
 import moxane.core;
 import moxane.io;
 import moxane.utils.math;
-import moxane.graphics.renderer;
-import moxane.graphics.gl;
-import moxane.graphics.rendertexture;
+import moxane.graphics;
 
 import dlib.math.vector;
 import dlib.math.matrix;
@@ -162,28 +160,41 @@ final class InventoryRenderer : IRenderable
 	InventorySystem system;
 	private DepthTexture depthCanvas;
 	private RenderTexture canvas;
+	private Effect renderEffect;
 
 	Camera tileCameraOrtho;
 
 	uint canvasDrawCalls, canvasVertexCount;
 
-	this(Moxane moxane, InventorySystem system, GLState gl) 
+	uint iconWidth, iconHeight;
+
+	this(Moxane moxane, InventorySystem system, GLState gl) @trusted
 	in(moxane !is null) in(system !is null) in(gl !is null)
 	{
 		this.moxane = moxane;
 		this.system = system;
 
 		auto win = moxane.services.get!Window();
-		win.onFramebufferResize(&onFramebufferResize);
+		win.onFramebufferResize.add(&onFramebufferResize);
 		depthCanvas = new DepthTexture(win.framebufferSize.x, win.framebufferSize.y, gl);
 		canvas = new RenderTexture(win.framebufferSize.x, win.framebufferSize.y, depthCanvas, gl);
+	
+		renderEffect = new Effect(moxane, typeof(this).stringof);
+		renderEffect.attachAndLink(
+		[ 
+			new Shader(AssetManager.translateToAbsoluteDir("content/shaders/inventoryRenderer.vs.glsl"), GL_VERTEX_SHADER),
+			new Shader(AssetManager.translateToAbsoluteDir("content/shaders/inventoryRenderer.fs.glsl"), GL_FRAGMENT_SHADER)
+		]);
+		renderEffect.bind;
+		renderEffect.unbind;
 	}
 
-	~this()
+	~this() @trusted
 	{
 		moxane.services.get!Window().onFramebufferResize.remove(&onFramebufferResize);
 		destroy(depthCanvas);
 		destroy(canvas);
+		destroy(renderEffect);
 	}
 
 	private void preRenderCallback(ref RendererHook hook)
@@ -195,7 +206,7 @@ final class InventoryRenderer : IRenderable
 		renderTilesToCanvas(hook);
 	}
 
-	private void renderTilesToCanvas(RendererHook hook)
+	private void renderTilesToCanvas(RendererHook hook) @trusted
 	{
 		canvas.bindDraw;
 		canvas.clear;

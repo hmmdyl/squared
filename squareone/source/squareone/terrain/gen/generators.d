@@ -170,7 +170,7 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 		auto simplexSrc3D = (float x, float y, float z) => simplex.eval(x, y, z);
 		auto voronoiSrc = (float x, float y) => voronoi(Vector2f(x, y), simplexSrc).x;
 
-		float flat() { return 0f; }
+		float flat() { return 0.5f; }
 
 		float ridgenoise(float n) {
 			return 2 * (0.5f - abs(0.5f - n));
@@ -229,7 +229,7 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
-		float height = mountains;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
+		float height = flat;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
 
 		MaterialID upperMat = materials.grass;
 		/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
@@ -299,7 +299,7 @@ private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e,
 
 			GrassVoxel gv = GrassVoxel(Voxel(materials.grassBlade, meshes.grassBlades, 0, 0));
 			gv.offset = offset;
-			gv.blockHeightCode = 1;
+			gv.blockHeightCode = 3;
 			Vector3f colour;
 			colour.x = 27 / 255f;
 			colour.y = 191 / 255f;
