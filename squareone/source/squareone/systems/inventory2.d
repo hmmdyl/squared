@@ -5,14 +5,17 @@ import moxane.io;
 import moxane.utils.math;
 import moxane.graphics.renderer;
 import moxane.graphics.gl;
+import moxane.graphics.rendertexture;
 
 import dlib.math.vector;
 import dlib.math.matrix;
 import dlib.math.transformation;
 
 import std.experimental.allocator.mallocator;
-import std.algorithm : count;
+import std.algorithm : count, max;
 import std.conv : to;
+
+import derelict.opengl3.gl3;
 
 @safe:
 
@@ -31,26 +34,30 @@ import std.conv : to;
 @Component struct PrimaryUse { void delegate() invoke; }
 @Component struct SecondaryUse { void delegate() invoke; }
 
-@Component struct ItemInventory
+struct InventoryBase
 {
 	Entity[] slots;
 	Vector!(ubyte, 2) dimensions;
-
 	ubyte selectionX;
 
 	Entity get(ubyte x, ubyte y) { return slots[flattenIndex2D(x, y, dimensions.x)]; }
 	Entity getSelected() { return slots[flattenIndex2D(selectionX, dimensions.y - 1, dimensions.x)]; }
 }
 
-@Component struct InventoryLocal { bool open; }
+@Component struct ItemInventory
+{	
+	InventoryBase base;
+	alias base this;
+}
 
 @Component struct SecondaryInventory 
-{ 
-	Entity[] slots;
-	Vector!(ubyte, 2) dimensions; 
+{
+	InventoryBase base;
+	alias base this;
 	bool active; 
-	ubyte selectionX; 
 }
+
+@Component struct InventoryLocal { bool open; }
 
 enum primaryUse = InventorySystem.stringof ~ ":primaryUse";
 enum primaryUseDefault = MouseButton.left;
@@ -153,23 +160,30 @@ final class InventoryRenderer : IRenderable
 {
 	Moxane moxane;
 	InventorySystem system;
-	private InventoryCanvas canvas;
+	private DepthTexture depthCanvas;
+	private RenderTexture canvas;
 
 	Camera tileCameraOrtho;
 
 	uint canvasDrawCalls, canvasVertexCount;
 
-	this(Moxane moxane, InventorySystem system) in(moxane !is null) in(system !is null)
+	this(Moxane moxane, InventorySystem system, GLState gl) 
+	in(moxane !is null) in(system !is null) in(gl !is null)
 	{
 		this.moxane = moxane;
 		this.system = system;
 
-		this.moxane.services.get!Window().onFramebufferResize.add(&onFramebufferResize);
+		auto win = moxane.services.get!Window();
+		win.onFramebufferResize(&onFramebufferResize);
+		depthCanvas = new DepthTexture(win.framebufferSize.x, win.framebufferSize.y, gl);
+		canvas = new RenderTexture(win.framebufferSize.x, win.framebufferSize.y, depthCanvas, gl);
 	}
 
 	~this()
 	{
 		moxane.services.get!Window().onFramebufferResize.remove(&onFramebufferResize);
+		destroy(depthCanvas);
+		destroy(canvas);
 	}
 
 	private void preRenderCallback(ref RendererHook hook)
@@ -185,7 +199,11 @@ final class InventoryRenderer : IRenderable
 	{
 		canvas.bindDraw;
 		canvas.clear;
-		scope(exit) canvas.unbindDraw;
+		scope(exit) 
+		{
+			auto framebufferSize = moxane.services.get!Window().framebufferSize;
+			canvas.unbindDraw(framebufferSize.x, framebufferSize.y);
+		}
 
 		ItemInventory* primaryInven = system.target_.get!ItemInventory;
 		if(primaryInven is null)
@@ -209,18 +227,26 @@ final class InventoryRenderer : IRenderable
 
 		uint tileX, tileY;
 
+		glEnable(GL_SCISSOR_TEST);
+		scope(exit) glDisable(GL_SCISSOR_TEST);
+
 		void renderPrimaryInventory()
 		{
-			foreach(x; 0 .. primaryInven.dimensions.x)
+			foreach(ubyte x; 0 .. primaryInven.dimensions.x)
 			{
-				foreach(y; 0 .. primaryInven.dimensions.y)
+				foreach(ubyte y; 0 .. primaryInven.dimensions.y)
 				{
-					lc.view = translationMatrix(Vector3f(x * invenWidth, y * invenHeight, 0));
 					Entity item = primaryInven.get(x, y);
 					if(item is null) continue;
 					ItemDefinition* definition = item.get!ItemDefinition;
 					if(definition is null) continue;
 					if(definition.onRender is null) continue;
+
+					auto graphicsX = x * invenWidth;
+					auto graphicsY = y * invenHeight;
+
+					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
+					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
 					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 				tileX = x;
@@ -231,20 +257,28 @@ final class InventoryRenderer : IRenderable
 		{
 			if(secondaryInven is null) return;
 
-			foreach(x; 0 .. secondaryInven.dimensions.x)
+			foreach(ubyte x; 0 .. secondaryInven.dimensions.x)
 			{
-				foreach(y; 0 .. secondaryInven.dimensions.y)
+				foreach(ubyte y; 0 .. secondaryInven.dimensions.y)
 				{
-					lc.view = translationMatrix(Vector3f((x + tileX) * invenWidth, y * invenHeight, 0));
-					Entity item = secondaryInven.get();
+					Entity item = secondaryInven.get(x, y);
 					if(item is null) continue;
 					ItemDefinition* definition = item.get!ItemDefinition;
 					if(definition is null) continue;
 					if(definition.onRender is null) continue;
+
+					auto graphicsX = (x + tileX) * invenWidth;
+					auto graphicsY = y * invenHeight;
+
+					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
+					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
 					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 			}
 		}
+
+		renderPrimaryInventory;
+		renderSecondaryInventory;
 	}
 
 	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv)
@@ -256,10 +290,11 @@ final class InventoryRenderer : IRenderable
 	{ 
 		if(win.isIconified) return;
 
-		canvas.createTextures(size.x, size.y); 
+		canvas.createTextures(size.x, size.y);
 	}
 }
 
+deprecated("Use RenderTexture")
 private final class InventoryCanvas
 {
 	import derelict.opengl3.gl3;
