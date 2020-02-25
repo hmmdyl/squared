@@ -25,7 +25,8 @@ import squareone.content.voxel.glass;
 import squareone.systems.sky;
 import squareone.systems.gametime;
 import squareone.entities.player;
-import squareone.systems.inventory;
+import squareone.systems.inventory2;
+import squareone.content.item.test;
 
 import dlib.math;
 
@@ -60,7 +61,7 @@ final class DebugGameScene : Scene
 	private Entity skyEntity;
 	private Fog fog;
 
-	private PlayerInventorySystem playerInventory;
+	//private PlayerInventorySystem playerInventory;
 
 	private FirstPersonCamera camera;
 	private SpriteFont font;
@@ -293,7 +294,11 @@ final class DebugGameScene : Scene
 
 		import std.experimental.allocator.gc_allocator;
 		loadMesh!(Vector3f, Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts, normals);
-	}
+	
+        InventorySystem inven = new InventorySystem(moxane, em);
+        em.add(inven);
+        createTestPlayer(em);
+    }
 
 	private void setCamera(Vector2i size)
 	{

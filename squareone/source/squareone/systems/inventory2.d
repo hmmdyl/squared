@@ -24,7 +24,7 @@ import derelict.opengl3.gl3;
 
 	ushort maxStack;
 	
-	void delegate(Renderer renderer, InventoryRenderer ir, ref LocalContext lc, ref uint dc, ref uint nv) onRender;
+	void delegate(Entity entity, Renderer renderer, InventoryRenderer ir, ref LocalContext lc, ref uint dc, ref uint nv) onRender;
 }
 
 @Component struct ItemStack { ushort size; }
@@ -32,7 +32,7 @@ import derelict.opengl3.gl3;
 @Component struct PrimaryUse { void delegate() invoke; }
 @Component struct SecondaryUse { void delegate() invoke; }
 
-struct InventoryBase
+@Component struct InventoryBase
 {
 	Entity[] slots;
 	Vector!(ubyte, 2) dimensions;
@@ -83,6 +83,8 @@ final class InventorySystem : System
 		string[10] selectorBindingNames;
 		Keys[10] selectorKeys;
 		selectionBindings(selectorBindingNames, selectorKeys);
+        foreach(x; 0 .. selectorBindingNames.length)
+            im.setBinding(selectorBindingNames[x], selectorKeys[x]);
 		foreach(x; 0 .. selectorBindingNames.length)
 			im.boundKeys[selectorBindingNames[x]] ~= &onSelect;
 	}
@@ -129,6 +131,9 @@ final class InventorySystem : System
 
 	private void onInput(alias T)(ref InputEvent ie)
 	{
+        import std.stdio;
+        writeln("onInput");
+
 		if(target_ is null) return;
 
 		ItemInventory* inv = target_.get!ItemInventory;
@@ -158,9 +163,11 @@ final class InventoryRenderer : IRenderable
 {
 	Moxane moxane;
 	InventorySystem system;
+    Renderer renderer;
 	private DepthTexture depthCanvas;
 	private RenderTexture canvas;
 	private Effect renderEffect;
+    private uint vao, vbo;
 
 	Camera tileCameraOrtho;
 
@@ -168,11 +175,12 @@ final class InventoryRenderer : IRenderable
 
 	uint iconWidth, iconHeight;
 
-	this(Moxane moxane, InventorySystem system, GLState gl) @trusted
+	this(Moxane moxane, InventorySystem system, GLState gl, Renderer renderer) @trusted
 	in(moxane !is null) in(system !is null) in(gl !is null)
 	{
 		this.moxane = moxane;
 		this.system = system;
+        this.renderer = renderer;
 
 		auto win = moxane.services.get!Window();
 		win.onFramebufferResize.add(&onFramebufferResize);
@@ -186,8 +194,29 @@ final class InventoryRenderer : IRenderable
 			new Shader(AssetManager.translateToAbsoluteDir("content/shaders/inventoryRenderer.fs.glsl"), GL_FRAGMENT_SHADER)
 		]);
 		renderEffect.bind;
+        renderEffect.findUniform("Position");
+        renderEffect.findUniform("Size");
+        renderEffect.findUniform("MVP");
+        renderEffect.findUniform("Diffuse");
 		renderEffect.unbind;
-	}
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        auto verts = 
+        [
+            Vector2f(0, 0),
+            Vector2f(1, 0),
+            Vector2f(1, 1),
+            Vector2f(1, 1),
+            Vector2f(0, 1),
+            Vector2f(0, 0)
+        ];
+        glBufferData(GL_ARRAY_BUFFER, Vector2f.sizeof * verts.length, verts.ptr, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        renderer.passHook.addCallback(&preRenderCallback);
+    }
 
 	~this() @trusted
 	{
@@ -236,7 +265,7 @@ final class InventoryRenderer : IRenderable
 		lc.camera = tileCameraOrtho;
 		lc.type = PassType.ui;
 
-		uint tileX, tileY;
+		uint tileX;
 
 		glEnable(GL_SCISSOR_TEST);
 		scope(exit) glDisable(GL_SCISSOR_TEST);
@@ -258,7 +287,7 @@ final class InventoryRenderer : IRenderable
 
 					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
 					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
-					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
+					definition.onRender(item, hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 				tileX = x;
 			}
@@ -283,7 +312,7 @@ final class InventoryRenderer : IRenderable
 
 					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
 					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
-					definition.onRender(hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
+					definition.onRender(item, hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 			}
 		}
@@ -292,9 +321,28 @@ final class InventoryRenderer : IRenderable
 		renderSecondaryInventory;
 	}
 
-	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv)
+	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv) @trusted
 	{
+        if(lc.type != PassType.ui) return;
 
+        glBindVertexArray(vao);
+        scope(exit) glBindVertexArray(0);
+
+        glEnableVertexAttribArray(0);
+        scope(exit) glDisableVertexAttribArray(0);
+
+        renderEffect.bind;
+        scope(exit) renderEffect.unbind;
+
+        glActiveTexture(GL_TEXTURE0);
+        canvas.bindAsTexture([0, 1, 2]);
+        renderEffect["Diffuse"].set(0);
+
+        scope(exit) glBindBuffer(GL_ARRAY_BUFFER, 0); 
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glVertexAttribPointer(0, 4, GL_FLOAT, false, 0 , null);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 
 	private void onFramebufferResize(Window win, Vector2i size) @trusted
