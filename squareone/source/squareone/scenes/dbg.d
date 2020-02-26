@@ -298,6 +298,9 @@ final class DebugGameScene : Scene
         InventorySystem inven = new InventorySystem(moxane, em);
         em.add(inven);
         createTestPlayer(em);
+
+		InventoryRenderer invenRenderer = new InventoryRenderer(moxane, inven, renderer.gl, renderer);
+		renderer.uiRenderables ~= invenRenderer;
     }
 
 	private void setCamera(Vector2i size)
@@ -403,7 +406,7 @@ final class DebugGameScene : Scene
 		if(shouldDec) toolSize /= 2;
 
 		if(toolSize < 1) toolSize = 1;
-		if(toolSize > 4) toolSize = 4;
+		if(toolSize > 1) toolSize = 1;
 
 		PhysicsComponent* phys = playerEntity.get!PhysicsComponent;
 		DynamicPlayerBodyMT dpb = cast(DynamicPlayerBodyMT)phys.rigidBody;
@@ -424,12 +427,7 @@ final class DebugGameScene : Scene
 			PickResult pr = pick(pc.camera.position, pc.camera.rotation, terrainManager, 10, pickerIgnore);
 			if(pr.got) 
 			{
-				auto mx = (pr.blockPosition.x / toolSize) * toolSize;
-				pr.blockPosition.x = pr.blockPosition.x < 0 ? pr.blockPosition.x + mx : pr.blockPosition.x - mx;
-				auto my = (pr.blockPosition.y % toolSize) * toolSize;
-				pr.blockPosition.y = pr.blockPosition.y < 0 ? pr.blockPosition.y + my : pr.blockPosition.y - my;
-				auto mz = (pr.blockPosition.z % toolSize) * toolSize;
-				pr.blockPosition.z = pr.blockPosition.z < 0 ? pr.blockPosition.z + mz : pr.blockPosition.z - mz;
+				properBP = pr.blockPosition;
 
 				blockSelector.get!Transform().position = ChunkPosition.blockPosRealCoord(pr.blockPosition);
 				blockSelector.get!Transform().scale = Vector3f(ChunkData.voxelScale * toolSize, ChunkData.voxelScale * toolSize, ChunkData.voxelScale * toolSize);
@@ -446,9 +444,6 @@ final class DebugGameScene : Scene
 						if(pr.side == VoxelSide.pz) pr.blockPosition.z += toolSize;
 					}
 
-					properBP = pr.blockPosition;
-
-					snappedBP = pr.blockPosition;
 					foreach(x; 0 .. toolSize)
 						foreach(y; 0 .. toolSize)
 							foreach(z; 0 .. toolSize)

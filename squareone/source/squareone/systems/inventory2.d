@@ -1,7 +1,7 @@
 module squareone.systems.inventory2;
 
 import moxane.core;
-import moxane.io;
+public import moxane.io;
 import moxane.utils.math;
 import moxane.graphics;
 
@@ -23,14 +23,26 @@ import derelict.opengl3.gl3;
 	string displayName;
 
 	ushort maxStack;
-	
-	void delegate(Entity entity, Renderer renderer, InventoryRenderer ir, ref LocalContext lc, ref uint dc, ref uint nv) onRender;
+}
+
+@Component struct OrthoInvenIconRender
+{
+	void delegate(Entity entity, InventoryRenderer ir, Renderer r,
+				  uint framex, uint framey, uint iconwidth, uint iconheight,
+				  ref LocalContext lc, ref uint dc, ref uint nv) invoke;
+}
+
+@Component struct PerspectiveInvenIconRender
+{
+	void delegate(Entity entity, InventoryRenderer ir, Renderer r,
+				  uint iconWidth, uint iconHeight,
+				  ref LocalContext lc, ref uint dc, ref uint nv) invoke;
 }
 
 @Component struct ItemStack { ushort size; }
 
-@Component struct PrimaryUse { void delegate() invoke; }
-@Component struct SecondaryUse { void delegate() invoke; }
+@Component struct PrimaryUse { void delegate(const ref InputEvent) invoke; }
+@Component struct SecondaryUse { void delegate(const ref InputEvent) invoke; }
 
 @Component struct InventoryBase
 {
@@ -145,7 +157,7 @@ final class InventorySystem : System
 		T* component = item.get!T;
 		if(component is null) return;
 
-		component.invoke();
+		component.invoke(ie);
 	}
 
 	private void onSelect(ref InputEvent ie)
@@ -216,6 +228,12 @@ final class InventoryRenderer : IRenderable
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         renderer.passHook.addCallback(&preRenderCallback);
+
+		tileCameraOrtho = new Camera;
+		tileCameraOrtho.position = Vector3f(0, 0, 0);
+		tileCameraOrtho.rotation = Vector3f(0, 0, 0);
+		tileCameraOrtho.ortho.near = -1f;
+		tileCameraOrtho.ortho.far = 1f;
     }
 
 	~this() @trusted
@@ -257,7 +275,15 @@ final class InventoryRenderer : IRenderable
 
 		tileCameraOrtho.width = hook.renderer.uiCamera.width / invenWidth;
 		tileCameraOrtho.height = hook.renderer.uiCamera.height / invenHeight;
-		tileCameraOrtho.deduceOrtho;
+		with(tileCameraOrtho)
+		{
+			ortho.left = 0f;
+			ortho.right = cast(float)width;
+			ortho.bottom = 0f;
+			ortho.top = cast(float)height;
+			isOrtho = true;
+		}
+		//tileCameraOrtho.deduceOrtho;
 		tileCameraOrtho.buildProjection;
 
 		LocalContext lc;
@@ -267,7 +293,7 @@ final class InventoryRenderer : IRenderable
 
 		uint tileX;
 
-		glEnable(GL_SCISSOR_TEST);
+		//glEnable(GL_SCISSOR_TEST);
 		scope(exit) glDisable(GL_SCISSOR_TEST);
 
 		void renderPrimaryInventory()
@@ -282,11 +308,14 @@ final class InventoryRenderer : IRenderable
 					if(definition is null) continue;
 					if(definition.onRender is null) continue;
 
-					auto graphicsX = x * invenWidth;
-					auto graphicsY = y * invenHeight;
+					auto graphicsX = x * tileCameraOrtho.width;
+					auto graphicsY = y * tileCameraOrtho.height;
 
-					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
-					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
+					import std.stdio;
+					writeln(x, " ", y, " ", graphicsX, " ", graphicsY, " ", tileCameraOrtho.ortho);
+
+					lc.view = translationMatrix(Vector3f(-graphicsX, graphicsY, 0));
+					//glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
 					definition.onRender(item, hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
 				}
 				tileX = x;
@@ -337,10 +366,13 @@ final class InventoryRenderer : IRenderable
         glActiveTexture(GL_TEXTURE0);
         canvas.bindAsTexture([0, 1, 2]);
         renderEffect["Diffuse"].set(0);
+		renderEffect["Position"].set(Vector2f(0, 0));
+		renderEffect["Size"].set(Vector2f(1920, 1080));
+		renderEffect["MVP"].set(&lc.projection);
 
         scope(exit) glBindBuffer(GL_ARRAY_BUFFER, 0); 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glVertexAttribPointer(0, 4, GL_FLOAT, false, 0 , null);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 0 , null);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
@@ -350,120 +382,5 @@ final class InventoryRenderer : IRenderable
 		if(win.isIconified) return;
 
 		canvas.createTextures(size.x, size.y);
-	}
-}
-
-deprecated("Use RenderTexture")
-private final class InventoryCanvas
-{
-	import derelict.opengl3.gl3;
-
-	uint width, height;
-	GLuint fbo;
-	GLuint depth;
-	GLuint diffuse;
-
-	GLState gl;
-
-	private static immutable GLenum[] allAttachments = [GL_COLOR_ATTACHMENT0];
-
-	this(uint width, uint height, GLState gl) @trusted
-	in(gl !is null)
-	{
-		this.gl = gl;
-		this.width = width;
-		this.height = height;
-
-		glGenTextures(1, &diffuse);
-		glGenTextures(1, &depth);
-		createTextures(width, height);
-
-		glGenFramebuffers(1, &fbo);
-		alias glfbo = GL_FRAMEBUFFER;
-		alias glColAtt0 = GL_COLOR_ATTACHMENT0;
-
-		glBindFramebuffer(glfbo, fbo);
-		scope(exit) glBindFramebuffer(glfbo, 0);
-
-		glFramebufferTexture2D(glfbo, glColAtt0, GL_TEXTURE_2D, diffuse, 0);
-		glFramebufferTexture2D(glfbo, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
-		glDrawBuffers(cast(int)allAttachments.length, allAttachments.ptr);
-		GLenum status = glCheckFramebufferStatus(glfbo);
-		import std.exception;
-		enforce(status == GL_FRAMEBUFFER_COMPLETE, "FBO " ~ to!string(fbo) ~ " could not be created. Status: " ~ to!string(status));
-	}
-
-	void createTextures(uint w, uint h) @trusted
-	in(w > 0) in(h > 0)
-	{
-		this.width = w;
-		this.height = h;
-
-		/// aliases because I am a lazy cunt
-		alias tex2D = GL_TEXTURE_2D;
-		alias minF = GL_TEXTURE_MIN_FILTER;
-		alias maxF = GL_TEXTURE_MAG_FILTER;
-
-		scope(exit) glBindTexture(tex2D, 0);
-
-		glBindTexture(tex2D, diffuse);
-		glTexParameteri(tex2D, minF, GL_NEAREST);
-		glTexParameteri(tex2D, maxF, GL_NEAREST);
-		glTexImage2D(tex2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_INT, null);
-
-		glBindTexture(tex2D, depth);
-		glTexParameteri(tex2D, minF, GL_NEAREST);
-		glTexParameteri(tex2D, maxF, GL_NEAREST);
-		glTexImage2D(tex2D, 0, GL_DEPTH_COMPONENT, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, null);
-	}
-
-	~this() @trusted
-	{
-		glDeleteTextures(1, &diffuse);
-		glDeleteTextures(1, &depth);
-		glDeleteFramebuffers(1, &fbo);
-	}
-
-	debug private bool isBound;
-
-	void bindDraw() @trusted
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glViewport(0, 0, width, height);
-
-		debug isBound = true;
-	}
-
-	void unbindDraw(uint w, uint h) @trusted
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, w, h);
-
-		debug isBound = false;
-	}
-
-	void clear() @trusted
-	{
-		debug { assert(isBound, "FBO must be bound to clear."); }
-
-		glClearColor(0f, 0f, 0f, 0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	}
-
-	void bindAsTexture(uint[2] textureUnits) @trusted
-	{
-		glActiveTexture(GL_TEXTURE0 + textureUnits[0]);
-		glBindTexture(GL_TEXTURE_2D, depth);
-		glActiveTexture(GL_TEXTURE0 + textureUnits[1]);
-		glBindTexture(GL_TEXTURE_2D, diffuse);
-	}
-
-	void unbindTextures(uint[2] textureUnits) @trusted
-	{
-		foreach(uint tu; textureUnits)
-		{
-			glActiveTexture(GL_TEXTURE0 + tu);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
 	}
 }
