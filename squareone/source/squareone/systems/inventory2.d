@@ -277,17 +277,17 @@ final class InventoryRenderer : IRenderable
 		uint invenWidth = primaryInven.dimensions.x + (secondaryInven !is null ? secondaryInven.dimensions.x : 0);
 		uint invenHeight = max(primaryInven.dimensions.x, secondaryInven !is null ? secondaryInven.dimensions.y : 0);
 
-		tileCameraOrtho.width = hook.renderer.uiCamera.width / invenWidth;
-		tileCameraOrtho.height = hook.renderer.uiCamera.height / invenHeight;
-		with(tileCameraOrtho)
+		tileCameraOrtho.width = hook.renderer.uiCamera.width;// / invenWidth;
+		tileCameraOrtho.height = hook.renderer.uiCamera.height;// / invenHeight;
+		/+with(tileCameraOrtho)
 		{
 			ortho.left = 0f;
 			ortho.right = cast(float)width;
 			ortho.bottom = 0f;
 			ortho.top = cast(float)height;
 			isOrtho = true;
-		}
-		//tileCameraOrtho.deduceOrtho;
+		}+/
+		tileCameraOrtho.deduceOrtho;
 		tileCameraOrtho.buildProjection;
 
 		LocalContext lc;
@@ -297,7 +297,7 @@ final class InventoryRenderer : IRenderable
 
 		uint tileX;
 
-		//glEnable(GL_SCISSOR_TEST);
+		glEnable(GL_SCISSOR_TEST);
 		scope(exit) glDisable(GL_SCISSOR_TEST);
 
 		void renderPrimaryInventory()
@@ -312,15 +312,19 @@ final class InventoryRenderer : IRenderable
 					if(definition is null) continue;
 					if(definition.onRender is null) continue;
 
-					auto graphicsX = x * tileCameraOrtho.width;
-					auto graphicsY = y * tileCameraOrtho.height;
+					auto w = (tileCameraOrtho.width / invenWidth);
+					auto h = (tileCameraOrtho.height / invenHeight);
+					auto graphicsX = x * w;
+					auto graphicsY = y * h;
 
 					import std.stdio;
 					writeln(x, " ", y, " ", graphicsX, " ", graphicsY, " ", tileCameraOrtho.ortho);
 
 					lc.view = translationMatrix(Vector3f(-graphicsX, graphicsY, 0));
-					//glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
-					definition.onRender(item, hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
+					//glScissor(graphicsX, graphicsY, graphicsX + w, graphicsY + h);
+					definition.onRender(item, hook.renderer, this, 
+										graphicsX, graphicsY, tileCameraOrtho.width, tileCameraOrtho.height, 
+										lc, canvasDrawCalls, canvasVertexCount);
 				}
 				tileX = x;
 			}
@@ -344,8 +348,10 @@ final class InventoryRenderer : IRenderable
 					auto graphicsY = y * invenHeight;
 
 					lc.view = translationMatrix(Vector3f(graphicsX, graphicsY, 0));
-					glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
-					definition.onRender(item, hook.renderer, this, lc, canvasDrawCalls, canvasVertexCount);
+					//glScissor(graphicsX, graphicsY, graphicsX + invenWidth, graphicsY + invenHeight);
+					definition.onRender(item, hook.renderer, this, 
+										graphicsX, graphicsY, tileCameraOrtho.width, tileCameraOrtho.height, 
+										lc, canvasDrawCalls, canvasVertexCount);
 				}
 			}
 		}

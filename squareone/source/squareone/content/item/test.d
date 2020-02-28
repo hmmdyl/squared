@@ -96,6 +96,7 @@ private final class RenderUtils
 }
 
 private void onRender(Entity entity, Renderer renderer, InventoryRenderer ir, 
+	uint frameX, uint frameY, uint iconWidth, uint iconHeight,
     ref LocalContext lc, ref uint dc, ref uint nv) @trusted
 {
     RenderUtils ru = RenderUtils.instance(renderer.moxane);
@@ -112,9 +113,9 @@ private void onRender(Entity entity, Renderer renderer, InventoryRenderer ir,
         scope(exit) effect.unbind;
 
         glActiveTexture(GL_TEXTURE0);
-		effect["Position"].set(Vector2f(0, 0));
-		effect["Size"].set(Vector2f(100, 100));
-		Matrix4f i = lc.projection * lc.view;
+		effect["Position"].set(Vector2f(frameX, frameY));
+		effect["Size"].set(Vector2f(10000, 100)); 
+		Matrix4f i = lc.projection;// * lc.view;
 		effect["MVP"].set(&i);
 
         scope(exit) glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -134,7 +135,7 @@ Entity createTestPlayer(EntityManager em) @trusted
     inventory.dimensions = Vector!(ubyte, 2)(2, 2);
     inventory.selectionX = 0;
 
-    inventory.slots[3] = createTestItem(em);
+    inventory.slots[2] = createTestItem(em);
 
     auto l = entity.createComponent!InventoryLocal;
 
