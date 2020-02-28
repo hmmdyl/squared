@@ -23,6 +23,10 @@ import derelict.opengl3.gl3;
 	string displayName;
 
 	ushort maxStack;
+
+	void delegate(Entity e, Renderer r, InventoryRenderer ir, 
+		uint frameX, uint frameY, uint iconWidth, uint iconHeight,
+		ref LocalContext lc, ref uint dc, ref uint nv) onRender;
 }
 
 @Component struct OrthoInvenIconRender
