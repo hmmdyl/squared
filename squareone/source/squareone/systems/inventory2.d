@@ -360,7 +360,7 @@ final class InventoryRenderer : IRenderable
 		renderSecondaryInventory;
 	}
 
-	void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv) @trusted
+	/+void render(Renderer r, ref LocalContext lc, out uint dc, out uint nv) @trusted
 	{
         if(lc.type != PassType.ui) return;
 
@@ -385,12 +385,45 @@ final class InventoryRenderer : IRenderable
         glVertexAttribPointer(0, 2, GL_FLOAT, false, 0 , null);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
-	}
+	}+/
 
 	private void onFramebufferResize(Window win, Vector2i size) @trusted
 	{ 
 		if(win.isIconified) return;
 
 		canvas.createTextures(size.x, size.y);
+	}
+}
+
+/// Allows inventory tiles to be rendered directly as sprites.
+/// This makes use of the SpriteOrder.effectOverride delegate.
+final class TileSpriteRenderService
+{
+	Effect effect;
+
+	this()
+	{
+		effect = new Effect(moxane, typeof(this).stringof);
+		effect.attachAndLink(
+		[ 
+			new Shader(AssetManager.translateToAbsoluteDir("content/shaders/inventoryRenderer.vs.glsl"), GL_VERTEX_SHADER),
+			new Shader(AssetManager.translateToAbsoluteDir("content/shaders/inventoryRenderer.fs.glsl"), GL_FRAGMENT_SHADER)
+		]);
+		effect.bind;
+        effect.findUniform("Position");
+        effect.findUniform("Size");
+        effect.findUniform("MVP");
+        effect.findUniform("Diffuse");
+		effect.unbind;
+	}
+
+	~this()
+	{
+		destroy(effect);
+	}
+
+	void effectOverride(ref SpriteOrder order, SpriteRenderer renderer)
+	{
+
 	}
 }
