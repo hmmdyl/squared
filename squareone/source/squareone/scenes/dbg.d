@@ -6,7 +6,7 @@ import moxane.graphics.renderer;
 import moxane.graphics.ecs;
 import moxane.graphics.firstperson;
 import moxane.graphics.standard;
-import moxane.graphics.sprite;
+import moxane.graphics.sprite2;
 import moxane.graphics.postprocess;
 import moxane.graphics.postprocesses.fog;
 import moxane.graphics.light;
@@ -191,7 +191,7 @@ final class DebugGameScene : Scene
 			setCamera(size);
 		});
 
-		SpriteRenderer spriteRenderer = moxane.services.get!SpriteRenderer;
+		auto spriteRenderer = moxane.services.get!Sprites;
 		font = spriteRenderer.createFont(AssetManager.translateToAbsoluteDir("content/moxane/font/MODES___.ttf"), 48);
 
 		InputManager im = moxane.services.get!InputManager;
@@ -300,7 +300,7 @@ final class DebugGameScene : Scene
         createTestPlayer(em);
 
 		InventoryRenderer invenRenderer = new InventoryRenderer(moxane, inven, renderer.gl, renderer);
-		renderer.uiRenderables ~= invenRenderer;
+		//renderer.uiRenderables ~= invenRenderer;
     }
 
 	private void setCamera(Vector2i size)
@@ -461,6 +461,8 @@ final class DebugGameScene : Scene
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
 
 		terrainRenderer.renderTime = 0f;
+
+        moxane.services.get!Sprites().drawString(font, "Square One", Vector2i(10, 10), 1, Vector3f(0.05, 0.3, 1));
 	}
 
 	override void onRenderBegin() @trusted

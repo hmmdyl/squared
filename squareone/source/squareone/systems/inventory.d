@@ -5,7 +5,7 @@ import moxane.network.semantic;
 import moxane.graphics.renderer;
 import moxane.graphics.texture;
 import moxane.graphics.gl;
-import moxane.graphics.sprite;
+import moxane.graphics.sprite2;
 
 import derelict.opengl3.gl3;
 import std.exception : enforce;
@@ -100,7 +100,7 @@ import std.range;
 		PlayerInventoryLocal* pil = system.target.get!PlayerInventoryLocal;
 		if(pil is null) return;
 
-		SpriteRenderer sprite = system_.moxane.services.get!SpriteRenderer;
+		Sprites sprite = system_.moxane.services.get!Sprites;
 		uint w = lc.camera.width;
 		uint h = lc.camera.height;
 
@@ -113,7 +113,7 @@ import std.range;
 				int startY = lc.camera.height / 5;
 				int endX = lc.camera.width / 5 * 3;
 				int endY = lc.camera.height / 10 * 7;
-				sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
+				//sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 			}
 		}
 
@@ -124,7 +124,7 @@ import std.range;
 			int startY = lc.camera.height - (lc.camera.height / 14);
 			int endX = lc.camera.width / 5 * 3;
 			int endY = lc.camera.height / 15;
-			sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
+			//sprite.drawSprite(Vector2i(startX, startY), Vector2i(endX, endY), Vector3f(0.5f, 0.5f, 0.5f), 0.4f);
 		}
 	}
 }

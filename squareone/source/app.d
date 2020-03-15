@@ -2,7 +2,7 @@ import std.stdio;
 
 import moxane.core;
 import moxane.graphics.renderer;
-import moxane.graphics.sprite;
+import moxane.graphics.sprite2;
 import moxane.graphics.standard;
 import moxane.graphics.ecs;
 import moxane.io;
@@ -39,8 +39,8 @@ void main()
 	Renderer r = moxane.services.get!Renderer;
 	EntityManager entityManager = moxane.services.get!EntityManager;
 	SceneManager sceneManager = moxane.services.get!SceneManager;
-	moxane.services.register!SpriteRenderer(new SpriteRenderer(moxane, r));
-	r.uiRenderables ~= moxane.services.get!SpriteRenderer;
+	moxane.services.register!Sprites(new Sprites(moxane, r));
+	r.uiRenderables ~= moxane.services.get!Sprites;
 
 	ImguiRenderer imguiRenderer = new ImguiRenderer(moxane);
 	imguiRenderer.renderables ~= new RendererDebugAttachment(r);

@@ -3,7 +3,7 @@ module squareone.scenes.menu;
 import moxane.core;
 import moxane.graphics.renderer;
 import moxane.graphics.texture;
-import moxane.graphics.sprite;
+import moxane.graphics.sprite2;
 import moxane.ui;
 import moxane.io;
 
