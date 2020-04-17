@@ -18,7 +18,7 @@
 		"resusage": ">=0.3.2",
 		"colorize": ">=1.0.5",
 		"derelict-util": "~>2.0.6",
-		"dlib": ">=0.18.0-beta1",
+		"dlib": ">=0.18.0",
 		"emsi_containers": ">=0.8.0-alpha.19",
 		"derelict-enet": "~>3.0.0",
 		"d-cimgui": "~>0.51.0",

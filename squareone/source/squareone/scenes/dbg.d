@@ -58,6 +58,7 @@ final class DebugGameScene : Scene
 	private SkySystem skySystem;
 	private SkyRenderer7R24D skyRenderer;
 	private SkyRenderer7R24D.DebugAttachment skyAttachment;
+	private SkyObjects skyObjects;
 	private Entity skyEntity;
 	private Fog fog;
 
@@ -83,6 +84,8 @@ final class DebugGameScene : Scene
 	Material material;
 	Vector3f[] verts, normals;
 
+	TimeComponent sceneTime;
+
 	private void initialise()
 	{
 		ImguiRenderer imgui = moxane.services.get!ImguiRenderer;
@@ -98,28 +101,36 @@ final class DebugGameScene : Scene
 		pl.ambientIntensity = 0f;
 		pl.diffuseIntensity = 1f;
 		pl.colour = Vector3f(1f, 1f, 1f);
-		pl.position = Vector3f(-2f, 4f, 0f);
+		pl.position = Vector3f(-2f, -4000f, 0f);
 		pl.constAtt = 1f;
 		pl.linAtt = 0.9f;
 		pl.expAtt = 0.1f;
-		renderer.lights.pointLights ~= pl;
+		//renderer.lights.pointLights ~= pl;
 
 		dl = new DirectionalLight;
-		dl.ambientIntensity = 0.1f;
-		dl.diffuseIntensity = 0.5f;
+		dl.ambientIntensity = 0f;
+		dl.diffuseIntensity = 1f;
 		dl.colour = Vector3f(1, 1, 1);
 		dl.direction = Vector3f(0, 0.5, 0.5);
 		renderer.lights.directionalLights ~= dl;
 
 		skySystem = new SkySystem(moxane);
 		skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
+		{
+			Texture2D sun = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/exp_sun.png"), 
+				Texture2D.ConstructionInfo.standard);
+			Texture2D moon = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/exp_moon.png"),
+				Texture2D.ConstructionInfo.standard);
+			skyObjects = new SkyObjects(moxane, sun, moon);
+			skyRenderer.objects = skyObjects;
+		}
 		renderer.addSceneRenderable(skyRenderer);
 		skyAttachment = new SkyRenderer7R24D.DebugAttachment(skyRenderer, moxane);
 		imgui.renderables ~= skyAttachment;
 
 		EntityManager em = moxane.services.get!EntityManager;
 
-		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 24 * 8, 80, VirtualTime.init);
+		skyEntity = createSkyEntity(em, Vector3f(0f, 0f, 0f), 80, 50, VirtualTime.init);
 		em.add(skyEntity);
 
 		resources = new Resources;
@@ -301,6 +312,10 @@ final class DebugGameScene : Scene
 
 		InventoryRenderer invenRenderer = new InventoryRenderer(moxane, inven, renderer.gl, renderer);
 		//renderer.uiRenderables ~= invenRenderer;
+
+		sceneTime.time = VirtualTime(12, 0, 0);
+		sceneTime.remainingTime = 0f;
+		sceneTime.secondMap = 1 / 60.0;
     }
 
 	private void setCamera(Vector2i size)
@@ -376,10 +391,10 @@ final class DebugGameScene : Scene
 		InputManager im = moxane.services.get!InputManager;
 
 		Transform* t = playerEntity.get!Transform;
-		pl.position = t.position;
+		//pl.position = t.position;
 		{
 			Transform* sk = skyEntity.get!Transform;
-			sk.position = t.position;
+			sk.position = t.position;// - Vector3f(0, 50, 0); // IMPORTANT
 		}
 
 		bool changeCapture = win.isKeyDown(Keys.f1) && !f1Prev;
@@ -413,7 +428,7 @@ final class DebugGameScene : Scene
 
 		if(!keyCapture)
 		{
-			phys.rigidBody.transform.position = Vector3f(0, 10, 0);
+			phys.rigidBody.transform.position = Vector3f(0, 52, 0);
 			(cast(DynamicPlayerBodyMT)phys.rigidBody).velocity = Vector3f(0, 0, 0);
 		}
 		//else phys.rigidBody.freeze = false;
@@ -453,9 +468,14 @@ final class DebugGameScene : Scene
 		}
 
 		fog.sceneView = camera.viewMatrix;
+		fog.colour = skyRenderer.fogColour;
+
+		sceneTime.update(moxane.deltaTime);
+		skyEntity.get!SkyComponent().time = sceneTime.time;
+		dl.direction = skyRenderer.sunDir;
 
 		StopWatch sw = StopWatch(AutoStart.yes);
-		terrainManager.cameraPosition = camera.position;
+		terrainManager.cameraPosition = phys.rigidBody.transform.position;
 		terrainManager.update;
 		sw.stop;
 		managementTime = sw.peek.total!"nsecs" / 1_000_000f;
@@ -549,13 +569,21 @@ private final class SceneDebugAttachment : IImguiRenderable
 			igText("Increment");
 			igSameLine();
 			if(igButton("HOUR", ImVec2(0, 0)))
-			   sky.time.incHour;
+			   scene.sceneTime.time.incHour;
 			igSameLine();
 			if(igButton("MINUTE", ImVec2(0, 0)))
-				sky.time.incMinute;
+				scene.sceneTime.time.incMinute;
 			igSameLine();
 			if(igButton("SECOND", ImVec2(0, 0)))
-				sky.time.incSecond;
+				scene.sceneTime.time.incSecond;
+
+			igText("Decrement");
+			igSameLine();
+			if(igButton("DHOUR", ImVec2(0, 0)))
+			   	scene.sceneTime.time.decHour;
+			igSameLine();
+			if(igButton("DMINUTE", ImVec2(0, 0)))
+				scene.sceneTime.time.decMinute;
 		}
 	}
 

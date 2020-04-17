@@ -198,6 +198,14 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
+		float smallMountains()
+		{
+			float h = multiNoise(simplexSrc, realPos.x + 7465, realPos.z + 763, 512f, 8) * 64f;
+			h += multiNoise(simplexSrc, realPos.x - 735, realPos.z - 73, 8f, 8) * 2f;
+			h += 10f;
+			return h;
+		}
+
 		float swamp()
 		{
 			float h = multiNoise(simplexSrc, realPos.x, realPos.z, 6f, 4);
@@ -229,7 +237,7 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			return h;
 		}
 
-		float height = flat;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
+		float height = smallMountains;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
 
 		MaterialID upperMat = materials.grass;
 		/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
@@ -246,17 +254,20 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 			float cave = 0f;//multiNoise(simplexSrc3D, realPos1.x, realPos1.y, realPos1.z, 32f, 8);
 
 			if(realPos1.y <= height && cave < 0.7f)
-				raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(realPos1.y < 0.5 ? materials.sand : upperMat, meshes.cube, 0, 0));
+				raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
+					Voxel(materials.stone, meshes.cube, 0, 0));
 			else
 			{
 				if(realPos1.y <= 0)
 				{
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(materials.water, meshes.fluid, 0, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
+						Voxel(materials.water, meshes.fluid, 0, 0));
 					//premC--;
 				}
 				else
 				{
-					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, Voxel(0, meshes.invisible, 0, 0));
+					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
+						Voxel(0, meshes.invisible, 0, 0));
 					premC++;
 				}
 			}

@@ -38,6 +38,19 @@ struct TimeComponent
 	VirtualTime time;
 	@NoCereal float remainingTime;
 	float secondMap;
+
+	void update(float deltaTime)
+	{
+		float n = remainingTime + deltaTime;
+		float ts = n / secondMap;
+		int ti = cast(int)ts;
+		if(ti > 0)
+		{
+			foreach(tic; 0 .. ti) time.incSecond;
+			n -= (ti * secondMap);
+		}
+		remainingTime = n;
+	}
 }
 
 struct VirtualTime
@@ -92,6 +105,22 @@ struct VirtualTime
 		if(hour >= 23)
 			hour = 0;
 		else hour++;
+	}
+
+	void decHour()
+	{
+		if(hour == 0) hour = 23;
+		else hour--;
+	}
+
+	void decMinute()
+	{
+		if(minute == 0)
+		{
+			decHour;
+			minute = 59;
+		}
+		else minute--;
 	}
 
 	@property float decimal() const 

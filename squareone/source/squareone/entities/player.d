@@ -21,8 +21,8 @@ import dlib.math.utils : degtorad;
 	PlayerComponent* pc = e.createComponent!PlayerComponent;
 
 	*transform = Transform.init;
-	transform.position.x = 10;
-	transform.position.y = 20;
+	//transform.position.x = 10;
+	//transform.position.y = 20;
 	pc.headRotation = transform.rotation;
 	pc.walkSpeed = walkSpeed;
 	pc.headRotXMax = headRotXMax;

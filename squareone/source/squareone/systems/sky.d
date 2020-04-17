@@ -12,7 +12,7 @@ import moxane.network.semantic;
 import std.algorithm.searching : canFind;
 import derelict.opengl3.gl3;
 import containers.unrolledlist;
-import dlib.math.vector : Vector3f;
+import dlib.math.vector;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.transformation;
 import std.experimental.allocator.gc_allocator;
@@ -54,6 +54,143 @@ class SkySystem
 
 alias SkyRenderer7R24D = SkyRenderer!(11, 24);
 
+class SkyObjects
+{
+	private Texture2D sun, moon;
+
+	private GLuint vao, vb, tb;
+	private enum vertexCount = 6;
+
+	private Effect effect;
+
+	this(Moxane moxane, Texture2D sun, Texture2D moon)
+	in(moxane !is null) in(sun !is null) in(moon !is null)
+	{
+		this.sun = sun;
+		this.moon = moon;
+
+		Log log = moxane.services.get!Log;
+		Shader vs = new Shader, fs = new Shader;
+		vs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/skyObject.vs.glsl")), 
+			GL_VERTEX_SHADER, log);
+		fs.compile(readText(AssetManager.translateToAbsoluteDir("content/shaders/skyObject.fs.glsl")), 
+			GL_FRAGMENT_SHADER, log);
+		effect = new Effect(moxane, SkyObjects.stringof);
+		with(effect)
+		{
+			attachAndLink(vs, fs);
+			bind;
+			findUniform("MVP");
+			findUniform("Model");
+			findUniform("Texture");
+			unbind;
+		}
+
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vb);
+		glGenBuffers(1, &tb);
+		
+		Vector3f[] vertices = [
+			Vector3f(-25, 0, -25),
+			Vector3f(-25, 0, 25),
+			Vector3f(25, 0, 25),
+
+			Vector3f(25, 0, 25),
+			Vector3f(25, 0, -25),
+			Vector3f(-25, 0, -25),
+		];
+		Vector2f[] texCoords = [
+			Vector2f(0, 0),
+			Vector2f(0, 1),
+			Vector2f(1, 1),
+
+			Vector2f(1, 1),
+			Vector2f(1, 0),
+			Vector2f(0, 0)
+		];
+
+		glBindBuffer(GL_ARRAY_BUFFER, vb);
+		glBufferData(GL_ARRAY_BUFFER, vertices.length * Vector3f.sizeof, vertices.ptr, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, tb);
+		glBufferData(GL_ARRAY_BUFFER, texCoords.length * Vector2f.sizeof, texCoords.ptr, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	~this()
+	{
+		glDeleteBuffers(1, &vb);
+		glDeleteBuffers(1, &tb);
+		glDeleteVertexArrays(1, &vao);
+	}
+
+	private void render(Vector3f sunPos, Vector3f moonPos, Vector3f target, Renderer renderer, 
+		ref LocalContext lc, ref uint dc, ref uint nv)
+	{
+		glBindVertexArray(vao);
+		scope(exit) glBindVertexArray(0);
+
+		glEnableVertexAttribArray(0);
+		scope(exit) glDisableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		scope(exit) glDisableVertexAttribArray(1);
+
+		renderer.gl.blend.push(true);
+		scope(exit) renderer.gl.blend.pop;
+
+		effect.bind;
+		scope(exit) effect.unbind;
+		glActiveTexture(GL_TEXTURE0);
+		effect["Texture"].set(0);
+
+		Vector3f dirToTarget = sunPos - target;
+		dirToTarget.normalize;
+
+		import dlib.math : degtorad;
+		import std.math : abs;
+
+		float y = -(dirToTarget.y);
+		y *= 90f;
+		y += 90f;
+		if(dirToTarget.z > 0) y = -y;
+
+		Matrix4f sunM = translationMatrix(sunPos) * rotationMatrix(0, degtorad(y));
+
+		dirToTarget = moonPos - target;
+		dirToTarget.normalize;
+		y = -(dirToTarget.y);
+		y *= 90f;
+		y += 90f;
+		if(dirToTarget.z > 0) y = -y;
+
+		Matrix4f moonM = translationMatrix(moonPos) * rotationMatrix(0, degtorad(y));
+		Matrix4f mvp = lc.projection * lc.view * sunM;
+
+		sun.bind;
+		effect["Model"].set(&sunM);
+		effect["MVP"].set(&mvp);
+
+		glBindBuffer(GL_ARRAY_BUFFER, vb);
+		glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, tb);
+		glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, null);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+		sun.unbind;
+
+		moon.bind;
+		mvp = lc.projection * lc.view * moonM;
+		effect["Model"].set(&moonM);
+		effect["MVP"].set(&mvp);
+
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+		moon.unbind;
+
+		dc += 2;
+		nv += vertexCount * 2;
+	}
+}
+
 class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 {
 	SkySystem skySystem;
@@ -64,6 +201,8 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 	private Effect skyEffect;
 	private Texture2D colourMap;
+
+	SkyObjects objects;
 
 	private ubyte[4][TimeDivisions][Rings] colours;
 
@@ -76,7 +215,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		glGenVertexArrays(1, &vao);
 
 		Vector3f[] verts;
-		loadMesh!(Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere.dae"), verts);
+		loadMesh!(Vector3f, GCAllocator)(AssetManager.translateToAbsoluteDir("content/models/skySphere80.dae"), verts);
 		scope(exit) GCAllocator.instance.deallocate(verts);
 
 		vertexCount = cast(uint)verts.length;
@@ -111,6 +250,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		skyEffect.findUniform("Model");
 		skyEffect.findUniform("ColourMap");
 		skyEffect.findUniform("Time");
+		skyEffect.findUniform("MaxHeight");
 		skyEffect.unbind;
 	}
 
@@ -125,9 +265,6 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 		synchronized(skySystem)
 		{
-			glBindVertexArray(vao);
-			scope(exit) glBindVertexArray(0);
-
 			SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
 			if(sky is null) return;
 			Transform* transform = skySystem.skyBox.get!Transform;
@@ -150,6 +287,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 			skyEffect["Model"].set(&m);
 			skyEffect["MVP"].set(&mvp);
+			skyEffect["MaxHeight"].set(sky.vertScale);
 
 			skyEffect["Time"].set((sky.time.decimal + 0.5f) / VirtualTime.maxHour);
 
@@ -161,7 +299,57 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 			drawCalls += 1;
 			numVerts += 1;
+			
+			if(objects !is null)
+			{
+				objects.render(sunPos, moonPos, transform.position, 
+					renderer, lc, drawCalls, numVerts);
+			}
 		}
+	}
+
+	@property Vector3f sunDir()
+	{
+		assert(skySystem !is null);
+		SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
+		assert(sky !is null);
+
+		import std.math : sin, cos;
+		import dlib.math : degtorad;
+
+		auto asRadian = degtorad(sky.time.decimal * (360f / 24f));
+		return Vector3f(0f, -cos(asRadian), sin(asRadian));
+	}
+
+	@property Vector3f sunPos()
+	{
+		SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
+		Transform* t = skySystem.skyBox.get!Transform;
+		return t.position + sunDir * Vector3f(1, sky.vertScale * 0.85, sky.horizScale * 0.85);
+	}
+
+	@property Vector3f moonPos() 
+	{
+		SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
+		Transform* t = skySystem.skyBox.get!Transform;
+		return t.position - sunDir * Vector3f(1, sky.vertScale * 0.85, sky.horizScale * 0.85);
+	}
+
+	@property Vector3f fogColour()
+	{
+		import dlib.math.interpolation.linear : interpLinear;
+		import std.math : pow;
+		const SkyComponent* sky = skySystem.skyBox.get!SkyComponent;
+		immutable division = sky.time.hour * (TimeDivisions / 24);
+		immutable nextDivision = (division + 1) % TimeDivisions;
+		immutable linPos = (sky.time.minute % (60 / (TimeDivisions / 24))) / cast(float)(60 / (TimeDivisions / 24));
+		auto divisionColour = Vector3f(colours[0][division][2] / 255f, colours[0][division][1] / 255f, colours[0][division][0] / 255f);
+		auto nextDivisionColour = Vector3f(colours[0][nextDivision][2] / 255f, colours[0][nextDivision][1] / 255f, colours[0][nextDivision][0] / 255f);
+		Vector3f colour;
+		colour.r = interpLinear(divisionColour.r, nextDivisionColour.r, linPos);
+		colour.g = interpLinear(divisionColour.g, nextDivisionColour.g, linPos);
+		colour.b = interpLinear(divisionColour.b, nextDivisionColour.b, linPos);
+		return colour;
 	}
 
 	ubyte[] exportColourMap()
