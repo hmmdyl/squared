@@ -5,7 +5,7 @@ import squareone.terrain.gen.noisegen;
 import squareone.terrain.gen.generators;
 import squareone.voxel;
 import moxane.core;
-import moxane.graphics.renderer;
+import moxane.graphics.redo;
 import moxane.utils.maybe;
 
 import dlib.math;
@@ -16,6 +16,76 @@ import std.parallelism;
 import containers;
 import core.thread;
 
+final class TerrainRenderer : IDrawable
+{
+	bool culling;
+
+	BasicTerrainManager btm;
+	invariant { assert(btm !is null); }
+
+	this(BasicTerrainManager btm, bool culling = true)
+	{ this.btm = btm; this.culling = culling; }
+
+	float renderTime = 0f;
+	float prepareTime = 0f;
+
+	private size_t translucentCount;
+
+	void draw(Pipeline pipeline, ref LocalContext lc, ref PipelineStatics stats) @trusted
+	{
+		Matrix4f vp = lc.camera.projection * lc.camera.viewMatrix;
+		Frustum frustum = Frustum(vp);
+
+		const Vector3i min = btm.cameraPositionChunk.toVec3i - btm.settings.removeRange;
+		const Vector3i max = btm.cameraPositionChunk.toVec3i + (btm.settings.removeRange + 1);
+
+		StopWatch sw = StopWatch(AutoStart.yes);
+		StopWatch trueSw = StopWatch(AutoStart.no);
+		scope(exit)
+		{
+			sw.stop;
+			renderTime += sw.peek.total!"nsecs" / 1_000_000_000f;
+			prepareTime = trueSw.peek.total!"nsecs" / 1_000_000_000f;
+		}
+
+		foreach(proc; 0 .. btm.resources.processorCount)
+		{
+			IProcessor p = btm.resources.getProcessor(proc);
+			trueSw.start;
+			p.beginDraw(pipeline, lc);
+			trueSw.stop;
+			scope(exit) p.endDraw(pipeline, lc);
+
+			if(!culling)
+			{
+				foreach(BasicChunk chunk; btm.chunksTerrain)
+					p.drawChunk(chunk, lc, stats);
+			}
+			else
+			{
+				bool shouldRender(BasicChunk chunk)
+				{
+					immutable Vector3f chunkPosReal = chunk.position.toVec3f;
+					immutable float dimReal = ChunkData.chunkDimensionsMetres * chunk.blockskip;
+					immutable Vector3f center = Vector3f(chunkPosReal.x + dimReal * 0.5f, chunkPosReal.y + dimReal * 0.5f, chunkPosReal.z + dimReal * 0.5f);
+					immutable float radius = sqrt(dimReal ^^ 2 + dimReal ^^ 2);
+					Sphere s = Sphere(center, radius);
+
+					return frustum.intersectsSphere(s);
+				}
+
+				foreach(BasicChunk chunk; btm.chunksTerrain)
+				{
+					if(!shouldRender(chunk)) continue;
+					p.drawChunk(chunk, lc, stats);
+				}
+			}
+		}
+	}
+}
+
+version(OLD)
+{
 final class BasicTerrainRenderer : IRenderable
 {
 	bool culling;
@@ -88,6 +158,7 @@ final class BasicTerrainRenderer : IRenderable
 			}
 		}
 	}
+}
 }
 
 struct BasicTMSettings

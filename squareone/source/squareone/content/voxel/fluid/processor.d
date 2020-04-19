@@ -5,11 +5,8 @@ import squareone.util.spec;
 import squareone.content.voxel.fluid.meshers;
 
 import moxane.core;
-import moxane.graphics.renderer;
 import moxane.utils.pool;
-import moxane.graphics.effect;
-import moxane.graphics.log;
-import moxane.graphics.texture;
+import moxane.graphics.redo;
 import moxane.utils.maybe;
 
 import dlib.math;
@@ -103,9 +100,9 @@ final class FluidProcessor : IProcessor
 		effect.findUniform("NormalMap");
 		effect.unbind;
 
-		Texture2D.ConstructionInfo ci = Texture2D.ConstructionInfo.standard;
-		ci.srgb = false;
-		normalMap = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/waterNormalMap.png"), ci);
+		//Texture2D.ConstructionInfo ci = Texture2D.ConstructionInfo.standard;
+		//ci.srgb = false;
+		normalMap = new Texture2D(AssetManager.translateToAbsoluteDir("content/textures/waterNormalMap.png"));
 
 		fresnelReflectiveFactor = 0.9f;
 		murkDepth = 1.751f;
@@ -224,10 +221,10 @@ final class FluidProcessor : IProcessor
 		}
 	}
 
-	Renderer renderer;
-	void prepareRender(Renderer renderer)
+	private Pipeline pipeline;
+	void beginDraw(Pipeline pipeline, ref LocalContext lc)
 	{
-		this.renderer = renderer;
+		/+this.pipeline = pipeline;
 		import derelict.opengl3.gl3;
 
 		performUploads;
@@ -271,12 +268,12 @@ final class FluidProcessor : IProcessor
 		effect["MurkDepth"].set(murkDepth);
 		effect["MinimumMurkStrength"].set(minimumMurkStrength);
 		effect["MaximumMurkStrength"].set(maximumMurkStrength);
-		effect["DebugColour"].set(waterColour);
+		effect["DebugColour"].set(waterColour);+/
 	}
 
-	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref PipelineStatics stats)
 	{
-		if(lc.type != PassType.water) return;
+		/+if(lc.type != PassType.water) return;
 
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;
@@ -299,12 +296,12 @@ final class FluidProcessor : IProcessor
 		
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
 		numVerts += rd.vertexCount;
-		drawCalls++;
+		drawCalls++;+/
 	}
 
-	void endRender()
+	void endDraw(Pipeline pipeline, ref LocalContext lc)
 	{
-		import derelict.opengl3.gl3;
+		/+import derelict.opengl3.gl3;
 
 		glActiveTexture(GL_TEXTURE4);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -322,7 +319,7 @@ final class FluidProcessor : IProcessor
 
 		effect.unbind;
 
-		glBindVertexArray(0);
+		glBindVertexArray(0);+/
 	}
 
 	@property size_t minMeshers() const { return 2; }
@@ -605,6 +602,7 @@ private class MeshBuffer
 
 import cimgui;
 import moxane.graphics.imgui;
+import moxane.graphics.renderer : Renderer;
 
 final class FluidProcessorDebugAttachment : IImguiRenderable
 {
@@ -614,7 +612,7 @@ final class FluidProcessorDebugAttachment : IImguiRenderable
 	in(processor !is null)
 	{this.processor = processor;}
 
-	void renderUI(ImguiRenderer r, Renderer rr, ref LocalContext lc)
+	void renderUI(ImguiRenderer r, Renderer rr, ref moxane.graphics.renderer.LocalContext lc)
 	{
 		igBegin("Fluid Processor");
 		scope(exit) igEnd();

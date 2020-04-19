@@ -50,6 +50,8 @@ private enum int overrunDimensions3 = overrunDimensions ^^ 3;
 
 private void worker(shared DefaultNoiseGeneratorV1 ngs)
 {
+	try 
+	{
 	DefaultNoiseGeneratorV1 ng = cast(DefaultNoiseGeneratorV1)ngs;
 
 	OpenSimplexNoise!float simplex = new OpenSimplexNoise!float;
@@ -102,6 +104,11 @@ private void worker(shared DefaultNoiseGeneratorV1 ngs)
 
 	import std.stdio;
 	writeln("end", ng.terminated);
+	}
+	catch(Error e) {
+		import std.stdio;
+		writeln(e);
+	}
 }
 
 private void operate(NoiseGeneratorOrder order, DefaultNoiseGeneratorV1 ng, OpenSimplexNoise!float simplex, ref Meshes meshes, ref Materials materials, ref SmootherConfig smootherCfg, ref VoxelBuffer raw, ref VoxelBuffer smootherOutput)
@@ -417,10 +424,10 @@ private struct Meshes
 		meshes.tetrahedron = resources.getMesh(Tetrahedron.technicalStatic).id;
 		meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
 		meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
-		meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
-		meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
-		meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
-		meshes.glass = resources.getMesh(GlassMesh.technicalStatic).id;
+		//meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
+		//meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
+		//meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
+		//meshes.glass = resources.getMesh(GlassMesh.technicalStatic).id;
 		return meshes;
 	}
 }
@@ -448,10 +455,10 @@ private struct Materials
 		m.dirt =		resources.getMaterial(Dirt.technicalStatic).id;
 		m.grass =		resources.getMaterial(Grass.technicalStatic).id;
 		m.sand =		resources.getMaterial(Sand.technicalStatic).id;
-		m.water =		0;
-		m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
+		//m.water =		0;
+		//m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
 		m.stone	=		resources.getMaterial(Stone.technicalStatic).id;
-		m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;
+		//m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;
 
 		return m;
 	}

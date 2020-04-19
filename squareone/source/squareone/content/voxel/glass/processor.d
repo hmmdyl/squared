@@ -7,9 +7,7 @@ import squareone.voxel;
 import squareone.util.spec;
 
 import moxane.core;
-import moxane.graphics.renderer;
-import moxane.graphics.effect;
-import moxane.graphics.log;
+import moxane.graphics.redo;
 import moxane.utils.pool;
 import moxane.utils.maybe;
 
@@ -26,7 +24,7 @@ final class GlassProcessor : IProcessor
 	Resources resources;
 	Moxane moxane;
 
-	Renderer renderer;
+	//Renderer renderer;
 
 	private Pool!(RenderData*) renderDataPool;
 	package Pool!(CompressedMeshBuffer) meshBufferPool;
@@ -172,7 +170,11 @@ final class GlassProcessor : IProcessor
 		}
 	}
 
-	void prepareRender(Renderer renderer) 
+	void beginDraw(Pipeline pipeline, ref LocalContext context) {}
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext context, ref PipelineStatics stats) {}
+	void endDraw(Pipeline pipeline, ref LocalContext context) {}
+
+	/+void prepareRender(Renderer renderer) 
 	{
 		this.renderer = renderer;
 
@@ -228,7 +230,7 @@ final class GlassProcessor : IProcessor
 		effect.unbind;
 
 		glBindVertexArray(0);
-	}
+	}+/
 
 	package ubyte id_;
 	@property ubyte id() { return id_; }

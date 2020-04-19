@@ -33,6 +33,8 @@ import dlib.math;
 import core.stdc.stdio : sprintf;
 import std.datetime.stopwatch;
 
+version(OLD):
+
 final class DebugGameScene : Scene
 {
 	this(Moxane moxane, SceneManager manager, Scene parent = null)
@@ -61,8 +63,6 @@ final class DebugGameScene : Scene
 	private SkyObjects skyObjects;
 	private Entity skyEntity;
 	private Fog fog;
-
-	//private PlayerInventorySystem playerInventory;
 
 	private FirstPersonCamera camera;
 	private SpriteFont font;

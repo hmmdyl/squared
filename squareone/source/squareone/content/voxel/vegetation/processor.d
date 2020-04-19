@@ -9,9 +9,7 @@ import squareone.util.spec;
 
 import moxane.core;
 import moxane.utils.pool;
-import moxane.graphics.texture;
-import moxane.graphics.effect;
-import moxane.graphics.renderer;
+import moxane.graphics.redo;
 import moxane.utils.maybe;
 
 import dlib.math.vector;
@@ -223,7 +221,11 @@ final class VegetationProcessor : IProcessor
 		}
 	}
 
-	Renderer renderer;
+	void beginDraw(Pipeline pipeline, ref LocalContext context) {}
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext context, ref PipelineStatics stats) {}
+	void endDraw(Pipeline pipeline, ref LocalContext context) {}
+
+	/+Renderer renderer;
 	void prepareRender(Renderer renderer)
 	{
 		this.renderer = renderer;
@@ -283,7 +285,7 @@ final class VegetationProcessor : IProcessor
 			glDisableVertexAttribArray(x);
 		effect.unbind;
 		glBindVertexArray(0);
-	}
+	}+/
 
 	ubyte textureID(string tech)
 	{

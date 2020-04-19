@@ -2,9 +2,8 @@ module squareone.voxel.resources;
 
 import squareone.voxel.chunk;
 import squareone.voxel.voxel;
-import moxane.graphics.renderer;
-import moxane.core.eventwaiter;
-import moxane.core.async;
+import moxane.graphics.redo;
+import moxane.core;
 
 enum string dylanGrahamName = "Dylan Graham";
 
@@ -38,7 +37,7 @@ alias ProcID = ubyte;
 alias MaterialID = ushort;
 alias MeshID = ushort;
 
-interface IProcessor : IVoxelContent 
+interface IProcessor : IVoxelContent
 {
 	@property ubyte id();
 	@property void id(ubyte newID);
@@ -49,9 +48,16 @@ interface IProcessor : IVoxelContent
 
 	void updateFromManager();
 
+	version(OLD)
+	{
 	void prepareRender(Renderer);
 	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts);
 	void endRender();
+	}
+
+	void beginDraw(Pipeline pipeline, ref LocalContext context);
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext context, ref PipelineStatics stats);
+	void endDraw(Pipeline pipeline, ref LocalContext context);
 
 	@property size_t minMeshers() const;
 	IMesher requestMesher(IChannel!MeshOrder);

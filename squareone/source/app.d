@@ -10,6 +10,9 @@ import moxane.ui;
 import squareone.scenes.dbg;
 import moxane.graphics.imgui;
 
+import squareone.util.spec;
+import squareone.scenes.redo;
+
 import core.cpuid;
 import std.conv : to;
 
@@ -17,6 +20,45 @@ import dlib.math;
 
 extern(C) export ulong NvOptimusEnablement = 0x01;
 
+void main()
+{
+	const MoxaneBootSettings settings = 
+	{
+		logSystem : true,
+		windowSystem : true,
+		graphicsSystem : false,
+		assetSystem : true,
+		physicsSystem : false,
+		networkSystem : false,
+		settingsSystem : false,
+		asyncSystem : true,
+		entitySystem : true,
+		sceneSystem : true,
+		inputSystem : true,
+	};
+	auto moxane = new Moxane(settings, "Square One v" 
+							 ~ to!string(gameVersion[0]) ~ "."
+							 ~ to!string(gameVersion[1]) ~ "."
+							 ~ to!string(gameVersion[2]));
+
+	debug 
+	{
+		Log log = moxane.services.get!Log;
+		log.write(Log.Severity.debug_, "Vendor: " ~ vendor);
+		log.write(Log.Severity.debug_, "Processor: " ~ processor);
+		log.write(Log.Severity.debug_, "Hyperthreading: " ~ to!string(hyperThreading));
+		log.write(Log.Severity.debug_, "Threads/CPU: " ~ to!string(threadsPerCPU));
+		log.write(Log.Severity.debug_, "Cores/CPU: " ~ to!string(coresPerCPU));
+	}
+
+	EntityManager entityManager = moxane.services.get!EntityManager;
+	SceneManager scenes = moxane.services.get!SceneManager;
+	scenes.current = new RedoScene(moxane, scenes);
+
+	moxane.run;
+}
+
+version(OLD):
 void main()
 {
 	const MoxaneBootSettings settings = 

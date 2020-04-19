@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/squareone-server
+squareone-server.so
+squareone-server.dylib
+squareone-server.dll
+squareone-server.a
+squareone-server.lib
+squareone-server-test-*
+*.exe
+*.o
+*.obj
+*.lst

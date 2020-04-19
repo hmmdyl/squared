@@ -2,10 +2,8 @@ module squareone.systems.sky;
 
 import squareone.systems.gametime;
 import moxane.core;
-import moxane.graphics.renderer;
+import moxane.graphics.redo;
 import moxane.graphics.assimp;
-import moxane.graphics.effect;
-import moxane.graphics.texture;
 import moxane.graphics.imgui;
 import moxane.network.semantic;
 
@@ -123,8 +121,8 @@ class SkyObjects
 		glDeleteVertexArrays(1, &vao);
 	}
 
-	private void render(Vector3f sunPos, Vector3f moonPos, Vector3f target, Renderer renderer, 
-		ref LocalContext lc, ref uint dc, ref uint nv)
+	private void render(Vector3f sunPos, Vector3f moonPos, Vector3f target, Pipeline pipeline, 
+		ref LocalContext lc, ref PipelineStatics stats)
 	{
 		glBindVertexArray(vao);
 		scope(exit) glBindVertexArray(0);
@@ -134,8 +132,8 @@ class SkyObjects
 		glEnableVertexAttribArray(1);
 		scope(exit) glDisableVertexAttribArray(1);
 
-		renderer.gl.blend.push(true);
-		scope(exit) renderer.gl.blend.pop;
+		pipeline.openGL.blend.push(true);
+		scope(exit) pipeline.openGL.blend.pop;
 
 		effect.bind;
 		scope(exit) effect.unbind;
@@ -163,7 +161,7 @@ class SkyObjects
 		if(dirToTarget.z > 0) y = -y;
 
 		Matrix4f moonM = translationMatrix(moonPos) * rotationMatrix(0, degtorad(y));
-		Matrix4f mvp = lc.projection * lc.view * sunM;
+		Matrix4f mvp = lc.camera.projection * lc.camera.viewMatrix * sunM;
 
 		sun.bind;
 		effect["Model"].set(&sunM);
@@ -179,19 +177,19 @@ class SkyObjects
 		sun.unbind;
 
 		moon.bind;
-		mvp = lc.projection * lc.view * moonM;
+		mvp = lc.camera.projection * lc.camera.viewMatrix * moonM;
 		effect["Model"].set(&moonM);
 		effect["MVP"].set(&mvp);
 
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 		moon.unbind;
 
-		dc += 2;
-		nv += vertexCount * 2;
+		stats.drawCalls += 2;
+		stats.vertexCount += vertexCount * 2;
 	}
 }
 
-class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
+class SkyRenderer(int Rings, int TimeDivisions) : IDrawable
 {
 	SkySystem skySystem;
 
@@ -228,16 +226,21 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 		foreach(d; 0 .. TimeDivisions)
 			foreach(r; 0 .. Rings)
-				colours[r][d] = [255, 255, 255, 255];
+				colours[r][d] = [255, 255, 0, 255];
 
-		Texture2D.ConstructionInfo ci;
-		ci.bitDepth = TextureBitDepth.eight;
-		ci.clamp = true;
-		ci.magnification = Filter.linear;
-		ci.minification = Filter.linear;
-		ci.mipMaps = false;
-		ci.srgb = true;
-		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, ci);
+		string dir = AssetManager.translateToAbsoluteDir("skyColourMap.txt");
+		import std.file;
+		if(exists(dir))
+		{
+			Log log = moxane.services.get!Log;
+			log.write(Log.Severity.info, "Loading SkyRenderer colour map...");
+			scope(success) log.write(Log.Severity.info, "Loaded");
+			ubyte[] bytes = cast(ubyte[])read(dir);
+			importColourMap(bytes);
+		}
+
+		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, TextureBitDepth.eight,
+			Filter.linear, Filter.linear, false, true);
 
 		Log log = moxane.services.get!Log;
 		Shader vs = new Shader, fs = new Shader;
@@ -259,9 +262,10 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		glDeleteVertexArrays(1, &vao);
 	}
 
-	void render(Renderer renderer, ref LocalContext lc, out uint drawCalls, out uint numVerts)
+	void draw(Pipeline pipeline, ref LocalContext lc, ref PipelineStatics stats) @trusted
 	{
-		if(skySystem.skyBox is null) return;
+		if(skySystem.skyBox is null) 
+			return;
 
 		synchronized(skySystem)
 		{
@@ -282,8 +286,8 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			scope(exit) colourMap.unbind;
 			skyEffect["ColourMap"].set(0);
 
-			Matrix4f m = lc.model * transform.matrix * scaleMatrix(Vector3f(sky.horizScale, sky.vertScale, sky.horizScale));
-			Matrix4f mvp = lc.projection * lc.view * m;
+			Matrix4f m = /+lc.inheritedModel *+/ transform.matrix * scaleMatrix(Vector3f(sky.horizScale, sky.vertScale, sky.horizScale));
+			Matrix4f mvp = lc.camera.projection * lc.camera.viewMatrix * m;
 
 			skyEffect["Model"].set(&m);
 			skyEffect["MVP"].set(&mvp);
@@ -297,13 +301,13 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 
 			glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
-			drawCalls += 1;
-			numVerts += 1;
+			stats.drawCalls += 1;
+			stats.vertexCount += vertexCount;
 			
 			if(objects !is null)
 			{
 				objects.render(sunPos, moonPos, transform.position, 
-					renderer, lc, drawCalls, numVerts);
+					pipeline, lc, stats);
 			}
 		}
 	}
@@ -364,7 +368,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 		colours = decerealize!(ubyte[4][TimeDivisions][Rings])(bytes);
 	}
 
-	static final class DebugAttachment : IImguiRenderable
+	/+static final class DebugAttachment : IImguiRenderable
 	{
 		SkyRenderer!(Rings, TimeDivisions) skyRenderer;
 		Moxane moxane;
@@ -477,7 +481,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IRenderable
 			ci.srgb = false;
 			skyRenderer.colourMap.upload(skyRenderer.colours.ptr, TimeDivisions, Rings, ci);
 		}
-	}
+	}+/
 }
 
 @Component

@@ -5,10 +5,7 @@ import squareone.util.spec;
 import squareone.content.voxel.block.types;
 import squareone.content.voxel.block.mesher;
 import moxane.core;
-import moxane.graphics.effect;
-import moxane.graphics.renderer;
-import moxane.graphics.texture : Texture2DArray, Filter;
-import moxane.graphics.log;
+import moxane.graphics.redo;
 import moxane.utils.pool;
 
 import moxane.physics;
@@ -173,7 +170,7 @@ final class BlockProcessor : IProcessor
 					RenderData* rd = getRd(chunk);
 					if(rd.collider !is null)
 					{
-						destroy(rd.collider);
+					destroy(rd.collider);
 						destroy(rd.rigidBody);
 					}
 					rd.destroy;
@@ -205,7 +202,7 @@ final class BlockProcessor : IProcessor
 				rd.rigidBody = new BodyMT(moxane.services.get!PhysicsSystem, BodyMT.Mode.dynamic, rd.collider, AtomicTransform(upItem.order.chunk.transform));
 				rd.rigidBody.collidable = true;
 			}
-			createPhys;
+			//createPhys;
 
 			rd.vertexCount = upItem.buffer.vertexCount;
 
@@ -231,9 +228,11 @@ final class BlockProcessor : IProcessor
 		//uploadItemSw.reset();
 	}
 
-	Renderer currentRenderer;
-	void prepareRender(Renderer r)
+	private Pipeline pipeline;
+	void beginDraw(Pipeline pipeline, ref LocalContext context)
 	{
+		this.pipeline = pipeline;
+
 		import derelict.opengl3.gl3;
 
 		performUploads;
@@ -243,25 +242,23 @@ final class BlockProcessor : IProcessor
 			glEnableVertexAttribArray(x);
 
 		effect.bind;
-
-		this.currentRenderer = r;
 		
 		glActiveTexture(GL_TEXTURE0);
 		textureArray.bind;
 		effect["Diffuse"].set(0);
 	}
 
-	void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts)
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref PipelineStatics stats)
 	{
-		if(!(lc.type == PassType.shadow || lc.type == PassType.scene)) return;
+		//if(!(lc.type == PassType.shadow || lc.type == PassType.scene)) return;
 
 		RenderData* rd = getRd(chunk);
 		if(rd is null) return;
 
 		Matrix4f m = translationMatrix(chunk.transform.position);
 		Matrix4f nm = /*lc.model **/ m;
-		Matrix4f mvp = lc.projection * lc.view * nm;
-		Matrix4f mv = lc.view * nm;
+		Matrix4f mvp = lc.camera.projection * lc.camera.viewMatrix * nm;
+		Matrix4f mv = lc.camera.viewMatrix * nm;
 
 		effect["ModelViewProjection"].set(&mvp);
 		effect["Model"].set(&nm);
@@ -279,11 +276,11 @@ final class BlockProcessor : IProcessor
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glDrawArrays(GL_TRIANGLES, 0, rd.vertexCount);
-		numVerts += rd.vertexCount;
-		drawCalls++;
+		stats.vertexCount += rd.vertexCount;
+		stats.drawCalls++;
 	}
 
-	void endRender()
+	void endDraw(Pipeline pipeline, ref LocalContext lc)
 	{
 		import derelict.opengl3.gl3;
 		foreach(x; 0 .. 3)
