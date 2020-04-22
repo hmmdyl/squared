@@ -30,3 +30,35 @@ struct MeshOrder
 alias ProcID = ubyte;
 alias MaterialID = ushort;
 alias MeshID = ushort;
+
+interface IProcessor : IVoxelContent
+{
+	@property ubyte id();
+	@property void id(ubyte newID);
+
+	void finaliseResources(Resources res);
+
+	void removeChunk(IMeshableVoxelBuffer c);
+
+	void updateFromManager();
+
+	version(OLD)
+	{
+		void prepareRender(Renderer);
+		void render(IMeshableVoxelBuffer chunk, ref LocalContext lc, ref uint drawCalls, ref uint numVerts);
+		void endRender();
+	}
+
+	void beginDraw(Pipeline pipeline, ref LocalContext context);
+	void drawChunk(IMeshableVoxelBuffer chunk, ref LocalContext context, ref PipelineStatics stats);
+	void endDraw(Pipeline pipeline, ref LocalContext context);
+
+	@property size_t minMeshers() const;
+	IMesher requestMesher(IChannel!MeshOrder);
+	void returnMesher(IMesher);
+}
+
+class VoxelRegistry
+{
+
+}
