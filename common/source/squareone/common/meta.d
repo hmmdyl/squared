@@ -1,6 +1,7 @@
 module squareone.common.meta;
 
 import std.typecons;
+import std.conv;
 
 enum name = "Square One";
 enum engine = "Moxane";

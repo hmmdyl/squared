@@ -1,4 +1,4 @@
-module squareone.common.voxel;
+module squareone.common.voxel.voxel;
 
 import std.bitmanip;
 

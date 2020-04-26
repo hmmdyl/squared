@@ -1,8 +1,10 @@
-module squareone.common.chunk;
+module squareone.common.voxel.chunk;
 
 import squareone.common.voxel.voxel;
 
 import dlib.math.vector;
+
+import std.math;
 
 alias BlockOffset = Vector!(int, 3);
 alias BlockPosition = Vector!(long, 3);

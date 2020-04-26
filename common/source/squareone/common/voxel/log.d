@@ -1,4 +1,4 @@
-module squareone.common.log;
+module squareone.common.voxel.log;
 
 import moxane.core.log;
 

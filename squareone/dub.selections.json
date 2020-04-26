@@ -18,6 +18,7 @@
 		"emsi_containers": "0.8.0-alpha.19",
 		"moxane": {"path":"../moxane/"},
 		"resusage": "0.3.2",
+		"squareone-common": {"path":"../common/"},
 		"stdx-allocator": "2.77.5",
 		"unit-threaded": "0.7.55"
 	}

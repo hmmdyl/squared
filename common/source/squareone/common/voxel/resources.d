@@ -1,4 +1,4 @@
-module squareone.common.resources;
+module squareone.common.voxel.resources;
 
 import squareone.common.voxel.chunk;
 
@@ -33,7 +33,7 @@ alias MeshID = ushort;
 
 interface IProcessor : IVoxelContent
 {
-	@property ubyte id();
+	/+@property ubyte id();
 	@property void id(ubyte newID);
 
 	void finaliseResources(Resources res);
@@ -55,7 +55,7 @@ interface IProcessor : IVoxelContent
 
 	@property size_t minMeshers() const;
 	IMesher requestMesher(IChannel!MeshOrder);
-	void returnMesher(IMesher);
+	void returnMesher(IMesher);+/
 }
 
 class VoxelRegistry
