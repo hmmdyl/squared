@@ -357,6 +357,7 @@ final class BasicTerrainManager
 	private ChunkPosition[] extensionCPCache;
 	private size_t extensionCPBias, extensionCPLength;
 
+
 	private void addChunksExtension(const ChunkPosition cam, const Vector3f camReal)
 	{
 		bool doSort;

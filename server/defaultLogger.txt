@@ -1,0 +1,3 @@
+[ INFO] Default @ 2020-Apr-28 00:49:45.3140477: Loading windowing lib
+[ INFO] Default @ 2020-Apr-28 00:49:45.4221448: Loaded windowing lib. Creating window
+[ INFO] Default @ 2020-Apr-28 00:49:46.5571746: Created window

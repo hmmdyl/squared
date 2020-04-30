@@ -51,7 +51,6 @@ void main()
 		log.write(Log.Severity.debug_, "Cores/CPU: " ~ to!string(coresPerCPU));
 	}
 
-	EntityManager entityManager = moxane.services.get!EntityManager;
 	SceneManager scenes = moxane.services.get!SceneManager;
 	scenes.current = new RedoScene(moxane, scenes);
 
