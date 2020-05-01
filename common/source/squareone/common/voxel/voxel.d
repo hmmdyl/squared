@@ -6,11 +6,16 @@ import std.bitmanip;
 
 struct Voxel 
 {
-	mixin(bitfields!(
+	/+mixin(bitfields!(
 		ushort, "material", 12,
 		ushort, "mesh", 12,
 		uint, "materialData", 20,
-		uint, "meshData", 20));
+		uint, "meshData", 20));+/
+
+	ushort material;
+	ushort mesh;
+	uint materialData;
+	uint meshData;
 
 	this(ushort material, ushort mesh, uint materialData, uint meshData) 
 	{

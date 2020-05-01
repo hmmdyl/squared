@@ -14,7 +14,7 @@ import dlib.math.vector : Vector2i, Vector3f;
 import std.algorithm;
 import std.range;
 
-/// Represents a distinct family of IItemTypes. This can be used for common data between all types.
+/+/// Represents a distinct family of IItemTypes. This can be used for common data between all types.
 @safe interface IItemFamily
 {
 	/// An item belonging to this family was selected.
@@ -285,4 +285,4 @@ private final class PiRenderTexture
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 	}
-}
+}+/

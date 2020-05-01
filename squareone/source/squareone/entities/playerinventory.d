@@ -38,7 +38,7 @@ Entity createTestItem(EntityManager em) @trusted
 
 class UseScript : Script
 {
-	this(Moxane moxane) { super(moxane); }
+	this(Moxane moxane) { super(null); }
 
 	override void execute() {}
 

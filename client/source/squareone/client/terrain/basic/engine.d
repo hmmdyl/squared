@@ -107,7 +107,6 @@ private struct Extension
 			(extensionRange.y * 2 + 1) * 
 			(extensionRange.z * 2 + 1);
 		cache = new ChunkPosition[ecpcNum];
-		sortTimer.start;
 	}
 }
 
@@ -503,8 +502,15 @@ final class VoxelInteraction : IVoxelInteraction
 		return Maybe!Voxel(bc.get(offset.x, offset.y, offset.z));
 	}
 
-	void set(Voxel voxel, BlockPosition position) {}
-	void set(Voxel voxel, ChunkPosition chunkPosition, BlockOffset offset) {}
+	void set(Voxel voxel, BlockPosition position) 
+	{ 
+		ChunkPosition cp;
+		BlockOffset offset;
+		ChunkPosition.blockPosToChunkPositionAndOffset(position, cp, offset);
+
+		return set(voxel, cp, offset);
+	}
+	void set(Voxel voxel, ChunkPosition chunkPosition, BlockOffset offset) @trusted {voxelSetCommands.insertBack(VoxelSetOrder(chunkPosition, offset, voxel));}
 
 	private struct VoxelSetOrder
 	{

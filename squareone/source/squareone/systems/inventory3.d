@@ -115,7 +115,7 @@ class InventoryInput : System
 {
 	Inventory[] inventories;
 
-	this(Moxane moxane, EntityManager em) { super(moxane, em); }
+	this(Moxane moxane, EntityManager em) { super(em); }
 
 	override void update()
 	{

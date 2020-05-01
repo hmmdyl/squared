@@ -1,6 +1,7 @@
 module squareone.common.content.voxel.block.processor;
 
 import squareone.common.content.voxel.block.mesher;
+import squareone.common.content.voxel.block.types;
 import squareone.common.voxel;
 import squareone.common.meta;
 
@@ -12,7 +13,7 @@ import std.container.dlist;
 
 abstract class BlockProcessorBase : IProcessor
 {
-	private ubyte id_;
+	protected ubyte id_;
 	@property ubyte id() const { return id_; }
 	@property void id(ubyte n) { id_ = n; }
 
@@ -34,6 +35,10 @@ abstract class BlockProcessorBase : IProcessor
 	abstract void finaliseResources();
 	abstract void removeChunk(IMeshableVoxelBuffer voxelBuffer);
 	abstract void updateFromManager();
+
+	abstract IBlockVoxelTexture getTexture(ushort id);
+	abstract IBlockVoxelTexture getTexture(string technical);
+	abstract IBlockVoxelMesh getMesh(MeshID id);
 
 	@property size_t minMeshers() const { return 2; }
 	IMesher requestMesher(IChannel!MeshOrder source) { return new Mesher(this, registry, meshBufferHost, source); }

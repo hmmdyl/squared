@@ -17,7 +17,7 @@ import std.datetime.stopwatch;
 
 final class TerrainRenderer : IDrawable
 {
-	bool culling;
+	bool culling = true;
 
 	TerrainEngine engine;
 	this(TerrainEngine engine) in(engine !is null) { this.engine = engine; }
@@ -30,13 +30,16 @@ final class TerrainRenderer : IDrawable
 		immutable Vector3i min = engine.camera.asChunk.toVec3i - engine.settings.removeRange;
 		immutable Vector3i max = engine.camera.asChunk.toVec3i + (engine.settings.removeRange + 1);
 
-		foreach(proc; 0 .. engine.resources.processorCount)
+		foreach(proc; 0 .. 1)
 		{
 			IClientProcessor p = cast(IClientProcessor)engine.resources.getProcessor(proc);
 			p.beginDraw(pipeline, context);
 			scope(exit) p.endDraw(pipeline, context);
 
-			if(!culling)
+			foreach(Chunk chunk; engine.chunks)
+				p.drawChunk(chunk, context, stats);
+
+			/+if(!culling)
 			{
 				foreach(Chunk chunk; engine.chunks)
 					p.drawChunk(chunk, context, stats);
@@ -59,7 +62,7 @@ final class TerrainRenderer : IDrawable
 					if(!shouldRender(chunk)) continue;
 					p.drawChunk(chunk, context, stats);
 				}
-			}
+			}+/
 		}
 	}
 }

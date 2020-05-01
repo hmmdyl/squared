@@ -21,11 +21,13 @@ class Chunk : squareone.common.terrain.basic.Chunk, IRenderableVoxelBuffer
 			rd = null;
 	}
 
-	/+override @property void position(ChunkPosition n)
+	override @property ChunkPosition position() const { return position_; }
+
+	override @property void position(ChunkPosition n)
 	{
 		position_ = n;
 		transform = AtomicTransform(n.toVec3f);
-	}+/
+	}
 
 	private AtomicTransform _transform;
 	@property ref AtomicTransform transform() { return _transform; }

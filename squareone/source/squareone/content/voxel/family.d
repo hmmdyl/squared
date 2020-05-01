@@ -5,7 +5,7 @@ import squareone.systems.inventory;
 import moxane.core;
 import moxane.io.input;
 
-@safe abstract class VoxelItemType : IItemType
+/+@safe abstract class VoxelItemType : IItemType
 {
 	private Moxane moxane_;
 	@property Moxane moxane() { return moxane_; }
@@ -36,7 +36,7 @@ import moxane.io.input;
 	}
 
 	protected abstract void onInput(ref InputEvent ie) {}
-}
+}+/
 
 /+@safe interface IVoxelItemType : IItemType
 {

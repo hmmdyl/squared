@@ -127,22 +127,9 @@ private void operate(NoiseGeneratorOrder order, DefaultNoiseGeneratorV1 ng, Open
 
 	int premC = generateNoise(order, simplex, s, e, materials, meshes, raw);
 	runSmoother(order, raw, smootherOutput, smootherCfg);
-	addGrassBlades(order, s, e, premC, meshes, materials, smootherOutput, simplex);
+	//addGrassBlades(order, s, e, premC, meshes, materials, smootherOutput, simplex);
 	postProcess(order, premC, smootherOutput);
 	countAir(order, meshes);
-}
-
-private int generateNoiseBiome(NoiseGeneratorOrder order, OpenSimplexNoise!float, int s, int e, const ref Materials materials, const ref Meshes meshes, ref VoxelBuffer voxels)
-{
-	int preliminaryCount = 0;
-
-	for(int box = s; box < e; box += order.chunk.blockskip)
-	{
-		//for()
-		//for()
-	}
-
-	return preliminaryCount;
 }
 
 private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simplex, int s, int e, const ref Materials materials, const ref Meshes meshes, ref VoxelBuffer raw) @trusted
@@ -245,7 +232,7 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 				return h;
 			}
 
-			float height = smallMountains;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
+			float height = flat;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
 
 			MaterialID upperMat = materials.grass;
 			/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;
@@ -297,9 +284,9 @@ private template loadChunkSkip(string x = "x", string y = "y", string z = "z")
 		continue;";
 }
 
-private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC, const ref Meshes meshes, const ref Materials materials, ref VoxelBuffer smootherOutput, OpenSimplexNoise!float simplex)
+/+private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC, const ref Meshes meshes, const ref Materials materials, ref VoxelBuffer smootherOutput, OpenSimplexNoise!float simplex)
 {
-	/+import squareone.content.voxel.vegetation;
+	//import squareone.content.voxel.vegetation;
 	import std.math : floor;
 
 	foreach(x; s..e)
@@ -329,8 +316,8 @@ private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e,
 
 					premC--;
 				}
-			}+/
-}
+			}
+}+/
 
 private void runSmoother(NoiseGeneratorOrder o, ref VoxelBuffer raw, ref VoxelBuffer smootherOutput, SmootherConfig smootherCfg)
 {
@@ -413,18 +400,15 @@ private struct Meshes
 
 	static Meshes get(VoxelRegistry resources)
 	{
-		/+import squareone.content.voxel.block.meshes;
-		import squareone.content.voxel.fluid.processor;
-		import squareone.content.voxel.vegetation;
-		import squareone.content.voxel.glass;+/
+		import squareone.common.content.voxel.block.meshes;
 
 		Meshes meshes;
-		/+meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
+		meshes.invisible = resources.getMesh(Invisible.technicalStatic).id;
 		meshes.cube = resources.getMesh(Cube.technicalStatic).id;
 		meshes.slope = resources.getMesh(Slope.technicalStatic).id;
 		meshes.tetrahedron = resources.getMesh(Tetrahedron.technicalStatic).id;
 		meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
-		meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;+/
+		meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
 		//meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
 		//meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
 		//meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
@@ -446,20 +430,21 @@ private struct Materials
 
 	static Materials get(VoxelRegistry resources)
 	{
+		import squareone.common.content.voxel.block.materials;
 		/+import squareone.content.voxel.block.materials;
 		import squareone.content.voxel.fluid.processor;
 		import squareone.content.voxel.vegetation.materials;
 		import squareone.content.voxel.glass;+/
 
 		Materials m;
-		/+m.air =			resources.getMaterial(Air.technicalStatic).id;
+		m.air =			resources.getMaterial(Air.technicalStatic).id;
 		m.dirt =		resources.getMaterial(Dirt.technicalStatic).id;
 		m.grass =		resources.getMaterial(Grass.technicalStatic).id;
 		m.sand =		resources.getMaterial(Sand.technicalStatic).id;
 		//m.water =		0;
 		//m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
 		m.stone	=		resources.getMaterial(Stone.technicalStatic).id;
-		//m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;+/
+		//m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;
 
 		return m;
 	}

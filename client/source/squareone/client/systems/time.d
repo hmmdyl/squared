@@ -1,4 +1,4 @@
-module squareone.systems.gametime;
+module squareone.client.systems.time;
 
 import moxane.core;
 

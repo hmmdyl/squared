@@ -85,7 +85,7 @@ final class InventorySystem : System
 
 	this(Moxane moxane, EntityManager manager)
 	{
-		super(moxane, manager);
+		super(manager);
 
 		InputManager im = moxane.services.get!InputManager;
 		if(!im.hasBinding(primaryUse))
@@ -107,7 +107,7 @@ final class InventorySystem : System
 
 	~this()
 	{
-		InputManager im = moxane.services.get!InputManager;
+		InputManager im = super.entityManager.moxane.services.get!InputManager;
 		im.boundKeys[primaryUse] -= &onInput!PrimaryUse;
 		im.boundKeys[secondaryUse] -= &onInput!SecondaryUse;
 

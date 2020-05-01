@@ -42,7 +42,7 @@ final class Cube : IBlockVoxelMesh {
 	static immutable string technicalStatic = "squareOne:voxel:blockMesh:cube";
 	mixin(VoxelContentQuick!(technicalStatic, "Cube", name, dylanGraham));
 
-	private ushort id_;
+	protected ushort id_;
 	@property ushort id() { return id_; }
 	@property void id(ushort nid) { id_ = nid; }
 

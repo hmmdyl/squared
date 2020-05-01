@@ -87,7 +87,7 @@ enum PlayerBindingName
 
 	this(Moxane moxane, InputManager input)
 	do { 
-		super(moxane);
+		super(null);
 		this.input = input;
 	}
 
@@ -110,8 +110,8 @@ enum PlayerBindingName
 		if(pc.allowInput && input.hideCursor)
 		{
 			Vector2d cursorMovement = input.mouseMove;
-			pc.headRotation.x += cast(float)cursorMovement.y * cast(float)moxane.deltaTime * pc.headMovementSpeed;
-			pc.headRotation.y += cast(float)cursorMovement.x * cast(float)moxane.deltaTime * pc.headMovementSpeed;
+			pc.headRotation.x += cast(float)cursorMovement.y * /+ cast(float)moxane.deltaTime TEST +/ pc.headMovementSpeed;
+			pc.headRotation.y += cast(float)cursorMovement.x * /+ cast(float)moxane.deltaTime TEST +/ pc.headMovementSpeed;
 
 			if(pc.headRotation.x > pc.headRotXMax) pc.headRotation.x = pc.headRotXMax;
 			if(pc.headRotation.x < pc.headRotXMin) pc.headRotation.x = pc.headRotXMin; 

@@ -27,7 +27,10 @@ final class RedoScene : Scene
 		in { assert(moxane !is null); assert(manager !is null); assert(parent is null); }
 	do {
 		super(moxane, manager, parent);
-		
+
+		EntityManager em = new EntityManager(moxane, this);
+		moxane.services.register!EntityManager(em);
+
 		pipeline = new Pipeline(moxane, this);
 		camera = new Camera;
 		camera.perspective.fieldOfView = 75f;
@@ -79,7 +82,6 @@ final class RedoScene : Scene
 
 		pipeline.physicalQueue ~= terrainRenderer;
 
-		auto em = moxane.services.get!EntityManager;
 		auto skySystem = new SkySystem(moxane);
 		auto skyRenderer = new SkyRenderer7R24D(moxane, skySystem);
 		/+{

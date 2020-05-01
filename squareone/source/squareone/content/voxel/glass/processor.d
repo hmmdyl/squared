@@ -45,8 +45,8 @@ final class GlassProcessor : IProcessor
 
 		meshResults = new Channel!MeshResult;
 
-		meshBufferPool = Pool!(CompressedMeshBuffer)(() => new CompressedMeshBuffer, 2, false);
-		renderDataPool = Pool!(RenderData*)(() => new RenderData(), 8);
+		meshBufferPool = Pool!(CompressedMeshBuffer)(() @trusted => new CompressedMeshBuffer, 2, false);
+		renderDataPool = Pool!(RenderData*)(() @trusted => new RenderData(), 8);
 	}
 
 	~this() 

@@ -10,7 +10,7 @@ import dlib.math;
 
 @safe:
 
-Entity createTestItem(EntityManager em) @trusted
+/+Entity createTestItem(EntityManager em) @trusted
 {
     auto entity = new Entity(em);
     em.add(entity);
@@ -35,7 +35,7 @@ Entity createTestItem(EntityManager em) @trusted
 
 class UseScript : Script
 {
-    this(Moxane moxane) { super(moxane); }
+    this() { super(moxane); }
 
     override void execute()
     {
@@ -140,4 +140,4 @@ Entity createTestPlayer(EntityManager em) @trusted
     auto l = entity.createComponent!InventoryLocal;
 
     return entity;
-}
+}+/

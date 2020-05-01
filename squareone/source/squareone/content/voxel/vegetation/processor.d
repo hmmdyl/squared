@@ -50,9 +50,9 @@ final class VegetationProcessor : IProcessor
 		this.textures = textures;
 		this.moxane = moxane;
 
-		meshBufferPool = Pool!MeshBuffer(() => new MeshBuffer, 24, false);
+		meshBufferPool = Pool!MeshBuffer(() @trusted => new MeshBuffer, 24, false);
 		meshResults = new Channel!MeshResult;
-		renderDataPool = Pool!(RenderData*)(() => new RenderData, 64);
+		renderDataPool = Pool!(RenderData*)(() @trusted => new RenderData, 64);
 	}
 
 	~this()

@@ -46,13 +46,13 @@ final class FluidProcessor : IProcessor
 	private IVoxelMesh[] meshOn;
 	private MeshID[] meshOnIDs;
 
-	this(Moxane moxane, IVoxelMesh[] meshOn)
+	this(Moxane moxane, IVoxelMesh[] meshOn) @trusted
 	in(moxane !is null) in(meshOn !is null)
 	do {
 		this.moxane = moxane;
 		meshResults = new Channel!MeshResult;
-		meshBufferPool = Pool!(MeshBuffer)(() => new MeshBuffer(), 24, false);
-		renderDataPool = Pool!(RenderData*)(() => new RenderData(), 64);
+		meshBufferPool = Pool!(MeshBuffer)(() @trusted => new MeshBuffer(), 24, false);
+		renderDataPool = Pool!(RenderData*)(() @trusted => new RenderData(), 64);
 		this.meshOn = meshOn;
 		meshOnIDs = new MeshID[](meshOn.length);
 		foreach(size_t i, ref MeshID meshID; meshOnIDs)
