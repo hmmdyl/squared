@@ -10,7 +10,7 @@ void main()
 	const MoxaneBootSettings boot =
 	{
 		logSystem : true,
-		windowSystem : true,
+		windowSystem : false,
 		graphicsSystem : false,
 		assetSystem : true,
 		physicsSystem : false,
@@ -19,7 +19,7 @@ void main()
 		asyncSystem : true,
 		entitySystem : false,
 		sceneSystem : true,
-		inputSystem : true,
+		inputSystem : false,
 	};
 	auto moxane = new Moxane(boot, currentVersionStr);
 

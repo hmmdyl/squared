@@ -5,6 +5,7 @@ import squareone.common.voxel;
 import moxane.network;
 
 import std.stdio : writeln;
+import std.traits;
 
 @safe:
 
@@ -18,24 +19,25 @@ align(1) struct VoxelUpdate
 	int x, y, z;
 }
 
-template GetPackets(alias moduleName)
+template GetPackets(alias mn)
 {
 	string[] packets()
 	{
 		string[] result;
-		static foreach(memberName; __traits(allMembers, moduleName))
+		static foreach(memberName; __traits(allMembers, mn))
 		{{
-			alias candidate = __traits(getMember, moduleName, memberName);
+			alias candidate = __traits(getMember, mn, memberName);
 
 			static if(is(candidate == struct))
 			{
 				static if(__traits(compiles, candidate.technicalName))
 				{
-					result ~= memberName;
+					result ~= moduleName!mn ~ "." ~ candidate.stringof;
 				}
 				else static assert(0);
 			}
 		}}
+
 		return result;
 	}
 

@@ -236,7 +236,7 @@ class SkyRenderer(int Rings, int TimeDivisions) : IDrawable
 			log.write(Log.Severity.info, "Loading SkyRenderer colour map...");
 			scope(success) log.write(Log.Severity.info, "Loaded");
 			ubyte[] bytes = cast(ubyte[])read(dir);
-			//importColourMap(bytes);
+			importColourMap(bytes);
 		}
 
 		colourMap = new Texture2D(colours.ptr, TimeDivisions, Rings, TextureBitDepth.eight,

@@ -232,7 +232,7 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 				return h;
 			}
 
-			float height = flat;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
+			float height = smallMountains;//ridgenoise(multiNoise(simplexSrc, realPos.x, realPos.z, 32, 8) * 8);
 
 			MaterialID upperMat = materials.grass;
 			/+float mdet = voronoi(Vector2f(realPos.xz) / 8f, simplexSrc).x;

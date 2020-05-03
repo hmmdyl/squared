@@ -7,6 +7,7 @@ import squareone.common.voxel;
 import moxane.core;
 import moxane.graphics.redo;
 import moxane.utils.pool;
+import moxane.physics;
 
 import derelict.opengl3.gl3;
 import dlib.math;
@@ -23,6 +24,8 @@ final class BlockProcessor : BlockProcessorBase, IClientProcessor
 	private IBlockVoxelMesh[int] meshes;
 	IBlockVoxelTexture[] textures;
 	private Texture2DArray textureArray;
+
+	PhysicsSystem physics;
 
 	this(Moxane moxane, VoxelRegistry registry, IBlockVoxelTexture[] textures) @trusted
 	in { assert(moxane !is null); assert(textures !is null); assert(textures.length > 0); }
@@ -93,14 +96,9 @@ final class BlockProcessor : BlockProcessorBase, IClientProcessor
 
 	override void updateFromManager() {}
 
-	private void uploadToPhysics()
-	{
-
-	}
-
 	private uint uploadCount = 0;
 
-	private void uploadToGPU(ref MeshResult result) @trusted
+	private void uploadChunk(ref MeshResult result) @trusted
 	{
 		IRenderableVoxelBuffer chunk = cast(IRenderableVoxelBuffer)result.order.chunk;
 		assert(chunk !is null);
@@ -113,6 +111,12 @@ final class BlockProcessor : BlockProcessorBase, IClientProcessor
 			{
 				RenderData* rd = getRenderData(chunk);
 				rd.destroy;
+				if(rd.collider !is null)
+				{
+					destroy(rd.collider);
+					destroy(rd.rigidBody);
+				}
+				chunk.drawData[id_] = null;
 			}
 			return;
 		}
@@ -125,6 +129,10 @@ final class BlockProcessor : BlockProcessorBase, IClientProcessor
 			rd.create();
 			chunk.drawData[id_] = cast(void*)rd;
 		}
+
+		rd.collider = new StaticMeshCollider(physics, result.buffer.vertices[0..result.buffer.vertexCount], true, false);
+		rd.rigidBody = new BodyMT(physics, BodyMT.Mode.dynamic, rd.collider, (chunk.transform));
+		rd.rigidBody.collidable = true;
 
 		rd.vertexCount = result.buffer.vertexCount;
 
@@ -169,7 +177,7 @@ final class BlockProcessor : BlockProcessorBase, IClientProcessor
 		{
 			MeshResult uploadItem = getFromUploadQueue;
 			
-			uploadToGPU(uploadItem);
+			uploadChunk(uploadItem);
 		}
 	}
 
@@ -251,6 +259,9 @@ private struct RenderData
 	int vertexCount;
 
 	float chunkMax, fit10BitScale;
+
+	BodyMT rigidBody;
+	Collider collider;
 
 	void create() @trusted
 	{
