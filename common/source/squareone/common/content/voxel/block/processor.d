@@ -40,7 +40,7 @@ abstract class BlockProcessorBase : IProcessor
 	abstract IBlockVoxelTexture getTexture(string technical);
 	abstract IBlockVoxelMesh getMesh(MeshID id);
 
-	@property size_t minMeshers() const { return 2; }
+	@property size_t minMeshers() const { return 1; }
 	IMesher requestMesher(IChannel!MeshOrder source) { return new Mesher(this, registry, meshBufferHost, source); }
 	void returnMesher(IMesher m) {}
 }
