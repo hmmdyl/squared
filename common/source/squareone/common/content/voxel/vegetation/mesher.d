@@ -16,7 +16,7 @@ import std.conv : to;
 
 @trusted:
 
-package final class Mesher : IMesher
+final class Mesher : IMesher
 {
 	private IChannel!MeshOrder source_;
 	@property IChannel!MeshOrder source() { return source_; }
@@ -53,37 +53,39 @@ in(mesherS !is null) in(processorS !is null)
 	Mesher mesher = cast(Mesher)mesherS;
 	VegetationProcessorBase processor = cast(VegetationProcessorBase)processorS;
 
-	scope(failure)
+	try
+	{
+		while(!mesher.terminated)
+		{
+			receive(
+					(bool m)
+					{
+						if(!m)
+						{
+							mesher.terminated = false;
+							return;
+						}
+
+						mesher.parked = false;
+						scope(exit) mesher.parked = true;
+
+						bool consuming = true;
+						while(consuming)
+						{
+							Maybe!MeshOrder order = mesher.source_.tryGet;
+							if(order.isNull) consuming = false;
+							else
+								operate(*order.unwrap, mesher);
+						}
+					}
+					);
+		}
+	}
+	catch(Throwable t)
 	{
 		auto log = processor.moxane.services.getAOrB!(VoxelLog, Log);
 		enum threadName = VegetationProcessorBase.stringof ~ Mesher.stringof;
-		log.write(Log.Severity.panic, "Panic in " ~ threadName);
-	}
-
-	while(!mesher.terminated)
-	{
-		receive(
-				(bool m)
-				{
-					if(!m)
-					{
-						mesher.terminated = false;
-						return;
-					}
-
-					mesher.parked = false;
-					scope(exit) mesher.parked = true;
-
-					bool consuming = true;
-					while(consuming)
-					{
-						Maybe!MeshOrder order = mesher.source_.tryGet;
-						if(order.isNull) consuming = false;
-						else
-							operate(*order.unwrap, mesher);
-					}
-				}
-				);
+		log.write(Log.Severity.panic, "Panic in " ~ threadName ~ " Details: " ~ t.info.toString);
 	}
 }
 
@@ -99,96 +101,96 @@ private void operate(MeshOrder order, Mesher mesher)
 	immutable int chunkDimLod = order.chunk.dimensionsProper * order.chunk.blockskip;
 
 	for(int x = 0; x < chunkDimLod; x += blockskip)
-		for(int y = 0; y < chunkDimLod; y += blockskip)
-			for(int z = 0; z < chunkDimLod; z += blockskip)
+	for(int y = 0; y < chunkDimLod; y += blockskip)
+	for(int z = 0; z < chunkDimLod; z += blockskip)
+	{
+		Voxel voxel = order.chunk.get(x, y, z);
+
+		IVegetationVoxelMesh mesh = processor.getMesh(voxel.mesh);
+		if(mesh is null) continue; //throw new Exception("Cannot find " ~ IVegetationVoxelMesh.stringof ~ " of id " ~ to!string(voxel.mesh));
+
+		Voxel ny = order.chunk.get(x, y - blockskip, z);
+		const bool shiftDown = mesher.processor.registry.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
+
+		const Vector3f colour = voxel.extractColour;
+		ubyte[4] colourBytes = [
+			cast(ubyte)(colour.x * 255),
+			cast(ubyte)(colour.y * 255),
+			cast(ubyte)(colour.z * 255),
+			0
+		];
+
+		IVegetationVoxelMaterial material = processor.getMaterial(voxel.material);
+		if(material is null) throw new Exception("Cannot find " ~ IVegetationVoxelMaterial.stringof ~ " of id " ~ to!string(voxel.material));
+
+		if(mesh.meshType == MeshType.grass)
+		{
+			GrassVoxel gv = GrassVoxel(voxel);
+			float height = gv.blockHeight;
+			colourBytes[3] = material.grassTexture;
+
+			Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((360f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
+			Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
+
+			foreach(size_t vid, immutable Vector3f v; grassBundle2)
 			{
-				Voxel voxel = order.chunk.get(x, y, z);
+				size_t tid = vid % grassPlane.length;
+				Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
+				Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
 
-				IVegetationVoxelMesh mesh = processor.getMesh(voxel.mesh);
-				if(mesh is null) throw new Exception("Cannot find " ~ IVegetationVoxelMesh.stringof ~ " of id " ~ to!string(voxel.mesh));
+				import std.math;
+				ubyte offset = gv.offset;
+				float xOffset = offset == 0 ? 0f : cos(degtorad((360f / 7f) * (offset-1))) * 0.25f;
+				float yOffset = offset == 0 ? 0f : sin(degtorad((360f / 7f) * (offset-1))) * 0.25f;
 
-				Voxel ny = order.chunk.get(x, y - blockskip, z);
-				const bool shiftDown = mesher.processor.registry.getMesh(ny.mesh).isSideSolid(ny, VoxelSide.py) != SideSolidTable.solid;
+				vertex += Vector3f(xOffset, 0f, yOffset);
 
-				const Vector3f colour = voxel.extractColour;
-				ubyte[4] colourBytes = [
-					cast(ubyte)(colour.x * 255),
-					cast(ubyte)(colour.y * 255),
-					cast(ubyte)(colour.z * 255),
-					0
-				];
-
-				IVegetationVoxelMaterial material = processor.getMaterial(voxel.material);
-				if(material is null) throw new Exception("Cannot find " ~ IVegetationVoxelMaterial.stringof ~ " of id " ~ to!string(voxel.material));
-
-				if(mesh.meshType == MeshType.grass)
-				{
-					GrassVoxel gv = GrassVoxel(voxel);
-					float height = gv.blockHeight;
-					colourBytes[3] = material.grassTexture;
-
-					Matrix4f rotMat = rotationMatrix(Axis.y, degtorad((360f / 8f) * gv.offset)) * translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
-					Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
-
-					foreach(size_t vid, immutable Vector3f v; grassBundle2)
-					{
-						size_t tid = vid % grassPlane.length;
-						Vector2f texCoord = Vector2f(grassPlaneTexCoords[tid]);
-						Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
-
-						import std.math;
-						ubyte offset = gv.offset;
-						float xOffset = offset == 0 ? 0f : cos(degtorad((360f / 7f) * (offset-1))) * 0.25f;
-						float yOffset = offset == 0 ? 0f : sin(degtorad((360f / 7f) * (offset-1))) * 0.25f;
-
-						vertex += Vector3f(xOffset, 0f, yOffset);
-
-						vertex = (vertex * Vector3f(1f, height + (height * gv.heightOffset), 1f)) * order.chunk.blockskip + Vector3f(x, y, z);
-						if(shiftDown) vertex.y -= order.chunk.blockskip;
-						vertex *= order.chunk.voxelScale;
-						buffer.add(vertex, colourBytes, texCoord);
-					}
-				}
-				else if(mesh.meshType == MeshType.leaf)
-				{
-					LeafVoxel lv = LeafVoxel(voxel);
-
-					float rotation;
-					final switch(lv.direction) with(LeafVoxel.Direction)
-					{
-						case negative90:
-							rotation = -45f;
-							break;
-						case negative45:
-							rotation = 0f;
-							break;
-						case zero:
-							rotation = 45f;
-							break;
-						case positive45:
-							rotation = 90f;
-							break;
-					}
-
-					Matrix4f rotMat =
-						rotationMatrix(Axis.y, degtorad(lv.rotation * (360f / 8f))) *
-						rotationMatrix(Axis.x, degtorad(rotation)) *
-						translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
-					Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
-
-					foreach(size_t vid, immutable Vector3f v; leafPlane)
-					{
-						size_t texCoordID = vid % leafPlaneTexCoords.length;
-						Vector2f texCoord = Vector2f(leafPlaneTexCoords[texCoordID]);
-						Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
-
-						vertex = vertex * order.chunk.blockskip + Vector3f(x, y, z);
-						vertex *= order.chunk.voxelScale;
-
-						buffer.add(vertex, colourBytes, texCoord);
-					}
-				}
+				vertex = (vertex * Vector3f(1f, height + (height * gv.heightOffset), 1f)) * order.chunk.blockskip + Vector3f(x, y, z);
+				if(shiftDown) vertex.y -= order.chunk.blockskip;
+				vertex *= order.chunk.voxelScale;
+				buffer.add(vertex, colourBytes, texCoord);
 			}
+		}
+		else if(mesh.meshType == MeshType.leaf)
+		{
+			LeafVoxel lv = LeafVoxel(voxel);
+
+			float rotation;
+			final switch(lv.direction) with(LeafVoxel.Direction)
+			{
+				case negative90:
+					rotation = -45f;
+					break;
+				case negative45:
+					rotation = 0f;
+					break;
+				case zero:
+					rotation = 45f;
+					break;
+				case positive45:
+					rotation = 90f;
+					break;
+			}
+
+			Matrix4f rotMat =
+				rotationMatrix(Axis.y, degtorad(lv.rotation * (360f / 8f))) *
+				rotationMatrix(Axis.x, degtorad(rotation)) *
+				translationMatrix(Vector3f(-0.5f, -0.5f, -0.5f));
+			Matrix4f retTraMat = translationMatrix(Vector3f(0.5f, 0.5f, 0.5f));
+
+			foreach(size_t vid, immutable Vector3f v; leafPlane)
+			{
+				size_t texCoordID = vid % leafPlaneTexCoords.length;
+				Vector2f texCoord = Vector2f(leafPlaneTexCoords[texCoordID]);
+				Vector3f vertex = ((Vector4f(v.x, v.y, v.z, 1f) * rotMat) * retTraMat).xyz;
+
+				vertex = vertex * order.chunk.blockskip + Vector3f(x, y, z);
+				vertex *= order.chunk.voxelScale;
+
+				buffer.add(vertex, colourBytes, texCoord);
+			}
+		}
+	}
 
 	if(buffer.vertexCount == 0)
 	{
@@ -210,7 +212,7 @@ private void operate(MeshOrder order, Mesher mesher)
 	}
 }
 
-package enum bufferMaxVertices = 2 ^^ 14;
+enum bufferMaxVertices = 2 ^^ 14;
 
 final class MeshBuffer
 {

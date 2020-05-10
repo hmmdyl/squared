@@ -11,6 +11,8 @@ import squareone.client.systems.time;
 import squareone.client.content.entities.player;
 import squareone.common.terrain.basic.picker;
 
+import squareone.client.content.voxel.vegetation;
+
 import moxane.core;
 import moxane.graphics.redo;
 import moxane.network;
@@ -102,11 +104,19 @@ final class Game : Scene
 		registry.add(new Tetrahedron);
 		registry.add(new AntiTetrahedron);
 		registry.add(new HorizontalSlope);
+		registry.add(new GrassMesh);
 
 		registry.add(new Dirt);
 		registry.add(new Grass);
 		registry.add(new Sand);
 		registry.add(new Stone);
+		registry.add(new GrassBlade);
+
+		IVegetationVoxelTexture[] vegetationTextures;
+		vegetationTextures ~= new GrassBladeTexture;
+
+		VegetationProcessor veggieProcessor = new VegetationProcessor(moxane, registry, vegetationTextures);
+		registry.add(veggieProcessor);
 
 		registry.finaliseResources;
 

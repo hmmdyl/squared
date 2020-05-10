@@ -6,6 +6,8 @@ import squareone.common.meta;
 import moxane.core;
 import moxane.network;
 
+extern(C) export ulong NvOptimusEnablement = 0x01;
+
 void main()
 {
 	const MoxaneBootSettings boot =

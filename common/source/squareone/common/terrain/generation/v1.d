@@ -3,6 +3,7 @@ module squareone.common.terrain.generation.v1;
 import squareone.common.voxel;
 public import squareone.common.terrain.generation.root;
 import squareone.common.procedural;
+import squareone.common.content.voxel.vegetation;
 
 import moxane.core;
 import moxane.utils.maybe;
@@ -127,7 +128,7 @@ private void operate(NoiseGeneratorOrder order, DefaultNoiseGeneratorV1 ng, Open
 
 	int premC = generateNoise(order, simplex, s, e, materials, meshes, raw);
 	runSmoother(order, raw, smootherOutput, smootherCfg);
-	//addGrassBlades(order, s, e, premC, meshes, materials, smootherOutput, simplex);
+	addGrassBlades(order, s, e, premC, meshes, materials, smootherOutput, simplex);
 	postProcess(order, premC, smootherOutput);
 	countAir(order, meshes);
 }
@@ -250,21 +251,21 @@ private int generateNoise(NoiseGeneratorOrder order, OpenSimplexNoise!float simp
 
 				if(realPos1.y <= height && cave < 0.7f)
 					raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
-							Voxel(materials.stone, meshes.cube, 0, 0));
+							Voxel(materials.grass, meshes.cube, 0, 0));
 				else
 				{
-					if(realPos1.y <= 0)
+					/+if(realPos1.y <= 0)
 					{
 						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
 								Voxel(materials.water, meshes.fluid, 0, 0));
 						//premC--;
 					}
 					else
-					{
+					{+/
 						raw.set(box / order.chunk.blockskip, boy / order.chunk.blockskip, boz / order.chunk.blockskip, 
-								Voxel(0, meshes.invisible, 0, 0));
+								Voxel(materials.air, meshes.invisible, 0, 0));
 						premC++;
-					}
+					//}
 				}
 			}
 		}
@@ -284,7 +285,7 @@ private template loadChunkSkip(string x = "x", string y = "y", string z = "z")
 		continue;";
 }
 
-/+private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC, const ref Meshes meshes, const ref Materials materials, ref VoxelBuffer smootherOutput, OpenSimplexNoise!float simplex)
+private void addGrassBlades(NoiseGeneratorOrder order, const int s, const int e, ref int premC, const ref Meshes meshes, const ref Materials materials, ref VoxelBuffer smootherOutput, OpenSimplexNoise!float simplex) @trusted
 {
 	//import squareone.content.voxel.vegetation;
 	import std.math : floor;
@@ -298,7 +299,7 @@ private template loadChunkSkip(string x = "x", string y = "y", string z = "z")
 				Voxel ny = smootherOutput.get(x, y - 1, z);
 				Voxel v = smootherOutput.get(x, y, z);
 
-				if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible && ny.mesh != meshes.fluid && ny.material == materials.grass)
+				if(v.mesh == meshes.invisible && ny.mesh != meshes.invisible /+&& ny.mesh != meshes.fluid +/&& ny.material == materials.grass)
 				{
 					Vector3d realPos = order.chunkPosition.toVec3dOffset(BlockOffset(x, y, z));
 					ubyte offset = cast(ubyte)(simplex.eval(realPos.x * 2, realPos.z * 2) * 8f);
@@ -317,7 +318,7 @@ private template loadChunkSkip(string x = "x", string y = "y", string z = "z")
 					premC--;
 				}
 			}
-}+/
+}
 
 private void runSmoother(NoiseGeneratorOrder o, ref VoxelBuffer raw, ref VoxelBuffer smootherOutput, SmootherConfig smootherCfg)
 {
@@ -375,8 +376,8 @@ private void countAir(NoiseGeneratorOrder order, const ref Meshes meshes)
 				Voxel voxel = order.chunk.get(x * order.chunk.blockskip, y * order.chunk.blockskip, z * order.chunk.blockskip);
 				if(voxel.mesh == meshes.invisible)
 					airCount++;
-				else if(voxel.mesh == meshes.fluid)
-					fluidCount++;
+				//else if(voxel.mesh == meshes.fluid)
+				//	fluidCount++;
 				else 
 					solidCount++;
 			}
@@ -393,10 +394,7 @@ private struct Meshes
 		tetrahedron,
 		antiTetrahedron,
 		horizontalSlope,
-		fluid,
-		grassBlades,
-		leaf,
-		glass;
+		grassBlades;
 
 	static Meshes get(VoxelRegistry resources)
 	{
@@ -409,10 +407,11 @@ private struct Meshes
 		meshes.tetrahedron = resources.getMesh(Tetrahedron.technicalStatic).id;
 		meshes.antiTetrahedron = resources.getMesh(AntiTetrahedron.technicalStatic).id;
 		meshes.horizontalSlope = resources.getMesh(HorizontalSlope.technicalStatic).id;
-		//meshes.fluid = resources.getMesh(FluidMesh.technicalStatic).id;
-		//meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
-		//meshes.leaf = resources.getMesh(LeafMesh.technicalStatic).id;
-		//meshes.glass = resources.getMesh(GlassMesh.technicalStatic).id;
+		meshes.grassBlades = resources.getMesh(GrassMesh.technicalStatic).id;
+
+		import std.stdio;
+		writeln(meshes.grassBlades);
+
 		return meshes;
 	}
 }
@@ -423,7 +422,6 @@ private struct Materials
 		dirt,
 		grass,
 		sand,
-		water,
 		grassBlade,
 		stone,
 		glass;
@@ -441,10 +439,11 @@ private struct Materials
 		m.dirt =		resources.getMaterial(Dirt.technicalStatic).id;
 		m.grass =		resources.getMaterial(Grass.technicalStatic).id;
 		m.sand =		resources.getMaterial(Sand.technicalStatic).id;
-		//m.water =		0;
-		//m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
+		m.grassBlade =	resources.getMaterial(GrassBlade.technicalStatic).id;
 		m.stone	=		resources.getMaterial(Stone.technicalStatic).id;
-		//m.glass =		resources.getMaterial(GlassMaterial.technicalStatic).id;
+
+		import std.stdio;
+		writeln(m.grassBlade);
 
 		return m;
 	}
